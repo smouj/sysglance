@@ -200,12 +200,11 @@ body.locked .status-metric{pointer-events:none}
 
 /* ── Shared suite footer (window bottom) ──────────── */
 .suite-footer{
-  display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:3px;
+  display:flex;align-items:center;justify-content:center;flex-wrap:wrap;
   flex-shrink:0;padding:3px 8px 6px;border-top:1px solid var(--border);
   font-size:8px;letter-spacing:.3px;color:var(--text-muted);opacity:.7;
   user-select:none;cursor:default;
 }
-.suite-sep{opacity:.5}
 #suite-version{font-variant-numeric:tabular-nums}
 body.locked .suite-footer{opacity:.4}
 

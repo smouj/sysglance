@@ -639,6 +639,10 @@ app.on('before-quit', () => {
 // ── self-test (CI / headless smoke test) ────────────────
 // Boots the real window, reads one fast and one slow cycle, proves the preload
 // bridge reached the renderer, then exits non-zero on any error.
+function trayFooterLabelMatches() {
+  return SUITE_FOOTER_LABEL() === SUITE_FOOTER + ' · v' + APP_VERSION;
+}
+
 async function runSelfTest() {
   const fail = [];
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -660,7 +664,7 @@ async function runSelfTest() {
     if (!slow.filesystem || !slow.filesystem.folders.length) fail.push('slow tier returned no filesystem data');
 
     const probe = await mainWindow.webContents.executeJavaScript(
-      'JSON.stringify({ api: !!window.sysglance, apiKeys: window.sysglance ? Object.keys(window.sysglance).length : 0, versionText: (document.getElementById("app-version") || {}).textContent || null, shellSection: !!document.getElementById("sec-shell"), cpu: (document.getElementById("cpu-load") || {}).textContent || null })',
+      'JSON.stringify({ api: !!window.sysglance, apiKeys: window.sysglance ? Object.keys(window.sysglance).length : 0, versionText: (document.getElementById("app-version") || {}).textContent || null, suiteFooter: ((document.getElementById("suite-footer") || {}).textContent || "").replace(/\\s+/g, " ").trim() || null, shellSection: !!document.getElementById("sec-shell"), cpu: (document.getElementById("cpu-load") || {}).textContent || null })',
       true
     );
     const state = JSON.parse(probe);
@@ -668,6 +672,9 @@ async function runSelfTest() {
     if (!state.api) fail.push('window.sysglance missing (preload/contextBridge not wired)');
     if (!state.shellSection) fail.push('shell panel did not inject');
     if (!/^v?\d+\.\d+\.\d+/.test(String(state.versionText))) fail.push('version not rendered in the UI');
+    if (!state.suiteFooter || !state.suiteFooter.includes(SUITE_FOOTER) || !state.suiteFooter.includes(APP_VERSION)) {
+      fail.push('shared suite footer missing or wrong: ' + state.suiteFooter);
+    }
 
     await sleep(400);
     if (rendererErrors.length) fail.push('renderer errors: ' + rendererErrors.join(' | '));
