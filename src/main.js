@@ -25,6 +25,11 @@ const metrics = require('./metrics');
 const shellIpc = require('./shell/ipc');
 
 const SELF_TEST = process.argv.includes('--self-test');
+// --screenshot[=dir] boots the real app, captures the panel (sidebar, settings,
+// dock) and exits. Used to keep docs/*.png honest and to review visual changes.
+const SCREENSHOT_ARG = process.argv.find((a) => a.startsWith('--screenshot'));
+const SCREENSHOT = !!SCREENSHOT_ARG;
+const SCREENSHOT_DIR = SCREENSHOT_ARG && SCREENSHOT_ARG.includes('=') ? SCREENSHOT_ARG.split('=')[1] : path.join(__dirname, '..', 'docs');
 const APP_VERSION = app.getVersion();
 
 // The suite footer, identical in the window, the tray menu and both repositories'
@@ -110,7 +115,7 @@ function getLayoutBounds(layout) {
   const display = screen.getPrimaryDisplay();
   const { width: sw, height: sh } = display.workAreaSize;
   switch (layout) {
-    case 'dock':   return { w: sw, h: 80, minW: 600, minH: 60, maxW: sw, maxH: 200 };
+    case 'dock':   return { w: sw, h: 142, minW: 600, minH: 120, maxW: sw, maxH: 280 };
     case 'corner': return { w: 220, h: 260, minW: 180, minH: 200, maxW: 300, maxH: 400 };
     case 'sidebar':
     default:       return { w: 360, h: 720, minW: 280, minH: 400, maxW: 520, maxH: sh };
@@ -396,23 +401,33 @@ function setTheme(t) {
 
 function setAnchor(a) {
   if (!applyConfigPatch('anchor', a, 'set-anchor')) return;
-  if (mainWindow) {
-    const [w, h] = mainWindow.getSize();
-    const pos = getPositionForAnchor(config.anchor, w, h);
-    mainWindow.setPosition(pos.x, pos.y);
-  }
+  applyAnchorPosition(config.anchor);
+}
+
+// Geometry lives in two helpers so *any* path that changes layout/anchor — the
+// dedicated IPC, the settings panel (which sends set-config), the tray menu —
+// moves the window. Before this, choosing "Dock" in the settings panel changed
+// the internal CSS layout but left the window at sidebar dimensions.
+function applyLayoutGeometry(layout) {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  const bounds = getLayoutBounds(layout);
+  mainWindow.setMinimumSize(bounds.minW, bounds.minH);
+  mainWindow.setMaximumSize(bounds.maxW, bounds.maxH);
+  mainWindow.setSize(bounds.w, bounds.h);
+  const pos = getPositionForAnchor(config.anchor, bounds.w, bounds.h);
+  mainWindow.setPosition(pos.x, pos.y);
+}
+
+function applyAnchorPosition(anchor) {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  const [w, h] = mainWindow.getSize();
+  const pos = getPositionForAnchor(anchor, w, h);
+  mainWindow.setPosition(pos.x, pos.y);
 }
 
 function setLayout(layout) {
   if (!applyConfigPatch('layout', layout, 'set-layout')) return;
-  if (mainWindow) {
-    const bounds = getLayoutBounds(config.layout);
-    mainWindow.setMinimumSize(bounds.minW, bounds.minH);
-    mainWindow.setMaximumSize(bounds.maxW, bounds.maxH);
-    mainWindow.setSize(bounds.w, bounds.h);
-    const pos = getPositionForAnchor(config.anchor, bounds.w, bounds.h);
-    mainWindow.setPosition(pos.x, pos.y);
-  }
+  applyLayoutGeometry(config.layout);
   send('layout-changed', config.layout);
 }
 
@@ -554,10 +569,19 @@ function safeShellHost() {
 }
 
 ipcMain.handle('set-config', (_e, key, value) => {
-  const before = config.refreshInterval, beforeSlow = config.slowInterval;
+  const beforeFast = config.refreshInterval, beforeSlow = config.slowInterval;
+  const beforeLayout = config.layout, beforeAnchor = config.anchor;
   const ok = applyConfigPatch(key, value, 'renderer');
-  if (ok && (config.refreshInterval !== before || config.slowInterval !== beforeSlow)) restartDataCollection();
-  return { ok };
+  if (!ok) return { ok: false };
+  // A settings change that implies a different window shape must actually
+  // reshape the window, not only the DOM.
+  if (config.layout !== beforeLayout) {
+    applyLayoutGeometry(config.layout);
+    send('layout-changed', config.layout);
+  }
+  if (config.anchor !== beforeAnchor) applyAnchorPosition(config.anchor);
+  if (config.refreshInterval !== beforeFast || config.slowInterval !== beforeSlow) restartDataCollection();
+  return { ok: true };
 });
 
 ipcMain.handle('set-opacity', (_e, v) => {
@@ -619,6 +643,7 @@ app.whenReady().then(() => {
   globalShortcut.register('CommandOrControl+Shift+L', togglePositionLock);
   send('app-version', { version: APP_VERSION, electron: process.versions.electron });
   if (SELF_TEST) runSelfTest();
+  if (SCREENSHOT) runScreenshot();
 }).catch((err) => {
   log.exception('app.whenReady', err);
   app.exit(1);
@@ -641,6 +666,56 @@ app.on('before-quit', () => {
 // bridge reached the renderer, then exits non-zero on any error.
 function trayFooterLabelMatches() {
   return SUITE_FOOTER_LABEL() === SUITE_FOOTER + ' · v' + APP_VERSION;
+}
+
+// ── screenshot (dev/docs) ───────────────────────────────
+// A transparent window over nothing has no backdrop to blur, so the glass looks
+// flat. This paints a desktop-like gradient behind the page (html.shot) purely
+// for the capture, then writes PNGs and quits.
+async function runScreenshot() {
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const fsx = require('fs');
+  const shots = [
+    { file: 'screenshot.png', label: 'sidebar', layout: 'sidebar', settings: false },
+    { file: 'screenshot-settings.png', label: 'settings', layout: 'sidebar', settings: true },
+    { file: 'screenshot-dock.png', label: 'dock', layout: 'dock', settings: false },
+    { file: 'screenshot-mini.png', label: 'mini', layout: 'corner', settings: false }
+  ];
+  try {
+    fsx.mkdirSync(SCREENSHOT_DIR, { recursive: true });
+    await sleep(1200);   // let the first fast + slow cycles land
+    await mainWindow.webContents.executeJavaScript(`
+      document.documentElement.classList.add('shot');
+      if (!document.querySelector('.shot-desktop')) {
+        var d = document.createElement('div');
+        d.className = 'shot-desktop';
+        document.documentElement.insertBefore(d, document.body);
+      }
+      true;
+    `, true);
+    await sleep(350);
+
+    for (const shot of shots) {
+      await mainWindow.webContents.executeJavaScript(
+        `window.sysglance.setConfig('layout', '${shot.layout}');` +
+        `document.getElementById('settings-panel').classList.toggle('hidden', ${shot.settings ? 'false' : 'true'});` +
+        `true;`, true);
+      await sleep(900);
+      const image = await mainWindow.webContents.capturePage();
+      const out = path.join(SCREENSHOT_DIR, shot.file);
+      fsx.writeFileSync(out, image.toPNG());
+      const size = image.getSize();
+      console.log('[screenshot] ' + shot.label + ' -> ' + out + ' (' + size.width + 'x' + size.height + ')');
+    }
+    console.log('[screenshot] done');
+  } catch (err) {
+    console.error('[screenshot] failed: ' + (err && err.stack ? err.stack : err));
+    isQuitting = true;
+    app.exit(1);
+    return;
+  }
+  isQuitting = true;
+  app.exit(0);
 }
 
 async function runSelfTest() {

@@ -198,22 +198,34 @@ async function collectFast() {
 }
 
 // ── slow tier (systeminformation, 5–10 s) ───────────────
-const HOME_FOLDERS = [
-  { name: 'Desktop', icon: '🖥️' }, { name: 'Documents', icon: '📄' },
-  { name: 'Downloads', icon: '📥' }, { name: 'Pictures', icon: '🖼️' },
-  { name: 'Videos', icon: '🎬' }, { name: 'Music', icon: '🎵' }
-];
+const HOME_FOLDERS = ['Desktop', 'Documents', 'Downloads', 'Pictures', 'Videos', 'Music'];
+
+// Filesystems that are not storage a user thinks about. `si.fsSize()` reports
+// every mount, so an unfiltered list on Linux/WSL is eight lines of squashfs
+// snap loops, tmpfs and 9p drivers with truncated paths — which reads like a
+// raw `df` dump rather than a disk panel. Windows is unaffected (C:, D:, …).
+const PSEUDO_FS = /^(squashfs|tmpfs|devtmpfs|devpts|overlay|ramfs|proc|sysfs|cgroup2?|autofs|nsfs|tracefs|debugfs|binfmt_misc|fusectl|configfs|pstore|securityfs|mqueue|hugetlbfs|efivarfs|fuse\..*|rpc_pipefs|selinuxfs)$/i;
+const PSEUDO_MOUNT = /^\/(proc|sys|dev|snap)(\/|$)/;
+
+function isUserFacingDisk(d) {
+  if (!(d.size > 0)) return false;                       // zero-size pseudo mounts
+  const type = String(d.type || '');
+  if (type && PSEUDO_FS.test(type)) return false;
+  const mount = String(d.mount || '');
+  if (PSEUDO_MOUNT.test(mount)) return false;
+  return true;
+}
 
 function listFolders() {
   const home = os.homedir();
   const out = [];
   for (const f of HOME_FOLDERS) {
     try {
-      const p = path.join(home, f.name);
+      const p = path.join(home, f);
       fs.accessSync(p, fs.constants.R_OK);
       let count = 0;
       try { count = fs.readdirSync(p).length; } catch (_) { /* unreadable but present */ }
-      out.push({ name: f.name, icon: f.icon, path: p, count });
+      out.push({ name: f, path: p, count });
     } catch (_) { /* folder absent */ }
   }
   return { home, folders: out };
@@ -254,12 +266,16 @@ async function collectSlow(opts) {
   }));
 
   const disks = (r.disks || [])
+    .filter(isUserFacingDisk)
     .map((d) => ({
       fs: d.fs || '?', mount: d.mount || '?', used: d.used || 0, size: d.size || 0,
-      use: typeof d.use === 'number' ? +d.use.toFixed(1) : 0, available: d.available || 0
+      use: typeof d.use === 'number' ? +d.use.toFixed(1) : 0, available: d.available || 0,
+      type: d.type || null
     }))
-    .filter((d) => d.size > 0)
-    .slice(0, 8);
+    // Largest first: the filesystem the user cares about is almost always the
+    // biggest one. Root is pinned ahead of equal-footing mounts.
+    .sort((a, b) => (b.size - a.size))
+    .slice(0, 6);
 
   const netList = r.net || [];
   const activeNet = netList.find((n) => n.rx_sec > 0 || n.tx_sec > 0) || netList[0] || {};

@@ -39,6 +39,7 @@
     "start": "electron .",
     "dev": "electron . --dev",
     "self-test": "electron . --self-test",
+    "screenshot": "electron . --screenshot",
     "verify": "node scripts/verify-syntax.js && node scripts/verify-config.js && node scripts/verify-shell.js",
     "verify:config": "node scripts/verify-config.js",
     "verify:shell": "node scripts/verify-shell.js",
