@@ -1,0 +1,54 @@
+{
+  "name": "sysglance",
+  "version": "1.0.0",
+  "description": "Semi-transparent desktop overlay for real-time PC monitoring — CPU, RAM, GPU, disks, network, processes. No server required.",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "build:win": "electron-builder --win",
+    "build:linux": "electron-builder --linux",
+    "build:mac": "electron-builder --mac",
+    "build": "electron-builder"
+  },
+  "build": {
+    "appId": "com.sysglance.app",
+    "productName": "SysGlance",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "assets/**/*"
+    ],
+    "win": {
+      "target": [{ "target": "nsis", "arch": ["x64"] }],
+      "icon": "assets/icon.ico"
+    },
+    "linux": {
+      "target": ["AppImage", "deb"],
+      "icon": "assets/icon.png"
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "assets/icon.icns"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "SysGlance"
+    }
+  },
+  "keywords": ["system-monitor","desktop-overlay","cpu","ram","gpu","hardware","monitoring","electron"],
+  "author": "SysGlance",
+  "license": "MIT",
+  "repository": { "type": "git", "url": "https://github.com/sysglance/sysglance" },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.0.0"
+  },
+  "dependencies": {
+    "systeminformation": "^5.23.0"
+  }
+}
