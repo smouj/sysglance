@@ -8,68 +8,85 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body data-theme="dark">
-  <!-- Title bar (only visible when unlocked) -->
-  <div id="title-bar" class="title-bar">
-    <div class="title-left">
-      <svg class="logo-icon" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="14" stroke="currentColor" stroke-width="2"/><circle cx="16" cy="16" r="6" fill="currentColor" opacity="0.6"/><path d="M16 2 L16 8 M16 24 L16 30 M2 16 L8 16 M24 16 L30 16" stroke="currentColor" stroke-width="1.5"/></svg>
-      <span class="title-text">SysGlance</span>
+
+  <!-- Status Bar (always visible, top) -->
+  <div id="status-bar" class="status-bar">
+    <div class="status-left">
+      <svg class="logo-icon" viewBox="0 0 32 32" fill="none">
+        <path d="M16 2L28 9V23L16 30L4 23V9L16 2Z" stroke="currentColor" stroke-width="1.5" fill="none"/>
+        <circle cx="16" cy="16" r="5" stroke="currentColor" stroke-width="1.5" fill="none"/>
+        <circle cx="16" cy="16" r="2" fill="currentColor"/>
+      </svg>
+      <span class="status-title">SysGlance</span>
+      <span id="status-clock" class="status-clock"></span>
     </div>
-    <div class="title-right">
-      <button id="btn-lock" class="title-btn" title="Lock position (overlay mode)">🔒</button>
-      <button id="btn-compact" class="title-btn" title="Toggle compact mode">📐</button>
-      <button id="btn-minimize" class="title-btn" title="Hide overlay">−</button>
+    <div class="status-right">
+      <button id="btn-lock" class="status-btn" title="Lock/Unlock position">🔒</button>
+      <button id="btn-compact" class="status-btn" title="Compact mode">📐</button>
+      <button id="btn-minimize" class="status-btn" title="Hide overlay">−</button>
     </div>
   </div>
 
-  <!-- Main content -->
+  <!-- Main scrollable content -->
   <div id="content" class="content">
-    <!-- CPU Section -->
+
+    <!-- CPU -->
     <div class="section" id="sec-cpu">
       <div class="section-header">
         <span class="section-icon">⚡</span>
         <span class="section-title">CPU</span>
-        <span class="section-value" id="cpu-load">0%</span>
+        <span class="section-value" id="cpu-load">—</span>
       </div>
       <div class="progress-bar"><div class="progress-fill" id="cpu-bar"></div></div>
       <div class="info-row">
         <span id="cpu-model" class="info-subtitle">Loading...</span>
-        <span id="cpu-temp" class="info-badge">—</span>
+        <span id="cpu-temp" class="info-badge" style="display:none">—</span>
       </div>
       <div class="info-row">
-        <span id="cpu-speed" class="info-small">— GHz</span>
-        <span id="cpu-cores" class="info-small">— cores</span>
+        <span id="cpu-speed" class="info-small">—</span>
+        <span id="cpu-cores" class="info-small">—</span>
       </div>
       <div id="cpu-percore" class="percore-grid"></div>
     </div>
 
-    <!-- Memory Section -->
+    <!-- Memory -->
     <div class="section" id="sec-memory">
       <div class="section-header">
         <span class="section-icon">🧠</span>
         <span class="section-title">Memory</span>
-        <span class="section-value" id="mem-pct">0%</span>
+        <span class="section-value" id="mem-pct">—</span>
       </div>
       <div class="progress-bar"><div class="progress-fill" id="mem-bar"></div></div>
       <div class="info-row">
-        <span id="mem-used" class="info-small">— / — GB</span>
-        <span id="mem-swap" class="info-small">Swap: —</span>
+        <span id="mem-used" class="info-small">— / —</span>
+        <span id="mem-swap" class="info-small"></span>
       </div>
     </div>
 
-    <!-- GPU Section -->
+    <!-- GPU -->
     <div class="section" id="sec-gpu">
       <div class="section-header">
         <span class="section-icon">🎮</span>
         <span class="section-title">GPU</span>
         <span class="section-value" id="gpu-load">—</span>
       </div>
-      <div id="gpu-info" class="info-row">
+      <div class="info-row">
         <span id="gpu-name" class="info-subtitle">No GPU data</span>
       </div>
       <div id="gpu-bars"></div>
     </div>
 
-    <!-- Disks Section -->
+    <!-- Filesystem -->
+    <div class="section" id="sec-filesystem">
+      <div class="section-header">
+        <span class="section-icon">📁</span>
+        <span class="section-title">Filesystem</span>
+        <span id="fs-home" class="info-small">—</span>
+      </div>
+      <div id="fs-folders" class="fs-grid"></div>
+    </div>
+
+    <!-- Disks -->
     <div class="section" id="sec-disks">
       <div class="section-header">
         <span class="section-icon">💾</span>
@@ -78,7 +95,7 @@
       <div id="disk-list"></div>
     </div>
 
-    <!-- Network Section -->
+    <!-- Network -->
     <div class="section" id="sec-network">
       <div class="section-header">
         <span class="section-icon">🌐</span>
@@ -88,16 +105,16 @@
       <div class="net-row">
         <div class="net-direction">
           <span class="net-arrow down">↓</span>
-          <span id="net-rx" class="net-value">0 B/s</span>
+          <span id="net-rx" class="net-value">—</span>
         </div>
         <div class="net-direction">
           <span class="net-arrow up">↑</span>
-          <span id="net-tx" class="net-value">0 B/s</span>
+          <span id="net-tx" class="net-value">—</span>
         </div>
       </div>
     </div>
 
-    <!-- Processes Section -->
+    <!-- Processes -->
     <div class="section" id="sec-processes">
       <div class="section-header">
         <span class="section-icon">📊</span>
@@ -106,7 +123,7 @@
       <div id="proc-list" class="proc-list"></div>
     </div>
 
-    <!-- Battery Section (hidden if no battery) -->
+    <!-- Battery (hidden if no battery) -->
     <div class="section" id="sec-battery" style="display:none;">
       <div class="section-header">
         <span class="section-icon">🔋</span>
@@ -114,12 +131,10 @@
         <span class="section-value" id="bat-pct">—</span>
       </div>
       <div class="progress-bar"><div class="progress-fill" id="bat-bar"></div></div>
-      <div class="info-row">
-        <span id="bat-status" class="info-small">—</span>
-      </div>
+      <div class="info-row"><span id="bat-status" class="info-small">—</span></div>
     </div>
 
-    <!-- OS Info (compact footer) -->
+    <!-- OS Footer -->
     <div class="section section-footer" id="sec-os">
       <div class="os-row">
         <span id="os-distro" class="os-info">Loading...</span>
@@ -128,7 +143,7 @@
     </div>
   </div>
 
-  <!-- Opacity slider (bottom, subtle) -->
+  <!-- Opacity slider (visible on hover) -->
   <div id="opacity-control" class="opacity-control">
     <span class="opacity-label">Opacity</span>
     <input type="range" id="opacity-slider" min="20" max="100" value="88" class="opacity-slider">
