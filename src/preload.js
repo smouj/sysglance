@@ -37,6 +37,7 @@ const SHELL_CHANNELS = {
   accentAuto: 'shell:accent:auto',
   applyWallpaper: 'shell:wallpaper:apply',
   pickWallpaper: 'shell:wallpaper:pick',
+  wallpaperPreview: 'shell:wallpaper:preview',
   widgetInfo: 'shell:widget:info',
   openWidget: 'shell:widget:open'
 };

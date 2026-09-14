@@ -18,6 +18,7 @@
 const { app, BrowserWindow, ipcMain, screen, globalShortcut, Tray, Menu, nativeImage, shell, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
 
 const log = require('./log');
 const configModule = require('./config');
@@ -593,17 +594,37 @@ ipcMain.handle('set-opacity', (_e, v) => {
   return { ok: true, opacity: config.opacity };
 });
 
+// ── home folders (the only directories the UI may open) ──
+// The renderer asks to open a folder; the main process decides which folders
+// exist to be asked about. Without this list, `open-folder` would be a generic
+// "open any absolute path" primitive for a compromised renderer.
+const HOME_FOLDER_NAMES = ['Desktop', 'Documents', 'Downloads', 'Pictures', 'Videos', 'Music'];
+
+function allowedHomeFolders() {
+  const home = os.homedir();
+  const map = new Map();
+  for (const name of HOME_FOLDER_NAMES) map.set(path.resolve(path.join(home, name)), name);
+  return map;
+}
+
 ipcMain.handle('open-folder', async (_e, folderPath) => {
-  if (typeof folderPath !== 'string' || !path.isAbsolute(folderPath)) {
-    log.warn('refused open-folder with a non-absolute path');
+  if (typeof folderPath !== 'string' || !folderPath.trim() || !path.isAbsolute(folderPath)) {
+    log.warn('refused open-folder: not an absolute path');
     return { ok: false, error: 'invalid path' };
   }
+  const resolved = path.resolve(folderPath);
+  const allowed = allowedHomeFolders();
+  if (!allowed.has(resolved)) {
+    log.warn('refused open-folder for a path outside the offered home folders: ' + resolved);
+    return { ok: false, error: 'path not allowed' };
+  }
   let stat;
-  try { stat = fs.statSync(folderPath); } catch (_) { return { ok: false, error: 'not found' }; }
+  try { stat = fs.statSync(resolved); } catch (_) { return { ok: false, error: 'not found' }; }
   if (!stat.isDirectory()) return { ok: false, error: 'not a directory' };
-  const err = await shell.openPath(folderPath);
+  const err = await shell.openPath(resolved);
   if (err) { log.warn('open-folder failed: ' + err); return { ok: false, error: err }; }
-  return { ok: true };
+  log.info('opened ' + allowed.get(resolved) + ' (' + resolved + ')');
+  return { ok: true, name: allowed.get(resolved) };
 });
 
 ipcMain.on('toggle-position-lock', () => togglePositionLock());
@@ -675,11 +696,16 @@ function trayFooterLabelMatches() {
 async function runScreenshot() {
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const fsx = require('fs');
+  const ALL_OFF = { cpu: false, memory: false, gpu: false, filesystem: false, disks: false, network: false, processes: false, battery: false };
+  const ALL_ON = { cpu: true, memory: true, gpu: true, filesystem: true, disks: true, network: true, processes: true, battery: true };
   const shots = [
     { file: 'screenshot.png', label: 'sidebar', layout: 'sidebar', settings: false },
     { file: 'screenshot-settings.png', label: 'settings', layout: 'sidebar', settings: true },
     { file: 'screenshot-dock.png', label: 'dock', layout: 'dock', settings: false },
-    { file: 'screenshot-mini.png', label: 'mini', layout: 'corner', settings: false }
+    { file: 'screenshot-mini.png', label: 'mini', layout: 'corner', settings: false },
+    // The Shell card lives below the fold in a 720 px window, so the shell shot
+    // hides every metric section to bring it into view.
+    { file: 'screenshot-shell.png', label: 'shell', layout: 'sidebar', settings: false, sections: ALL_OFF }
   ];
   try {
     fsx.mkdirSync(SCREENSHOT_DIR, { recursive: true });
@@ -698,9 +724,10 @@ async function runScreenshot() {
     for (const shot of shots) {
       await mainWindow.webContents.executeJavaScript(
         `window.sysglance.setConfig('layout', '${shot.layout}');` +
+        `window.sysglance.setConfig('showSections', ${JSON.stringify(shot.sections || ALL_ON)});` +
         `document.getElementById('settings-panel').classList.toggle('hidden', ${shot.settings ? 'false' : 'true'});` +
         `true;`, true);
-      await sleep(900);
+      await sleep(1000);
       const image = await mainWindow.webContents.capturePage();
       const out = path.join(SCREENSHOT_DIR, shot.file);
       fsx.writeFileSync(out, image.toPNG());
@@ -708,6 +735,8 @@ async function runScreenshot() {
       console.log('[screenshot] ' + shot.label + ' -> ' + out + ' (' + size.width + 'x' + size.height + ')');
     }
     console.log('[screenshot] done');
+    // Leave the user's real section selection untouched.
+    await mainWindow.webContents.executeJavaScript(`window.sysglance.setConfig('showSections', ${JSON.stringify(ALL_ON)}); true;`, true);
   } catch (err) {
     console.error('[screenshot] failed: ' + (err && err.stack ? err.stack : err));
     isQuitting = true;
@@ -753,6 +782,20 @@ async function runSelfTest() {
 
     await sleep(400);
     if (rendererErrors.length) fail.push('renderer errors: ' + rendererErrors.join(' | '));
+
+    // ── security assertions ──
+    // These are the two places where a compromised renderer could otherwise
+    // reach beyond its lane, so they are tested rather than asserted in prose.
+    const outsideDir = process.platform === 'win32' ? (process.env.WINDIR || 'C:\\Windows') : '/etc';
+    const refusedFolder = await mainWindow.webContents.executeJavaScript(
+      'window.sysglance.openFolder(' + JSON.stringify(outsideDir) + ').then(function (r) { return JSON.stringify(r); })', true);
+    console.log('[self-test] open-folder(' + outsideDir + ') -> ' + refusedFolder);
+    if (!/"ok":false/.test(refusedFolder)) fail.push('open-folder did not refuse a path outside the offered home folders');
+
+    const refusedWallpaper = await mainWindow.webContents.executeJavaScript(
+      'window.sysglance.shell.wallpaperPreview(' + JSON.stringify(outsideDir) + ').then(function (p) { return JSON.stringify(p.result || p); })', true);
+    console.log('[self-test] wallpaperPreview(' + outsideDir + ') -> ' + refusedWallpaper);
+    if (!/"ok":false/.test(refusedWallpaper)) fail.push('wallpaperPreview accepted a non-image path');
 
     console.log('[self-test] log file: ' + log.file());
     if (fail.length) {

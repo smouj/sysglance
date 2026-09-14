@@ -428,12 +428,49 @@ function loadNativeImage() {
 
 const MAX_SAMPLE_DIM = 64;
 
+// Extensions we are willing to hand to nativeImage / registry / the helper.
+// A wallpaper path arrives from the renderer, so it is checked as a regular
+// file with an image extension before anything decodes or executes it.
+const IMAGE_EXT = /\.(jpe?g|png|bmp|webp|gif|tiff?|avif)$/i;
+
+function validateImagePath(filePath) {
+  if (!filePath || typeof filePath !== 'string') return { ok: false, error: 'no path' };
+  if (!path.isAbsolute(filePath)) return { ok: false, error: 'path must be absolute: ' + filePath };
+  let st = null;
+  try { st = fs.statSync(filePath); } catch (_) { return { ok: false, error: 'not found: ' + filePath }; }
+  if (!st.isFile()) return { ok: false, error: 'not a regular file: ' + filePath };
+  if (!IMAGE_EXT.test(filePath)) return { ok: false, error: 'not an image file: ' + path.extname(filePath) };
+  return { ok: true, size: st.size };
+}
+
+/**
+ * Small data-URL thumbnail of a wallpaper, for the panel preview.
+ * Returns { ok, dataUrl, width, height } or { ok: false, error }.
+ * Read-only: the image is decoded, downscaled in memory and thrown away.
+ */
+function wallpaperPreview(filePath, maxWidth) {
+  const valid = validateImagePath(filePath);
+  if (!valid.ok) return valid;
+  const nativeImage = loadNativeImage();
+  if (!nativeImage) return { ok: false, error: 'electron nativeImage unavailable (must run inside Electron)' };
+  let img = null;
+  try { img = nativeImage.createFromPath(filePath); } catch (e) { return { ok: false, error: 'decode failed: ' + e.message }; }
+  if (!img || img.isEmpty()) return { ok: false, error: 'could not decode image' };
+  const size = img.getSize();
+  const w = Math.max(32, Math.min(maxWidth || 168, 512));
+  const scale = w / Math.max(1, size.width);
+  const h = Math.max(16, Math.round(size.height * scale));
+  const small = size.width > w ? img.resize({ width: w, height: h, quality: 'good' }) : img;
+  const out = small.getSize();
+  const dataUrl = small.toDataURL();
+  if (!dataUrl || dataUrl.length > 400000) return { ok: false, error: 'preview too large' };
+  return { ok: true, dataUrl, width: out.width, height: out.height, source: { width: size.width, height: size.height } };
+}
+
 /** {ok, r,g,b,hex,kept,sampled} for a wallpaper file, via Electron's decoder. */
 function extractAccentFromWallpaper(filePath) {
-  if (!filePath) return { ok: false, error: 'no wallpaper path' };
-  let exists = false;
-  try { exists = fs.existsSync(filePath); } catch (_) {}
-  if (!exists) return { ok: false, error: 'wallpaper not found: ' + filePath };
+  const valid = validateImagePath(filePath);
+  if (!valid.ok) return valid;
   const nativeImage = loadNativeImage();
   if (!nativeImage) return { ok: false, error: 'electron nativeImage unavailable (must run inside Electron)' };
   let img = null;
@@ -496,9 +533,8 @@ async function refreshThemeChange() {
  * to another process and to the registry.
  */
 async function applyWallpaper(filePath) {
-  if (!filePath || typeof filePath !== 'string') return { ok: false, error: 'no wallpaper path' };
-  if (!path.isAbsolute(filePath)) return { ok: false, error: 'wallpaper path must be absolute: ' + filePath };
-  if (!fs.existsSync(filePath)) return { ok: false, error: 'wallpaper not found: ' + filePath };
+  const valid = validateImagePath(filePath);
+  if (!valid.ok) return valid;
   const steps = [];
   steps.push(await writeString(DESKTOP_KEY, 'Wallpaper', filePath));
   steps.push(await writeString(DESKTOP_KEY, 'WallpaperStyle', '10')); // 10 = Fill
@@ -562,6 +598,7 @@ module.exports = {
   // accent
   getAccent, setAccent, averageAccentRgb, extractAccentFromWallpaper,
   rgbToHex, decodeAbgr, decodeArgb, encodeAbgr, encodeArgb,
+  validateImagePath, wallpaperPreview,
   // wallpaper
   getWallpaper, applyWallpaper, systemParametersInfoWallpaper, refreshThemeChange, helperPath,
   // constants worth documenting

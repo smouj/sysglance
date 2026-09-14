@@ -187,6 +187,70 @@
   dom.btnLock.addEventListener('click', function () { api.togglePositionLock(); });
   dom.btnMinimize.addEventListener('click', function () { api.toggleVisibility(); });
 
+  var fsSignature = '';   // avoids rebuilding the folder grid (and losing focus)
+  var fsStatusTimer = null;
+
+  /** Brief message in the section header, then back to the home path. */
+  function fsStatus(text) {
+    if (!dom.fsHome) return;
+    var home = (currentConfig && currentConfig.fsHomeLabel) || dom.fsHome.dataset.home || '';
+    dom.fsHome.textContent = text;
+    dom.fsHome.classList.add('is-alert');
+    if (fsStatusTimer) clearTimeout(fsStatusTimer);
+    fsStatusTimer = setTimeout(function () {
+      dom.fsHome.textContent = home;
+      dom.fsHome.classList.remove('is-alert');
+    }, 2600);
+  }
+
+  function renderFolders(fs) {
+    var folders = (fs && fs.folders) || [];
+    var signature = fs ? fs.home + '|' + folders.map(function (f) { return f.name + ':' + f.count; }).join(',') : '';
+
+    if (!folders.length) {
+      dom.fsHome.dataset.home = '';
+      dom.fsHome.textContent = '';
+      if (fsSignature !== 'empty') {
+        fsSignature = 'empty';
+        dom.fsFolders.innerHTML = '<div class="fs-empty">No Desktop, Documents, Downloads, Pictures, Videos or Music folder found in the home directory.</div>';
+      }
+      return;
+    }
+
+    var label = String(fs.home).replace(/^\/home\/[^/]+/, '~');
+    dom.fsHome.dataset.home = label;
+    if (!dom.fsHome.classList.contains('is-alert')) dom.fsHome.textContent = label;
+
+    if (signature === fsSignature) return;   // nothing to repaint
+    fsSignature = signature;
+
+    var html = '';
+    for (var i = 0; i < folders.length; i++) {
+      var folder = folders[i];
+      var items = folder.count === 1 ? '1 item' : folder.count + ' items';
+      html += '<div class="fs-item" role="button" tabindex="0" data-path="' + esc(folder.path) + '"' +
+        ' title="' + esc(folder.path) + '" aria-label="Open ' + esc(folder.name) + ', ' + items + '">' +
+        '<span class="fs-item-icon">' + FOLDER_ICON + '</span>' +
+        '<span class="fs-item-info"><span class="fs-item-name">' + esc(folder.name) + '</span>' +
+        '<span class="fs-item-count">' + items + '</span></span>' +
+        '<span class="fs-item-go"><svg class="ic" viewBox="0 0 24 24"><use href="#i-open"/></svg></span>' +
+        '</div>';
+    }
+    dom.fsFolders.innerHTML = html;
+
+    dom.fsFolders.querySelectorAll('.fs-item').forEach(function (node) {
+      var open = function () {
+        api.openFolder(node.dataset.path).then(function (res) {
+          if (!res || res.ok === false) fsStatus('Could not open ' + (node.dataset.path || '').split(/[\\/]/).pop());
+        }).catch(function () { fsStatus('Could not open folder'); });
+      };
+      node.addEventListener('click', open);
+      node.addEventListener('keydown', function (ev) {
+        if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); open(); }
+      });
+    });
+  }
+
   // ── rAF-batched rendering ─────────────────────────────
   var pendingData = null, rafScheduled = false;
 
@@ -266,21 +330,7 @@
     }
 
     // Filesystem folders
-    if (data.filesystem && data.filesystem.folders && data.filesystem.folders.length) {
-      dom.fsHome.textContent = data.filesystem.home.replace(/^\/home\/[^/]+/, '~');
-      var fhtml = '';
-      for (var f = 0; f < data.filesystem.folders.length; f++) {
-        var folder = data.filesystem.folders[f];
-        fhtml += '<div class="fs-item" data-path="' + esc(folder.path) + '" title="' + esc(folder.path) + ' (' + folder.count + ' items)">' +
-          '<span class="fs-item-icon">' + FOLDER_ICON + '</span><div class="fs-item-info">' +
-          '<div class="fs-item-name">' + esc(folder.name) + '</div>' +
-          '<div class="fs-item-count">' + folder.count + ' items</div></div></div>';
-      }
-      dom.fsFolders.innerHTML = fhtml;
-      dom.fsFolders.querySelectorAll('.fs-item').forEach(function (el) {
-        el.addEventListener('click', function () { api.openFolder(el.dataset.path); });
-      });
-    }
+    renderFolders(data.filesystem);
 
     // Disks
     if (data.disks && data.disks.length) {

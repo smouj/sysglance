@@ -55,6 +55,7 @@ const CHANNELS = [
   'shell:accent:auto',
   'shell:wallpaper:apply',
   'shell:wallpaper:pick',
+  'shell:wallpaper:preview',
   'shell:widget:info',
   'shell:widget:open'
 ];
@@ -177,6 +178,21 @@ function register(ctx) {
     return res;
   }
 
+  /**
+   * Read-only thumbnail of the current (or given) wallpaper for the panel.
+   * The path is validated in taskbar.js before anything decodes it, and the
+   * result is a downscaled data URL — never the file itself.
+   */
+  async function wallpaperPreview(filePath) {
+    let target = filePath;
+    if (!target) {
+      const current = shellConfig().wallpaperPath || (await taskbar.getWallpaper()).path;
+      target = current;
+    }
+    if (!target) return { ok: false, error: 'no wallpaper set' };
+    return taskbar.wallpaperPreview(target, 168);
+  }
+
   async function pickWallpaper() {
     if (!dialog || typeof dialog.showOpenDialog !== 'function') return { ok: false, error: 'dialog unavailable' };
     const win = ctx.getWindow && ctx.getWindow();
@@ -225,6 +241,7 @@ function register(ctx) {
   ipcMain.handle('shell:accent:auto', () => accentAuto().then(answer));
   ipcMain.handle('shell:wallpaper:apply', (_e, p) => applyWallpaper(p).then(answer));
   ipcMain.handle('shell:wallpaper:pick', () => pickWallpaper().then(answer));
+  ipcMain.handle('shell:wallpaper:preview', (_e, p) => Promise.resolve(wallpaperPreview(p)).then((r) => ({ result: r })));
   ipcMain.handle('shell:widget:info', () => Promise.resolve(widgetInfo()));
   ipcMain.handle('shell:widget:open', () => openWidget());
 
@@ -232,7 +249,7 @@ function register(ctx) {
 
   return {
     state, setPosition, setAutoHide, setDark, accentFromWallpaper, accentAuto,
-    applyWallpaper, pickWallpaper, restartExplorer, widgetInfo, openWidget,
+    applyWallpaper, pickWallpaper, wallpaperPreview, restartExplorer, widgetInfo, openWidget,
     broadcast, CHANNELS, WIDGET_REPO
   };
 }
