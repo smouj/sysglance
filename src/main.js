@@ -27,6 +27,11 @@ const shellIpc = require('./shell/ipc');
 const SELF_TEST = process.argv.includes('--self-test');
 const APP_VERSION = app.getVersion();
 
+// The suite footer, identical in the window, the tray menu and both repositories'
+// READMEs (see the shared block at the end of README.md).
+const SUITE_FOOTER = 'OpenClaw desktop suite · MIT · smouj';
+const SUITE_FOOTER_LABEL = () => SUITE_FOOTER + ' · v' + APP_VERSION;
+
 // ── single instance ─────────────────────────────────────
 // Second launch focuses the running overlay instead of starting a twin.
 const gotLock = app.requestSingleInstanceLock();
@@ -227,7 +232,7 @@ function createWindow() {
       { type: 'separator' },
       { label: '⚙️ Settings Panel', click: () => send('toggle-settings') },
       { type: 'separator' },
-      { label: 'ℹ️ SysGlance ' + APP_VERSION, enabled: false },
+      { label: SUITE_FOOTER_LABEL(), enabled: false },
       { label: '❌ Quit', click: () => { isQuitting = true; app.quit(); } }
     ]).popup();
   });
@@ -287,7 +292,8 @@ function rebuildTray() {
     { label: '⚙️ Settings Panel', click: () => send('toggle-settings') },
     { label: '📊 Refresh now', click: () => { runFastCycle(); runSlowCycle(); } },
     { type: 'separator' },
-    { label: 'ℹ️ SysGlance ' + APP_VERSION, enabled: false },
+    // Same wording as the README footer, kept in one place (SUITE_FOOTER_LABEL).
+    { label: SUITE_FOOTER_LABEL(), enabled: false },
     { label: '❌ Quit SysGlance', click: () => { isQuitting = true; app.quit(); } }
   ]));
 }

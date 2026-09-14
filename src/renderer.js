@@ -34,6 +34,7 @@
     osDistro: $('os-distro'), osUptime: $('os-uptime'),
     btnLock: $('btn-lock'), btnSettings: $('btn-settings'), btnMinimize: $('btn-minimize'),
     statusClock: $('status-clock'), perfReadout: $('perf-readout'), appVersion: $('app-version'),
+    suiteVersion: $('suite-version'),
     settingsPanel: $('settings-panel'), btnCloseSettings: $('btn-close-settings'),
     settingsOpacity: $('settings-opacity'), settingsRefresh: $('settings-refresh'), settingsSlow: $('settings-slow'),
     opacityVal: $('opacity-val'), refreshVal: $('refresh-val'), slowVal: $('slow-val'),
@@ -357,12 +358,16 @@
   });
   api.on('toggle-settings', function () { toggleSettings(); });
   api.on('app-version', function (info) {
-    if (info && info.version) dom.appVersion.textContent = 'v' + info.version;
+    if (info && info.version) {
+      dom.appVersion.textContent = 'v' + info.version;
+      if (dom.suiteVersion) dom.suiteVersion.textContent = 'v' + info.version;
+    }
   });
 
   // ── initial load ──────────────────────────────────────
   api.getAppInfo().then(function (info) {
     dom.appVersion.textContent = 'v' + info.version;
+    if (dom.suiteVersion) dom.suiteVersion.textContent = 'v' + info.version;
     dom.appVersion.title = 'SysGlance ' + info.version + '\nElectron ' + info.electron + ' · Chromium ' + info.chrome +
       ' · Node ' + info.node + '\nShell host: ' + info.shellHost;
     if (dom.appInfo) {

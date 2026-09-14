@@ -198,6 +198,17 @@ body.locked .status-metric{pointer-events:none}
 .settings-meta{gap:3px;padding-top:7px;border-top:1px solid var(--border)}
 .settings-meta .info-small{font-variant-numeric:tabular-nums}
 
+/* ── Shared suite footer (window bottom) ──────────── */
+.suite-footer{
+  display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:3px;
+  flex-shrink:0;padding:3px 8px 6px;border-top:1px solid var(--border);
+  font-size:8px;letter-spacing:.3px;color:var(--text-muted);opacity:.7;
+  user-select:none;cursor:default;
+}
+.suite-sep{opacity:.5}
+#suite-version{font-variant-numeric:tabular-nums}
+body.locked .suite-footer{opacity:.4}
+
 /* ── Compact ──────────────────────────────────────── */
 body.compact .section{padding:5px 7px}
 body.compact .section-header{margin-bottom:2px}
