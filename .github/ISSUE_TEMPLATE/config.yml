@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: OpenClaw Widget (always-on companion)
+    url: https://github.com/smouj/openclaw-desktop-widget
+    about: The always-visible widget for system health, and the owner of the taskbar effect.
+  - name: Question or idea
+    url: https://github.com/smouj/sysglance/discussions
+    about: Use discussions for open-ended questions.

@@ -235,6 +235,14 @@ SysGlance a resident taskbar effect.
 
 ---
 
-<p align="center">
-  <sub>A control center you open, next to a widget that stays. Built for people who want their system stats always visible.</sub>
-</p>
+<div align="center">
+
+**OpenClaw desktop suite** — two desktop apps, one suite.
+
+[OpenClaw Widget](https://github.com/smouj/openclaw-desktop-widget) · [SysGlance](https://github.com/smouj/sysglance)
+
+MIT License · Made by [smouj](https://github.com/smouj)
+
+<sub>No server · No telemetry · No subscriptions</sub>
+
+</div>

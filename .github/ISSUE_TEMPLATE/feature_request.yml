@@ -1,0 +1,31 @@
+name: Feature request
+description: Suggest an improvement for SysGlance
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: Before filing, check PRODUCT.md — the suite splits work between SysGlance and OpenClaw Widget on purpose.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: Describe the need, not the implementation.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+    validations:
+      required: false
+  - type: dropdown
+    id: cost
+    attributes:
+      label: Cost awareness
+      description: SysGlance keeps its fast tier free of child processes.
+      options:
+        - No measurable runtime cost
+        - Adds cost only while the window is open
+        - Not sure — needs measuring
+    validations:
+      required: true

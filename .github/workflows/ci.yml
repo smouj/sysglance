@@ -1,14 +1,16 @@
 name: CI
 
+# Releases are handled by .github/workflows/release.yml (triggered by a v* tag),
+# so this workflow deliberately does not run on tags — one owner per release.
+
 on:
   push:
     branches: [main, master]
-    tags: ['v*']
   pull_request:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   # ── gates: syntax, settings validation, shell harness, headless smoke test ──
@@ -32,16 +34,18 @@ jobs:
       - name: Settings validation
         run: npm run verify:config
 
+      # On a host without the Windows registry (as here) the harness self-skips
+      # its live checks instead of failing, so it is safe in CI.
       - name: Shell harness
         run: npm run verify:shell
+
+      - name: Refresh-cycle benchmark
+        run: npm run bench -- --iterations=5
 
       # Electron needs a display; Xvfb provides one. The app reads real metrics
       # and asserts the preload bridge from inside the sandboxed renderer.
       - name: Headless smoke test
-        run: xvfb-run -a npx electron . --self-test --no-sandbox
-
-      - name: Refresh-cycle benchmark
-        run: npm run bench -- --iterations=5
+        run: xvfb-run -a npx electron . --self-test --no-sandbox --disable-gpu
 
   # ── the installer is built where it is actually installable ──
   build-windows:
@@ -59,6 +63,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Syntax gate
+        run: npm run verify:syntax
+
+      - name: Settings validation
+        run: npm run verify:config
+
       - name: Build NSIS installer
         run: npm run build:win
 
@@ -71,14 +81,6 @@ jobs:
             dist/*.blockmap
           if-no-files-found: error
           retention-days: 30
-
-      # Tags publish the installer as a release asset (no npm publish).
-      - name: Attach installer to the release
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v2
-        with:
-          files: dist/*.exe
-          generate_release_notes: true
 
   # ── linux artifacts, so the AppImage/deb config keeps being exercised ──
   build-linux:

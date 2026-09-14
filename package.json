@@ -3,11 +3,14 @@
   "version": "1.2.0",
   "description": "On-demand desktop control center for Windows and Linux: CPU, memory, GPU, disks, network, filesystem and the Windows shell (taskbar position, dark mode, accent, wallpaper) in a semi-transparent always-on-top overlay.",
   "main": "src/main.js",
-  "author": "SysGlance",
+  "author": {
+    "name": "smouj",
+    "url": "https://github.com/smouj"
+  },
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/smouj/sysglance"
+    "url": "git+https://github.com/smouj/sysglance.git"
   },
   "homepage": "https://github.com/smouj/sysglance#readme",
   "bugs": {
@@ -26,7 +29,8 @@
     "transparent",
     "always-on-top",
     "taskbar",
-    "windows-shell"
+    "windows-shell",
+    "systeminformation"
   ],
   "engines": {
     "node": ">=20"
@@ -48,15 +52,19 @@
   "build": {
     "appId": "com.sysglance.app",
     "productName": "SysGlance",
+    "copyright": "Copyright © 2026 smouj",
     "directories": {
       "output": "dist"
     },
+    "compression": "maximum",
     "files": [
       "src/**/*",
       "assets/**/*",
       "!src/native/shell/*.exe",
-      "!**/*.map"
+      "!**/*.map",
+      "!**/.openclaw/**"
     ],
+    "publish": null,
     "win": {
       "target": [
         {
@@ -65,29 +73,41 @@
         }
       ],
       "icon": "assets/icon.png",
-      "requestedExecutionLevel": "asInvoker"
+      "requestedExecutionLevel": "asInvoker",
+      "artifactName": "SysGlance-Setup-${version}.${ext}"
     },
     "nsis": {
       "oneClick": false,
       "perMachine": false,
+      "allowElevation": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "SysGlance",
       "runAfterFinish": true,
-      "allowElevation": false,
-      "artifactName": "SysGlance-Setup-${version}.${ext}"
+      "artifactName": "SysGlance-Setup-${version}.${ext}",
+      "uninstallDisplayName": "SysGlance ${version}"
     },
     "linux": {
       "target": ["AppImage", "deb"],
       "icon": "assets/icon.png",
       "category": "System",
-      "artifactName": "SysGlance-${version}.${ext}"
+      "synopsis": "On-demand desktop control center",
+      "description": "Real-time CPU, memory, GPU, disk, network, filesystem and process monitoring, plus Windows shell configuration, in a semi-transparent always-on-top overlay.",
+      "desktop": {
+        "entry": {
+          "Name": "SysGlance",
+          "Comment": "On-demand desktop control center",
+          "Categories": "System;Monitor;Utility;"
+        }
+      },
+      "artifactName": "SysGlance-${version}-${arch}.${ext}"
     },
     "mac": {
       "target": "dmg",
       "icon": "assets/icon.png",
-      "category": "public.app-category.utilities"
+      "category": "public.app-category.utilities",
+      "artifactName": "SysGlance-${version}-${arch}.${ext}"
     }
   },
   "devDependencies": {
