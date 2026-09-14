@@ -15,7 +15,7 @@ $ErrorActionPreference = 'Stop'
 $dest = Join-Path $env:LOCALAPPDATA 'Programs\SysGlance'
 $exe  = Join-Path $dest 'SysGlance.exe'
 
-if (-not (Test-Path $From)) { throw "No encuentro el build en $From — ejecuta 'npm run build:win' o 'electron-builder --win dir'" }
+if (-not (Test-Path $From)) { throw "No encuentro el build en $From - ejecuta 'npm run build:win' o 'electron-builder --win dir'" }
 if (Test-Path $dest) { Remove-Item $dest -Recurse -Force }
 New-Item -ItemType Directory -Force -Path (Split-Path $dest) | Out-Null
 Copy-Item $From $dest -Recurse
