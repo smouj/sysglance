@@ -243,6 +243,29 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md). The short version: run `npm run verify
 before you push, keep the fast tier free of child processes, and do not give
 SysGlance a resident taskbar effect.
 
+### Installing without an installer (per-user, no admin)
+
+Two environment facts that bite when you build for Windows:
+
+- **On Windows**, electron-builder unpacks `winCodeSign` into its cache and that archive
+  contains macOS symlinks. Without elevation it fails with
+  `Cannot create symbolic link : ... no dispone de un privilegio requerido`.
+  Fix: enable **Developer Mode** (Settings → Privacy & security → For developers) or run the
+  build from an elevated shell.
+- **On Linux/macOS**, Windows targets need a 32-bit-capable Wine, because `rcedit` is a 32-bit binary.
+
+If you only need the app for the current user, skip NSIS entirely and install the unpacked build:
+
+```powershell
+npm run build:win -- --dir      # or: npx electron-builder --win dir
+powershell -File scripts\install-user.ps1
+```
+
+`scripts/install-user.ps1` copies the build to `%LOCALAPPDATA%\Programs\SysGlance`, creates the
+Start-menu and desktop shortcuts, registers it in *Apps & features* with its own uninstaller
+(`scripts\uninstall-user.ps1`) and launches it. **This is exactly how SysGlance is installed on the
+development machine**, because the NSIS route needs the privilege described above.
+
 ## 📄 License
 
 [MIT](LICENSE) — use it, modify it, share it.
