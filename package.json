@@ -1,13 +1,17 @@
 {
   "name": "sysglance",
-  "version": "1.1.0",
-  "description": "Futuristic semi-transparent desktop overlay for real-time PC monitoring — CPU, RAM, GPU, disks, network, filesystem, processes. Runs in background, no server required.",
+  "version": "1.2.0",
+  "description": "On-demand desktop control center for Windows and Linux: CPU, memory, GPU, disks, network, filesystem and the Windows shell (taskbar position, dark mode, accent, wallpaper) in a semi-transparent always-on-top overlay.",
   "main": "src/main.js",
   "author": "SysGlance",
   "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/smouj/sysglance"
+  },
+  "homepage": "https://github.com/smouj/sysglance#readme",
+  "bugs": {
+    "url": "https://github.com/smouj/sysglance/issues"
   },
   "keywords": [
     "system-monitor",
@@ -20,11 +24,22 @@
     "monitoring",
     "electron",
     "transparent",
-    "always-on-top"
+    "always-on-top",
+    "taskbar",
+    "windows-shell"
   ],
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "start": "electron .",
     "dev": "electron . --dev",
+    "self-test": "electron . --self-test",
+    "verify": "node scripts/verify-syntax.js && node scripts/verify-config.js && node scripts/verify-shell.js",
+    "verify:config": "node scripts/verify-config.js",
+    "verify:shell": "node scripts/verify-shell.js",
+    "verify:syntax": "node scripts/verify-syntax.js",
+    "bench": "node scripts/bench-metrics.js",
     "build": "electron-builder",
     "build:win": "electron-builder --win",
     "build:linux": "electron-builder --linux",
@@ -38,7 +53,9 @@
     },
     "files": [
       "src/**/*",
-      "assets/**/*"
+      "assets/**/*",
+      "!src/native/shell/*.exe",
+      "!**/*.map"
     ],
     "win": {
       "target": [
@@ -52,17 +69,20 @@
     },
     "nsis": {
       "oneClick": false,
+      "perMachine": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "SysGlance",
       "runAfterFinish": true,
-      "allowElevation": false
+      "allowElevation": false,
+      "artifactName": "SysGlance-Setup-${version}.${ext}"
     },
     "linux": {
       "target": ["AppImage", "deb"],
       "icon": "assets/icon.png",
-      "category": "System"
+      "category": "System",
+      "artifactName": "SysGlance-${version}.${ext}"
     },
     "mac": {
       "target": "dmg",

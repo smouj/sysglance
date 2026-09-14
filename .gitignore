@@ -1,6 +1,7 @@
 node_modules/
 dist/
 out/
+release/
 .DS_Store
 Thumbs.db
 *.log
@@ -13,3 +14,10 @@ config.json
 coverage/
 .nyc_output/
 electron-builder.env
+
+# Native helper binary — compile with scripts/build-native.ps1, never commit
+src/native/shell/*.exe
+src/native/**/*.exe
+
+# Local agent scratch (plans, recovered files, measurements)
+.openclaw/
