@@ -1,8 +1,5 @@
 # Product positioning — OpenClaw desktop suite
 
-> **Estado (2026-09-15):** la suite se redujo a **una** aplicación, OpenClaw Widget.
-> SysGlance queda retirada; este archivo se conserva para explicar por qué se partió así y qué se aprendió.
-
 Two desktop apps, one suite. Complementary, never competitors.
 
 | | **SysGlance** (this repo) | **OpenClaw Widget** (https://github.com/smouj/openclaw-desktop-widget) |
