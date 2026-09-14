@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SysGlance Preview</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#1a1a2e;display:flex;gap:40px;padding:40px;font-family:'Segoe UI',-apple-system,sans-serif;align-items:flex-start;justify-content:center;flex-wrap:wrap}
+
+/* Sidebar Layout */
+.sidebar-preview{width:340px;background:rgba(10,10,20,0.88);border:1px solid rgba(0,229,255,0.15);border-radius:14px;backdrop-filter:blur(22px);overflow:hidden;box-shadow:0 0 30px rgba(0,229,255,0.05),0 8px 32px rgba(0,0,0,0.4)}
+.sbar{display:flex;align-items:center;justify-content:space-between;padding:7px 12px 5px;border-bottom:1px solid rgba(100,120,160,0.1);background:rgba(0,0,0,0.15)}
+.sbar-left{display:flex;align-items:center;gap:6px}
+.sbar-title{font-size:11px;font-weight:700;letter-spacing:1.5px;color:#00e5ff;text-transform:uppercase}
+.sbar-clock{font-size:9px;color:rgba(160,170,190,0.45);margin-left:3px}
+.sbar-right{display:flex;gap:3px}
+.sbtn{background:rgba(255,255,255,0.04);border:1px solid rgba(100,120,160,0.1);color:rgba(200,210,230,0.7);width:22px;height:22px;border-radius:5px;font-size:11px;display:flex;align-items:center;justify-content:center}
+.scontent{padding:7px 11px 11px;display:flex;flex-direction:column;gap:7px}
+.ssec{background:rgba(14,14,30,0.6);border:1px solid rgba(100,120,160,0.1);border-radius:10px;padding:9px 10px}
+.ssec-head{display:flex;align-items:center;gap:5px;margin-bottom:4px}
+.ssec-icon{font-size:12px;width:16px;text-align:center}
+.ssec-title{font-size:10px;font-weight:600;letter-spacing:0.8px;text-transform:uppercase;color:rgba(200,210,230,0.7);flex:1}
+.ssec-val{font-size:16px;font-weight:700;color:#00e5ff;font-variant-numeric:tabular-nums}
+.sbar-fill{height:4px;background:rgba(255,255,255,0.06);border-radius:2px;margin:3px 0;overflow:hidden}
+.sbar-inner{height:100%;border-radius:2px;background:linear-gradient(90deg,#00e5ff,rgba(0,229,255,0.7));transition:width .5s}
+.sbar-inner.warn{background:linear-gradient(90deg,#ff9800,#ffb74d)}
+.sbar-inner.danger{background:linear-gradient(90deg,#f44336,#ef5350)}
+.sinfo{display:flex;justify-content:space-between;margin-top:2px;font-size:9.5px;color:rgba(160,170,190,0.45)}
+.sinfo-sub{font-size:10px;color:rgba(200,210,230,0.7);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px}
+.cores{display:grid;grid-template-columns:repeat(8,1fr);gap:2px;margin-top:4px}
+.core{height:3px;border-radius:1px;background:rgba(255,255,255,0.06);overflow:hidden}
+.core-in{height:100%;border-radius:1px;background:#00e5ff}
+.core-in.w{background:#ff9800}.core-in.d{background:#f44336}
+.fsg{display:grid;grid-template-columns:1fr 1fr;gap:3px;margin-top:3px}
+.fs{display:flex;align-items:center;gap:5px;padding:4px 6px;border-radius:5px;background:rgba(255,255,255,0.04);border:1px solid rgba(100,120,160,0.1);cursor:pointer}
+.fs-icon{font-size:13px}.fs-name{font-size:9.5px;font-weight:600;color:#e8eaf6}.fs-cnt{font-size:8px;color:rgba(160,170,190,0.45)}
+.net{display:flex;gap:12px;margin-top:3px}
+.nd{display:flex;align-items:center;gap:4px}
+.nd-arrow{font-size:12px;font-weight:700}.nd-down{color:#4caf50}.nd-up{color:#ff9800}.nd-val{font-size:12px;font-weight:600;color:#e8eaf6;font-variant-numeric:tabular-nums}
+.procs{display:flex;flex-direction:column;gap:1px;max-height:80px;overflow:hidden}
+.proc{display:grid;grid-template-columns:1fr 42px 42px;padding:2px 4px;font-size:10px;border-radius:3px}
+.proc:hover{background:rgba(0,229,255,0.12)}
+.proc-name{color:#e8eaf6;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.proc-cpu{text-align:right;color:rgba(160,170,190,0.45);font-variant-numeric:tabular-nums;font-size:9.5px}
+.proc-mem{text-align:right;color:rgba(160,170,190,0.45);font-variant-numeric:tabular-nums;font-size:9.5px}
+.osfoot{background:transparent;border:none;padding:3px 10px;display:flex;justify-content:space-between;font-size:8.5px;color:rgba(160,170,190,0.45);letter-spacing:0.2px}
+.disk{margin-bottom:4px}
+.disk-label{display:flex;justify-content:space-between;font-size:10px;margin-bottom:1px}
+.disk-fs{color:#e8eaf6;font-weight:500}.disk-pct{color:rgba(200,210,230,0.7);font-variant-numeric:tabular-nums}
+.disk-size{color:rgba(160,170,190,0.45);font-size:8.5px}
+/* Labels */
+.layout-label{text-align:center;color:#00e5ff;font-size:14px;font-weight:600;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px}
+</style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<div>
+<div class="layout-label">Sidebar</div>
+<div class="sidebar-preview">
+<div class="sbar"><div class="sbar-left"><span style="font-size:15px;color:#00e5ff">⬡</span><span class="sbar-title">SysGlance</span><span class="sbar-clock">00:03</span></div><div class="sbar-right"><div class="sbtn">🔒</div><div class="sbtn">⚙️</div><div class="sbtn">−</div></div></div>
+<div class="scontent">
+<div class="ssec">
+<div class="ssec-head"><span class="ssec-icon">⚡</span><span class="ssec-title">CPU</span><span class="ssec-val">24.5%</span></div>
+<div class="sbar-fill"><div class="sbar-inner" style="width:24.5%"></div></div>
+<div class="sinfo"><span class="sinfo-sub">AMD Ryzen 9 5900X</span><span style="font-size:9px;font-weight:600;padding:1px 4px;border-radius:3px;background:rgba(0,229,255,0.12);color:#00e5ff">🌡️ 58°C</span></div>
+<div class="sinfo"><span>4.8 GHz</span><span>12 cores</span></div>
+<div class="cores"><div class="core"><div class="core-in" style="width:32%"></div></div><div class="core"><div class="core-in" style="width:18%"></div></div><div class="core"><div class="core-in" style="width:45%"></div></div><div class="core"><div class="core-in" style="width:12%"></div></div><div class="core"><div class="core-in" style="width:28%"></div></div><div class="core"><div class="core-in w" style="width:72%"></div></div><div class="core"><div class="core-in" style="width:15%"></div></div><div class="core"><div class="core-in" style="width:38%"></div></div><div class="core"><div class="core-in" style="width:22%"></div></div><div class="core"><div class="core-in" style="width:55%"></div></div><div class="core"><div class="core-in" style="width:8%"></div></div><div class="core"><div class="core-in" style="width:41%"></div></div></div>
+</div>
+<div class="ssec">
+<div class="ssec-head"><span class="ssec-icon">🧠</span><span class="ssec-title">Memory</span><span class="ssec-val">67.2%</span></div>
+<div class="sbar-fill"><div class="sbar-inner" style="width:67.2%"></div></div>
+<div class="sinfo"><span>10.8 / 16.0 GB</span><span>Swap: 1.2/8.0 GB</span></div>
+</div>
+<div class="ssec">
+<div class="ssec-head"><span class="ssec-icon">🎮</span><span class="ssec-title">GPU</span><span class="ssec-val">38%</span></div>
+<div class="sinfo"><span class="sinfo-sub">NVIDIA RTX 3080</span></div>
+<div class="disk"><div class="disk-label"><span class="disk-fs">GPU Load</span><span class="disk-pct">38%</span></div><div class="sbar-fill"><div class="sbar-inner" style="width:38%"></div></div></div>
+<div class="disk"><div class="disk-label"><span class="disk-fs">VRAM</span><span class="disk-pct">6.2 / 10.0 GB</span></div><div class="sbar-fill"><div class="sbar-inner" style="width:62%"></div></div></div>
+</div>
+<div class="ssec">
+<div class="ssec-head"><span class="ssec-icon">📁</span><span class="ssec-title">Files</span><span style="font-size:9px;color:rgba(160,170,190,0.45)">~</span></div>
+<div class="fsg">
+<div class="fs"><span class="fs-icon">🖥️</span><div><div class="fs-name">Desktop</div><div class="fs-cnt">24 items</div></div></div>
+<div class="fs"><span class="fs-icon">📄</span><div><div class="fs-name">Documents</div><div class="fs-cnt">156 items</div></div></div>
+<div class="fs"><span class="fs-icon">📥</span><div><div class="fs-name">Downloads</div><div class="fs-cnt">89 items</div></div></div>
+<div class="fs"><span class="fs-icon">🖼️</span><div><div class="fs-name">Pictures</div><div class="fs-cnt">312 items</div></div></div>
+<div class="fs"><span class="fs-icon">🎬</span><div><div class="fs-name">Videos</div><div class="fs-cnt">18 items</div></div></div>
+<div class="fs"><span class="fs-icon">🎵</span><div><div class="fs-name">Music</div><div class="fs-cnt">247 items</div></div></div>
+</div>
+</div>
+<div class="ssec">
+<div class="ssec-head"><span class="ssec-icon">💾</span><span class="ssec-title">Disks</span></div>
+<div class="disk"><div class="disk-label"><span class="disk-fs">C:</span><span class="disk-pct">72.1%</span></div><div class="disk-size">288.4 / 400.0 GB</div><div class="sbar-fill"><div class="sbar-inner warn" style="width:72.1%"></div></div></div>
+<div class="disk"><div class="disk-label"><span class="disk-fs">D:</span><span class="disk-pct">45.3%</span></div><div class="disk-size">453.0 / 1000.0 GB</div><div class="sbar-fill"><div class="sbar-inner" style="width:45.3%"></div></div></div>
+</div>
+<div class="ssec">
+<div class="ssec-head"><span class="ssec-icon">🌐</span><span class="ssec-title">Network</span><span style="font-size:9px;color:rgba(160,170,190,0.45)">Wi-Fi</span></div>
+<div class="net"><div class="nd"><span class="nd-arrow nd-down">↓</span><span class="nd-val">12.4 MB/s</span></div><div class="nd"><span class="nd-arrow nd-up">↑</span><span class="nd-val">3.1 MB/s</span></div></div>
+</div>
+<div class="ssec">
+<div class="ssec-head"><span class="ssec-icon">📊</span><span class="ssec-title">Top Processes</span></div>
+<div class="procs">
+<div class="proc" style="font-weight:600;font-size:8.5px;text-transform:uppercase;color:rgba(160,170,190,0.45)"><span>Process</span><span style="text-align:right">CPU</span><span style="text-align:right">MEM</span></div>
+<div class="proc"><span class="proc-name">chrome.exe</span><span class="proc-cpu" style="color:#f44336">12.4%</span><span class="proc-mem">8.2%</span></div>
+<div class="proc"><span class="proc-name">Code.exe</span><span class="proc-cpu" style="color:#ff9800">6.1%</span><span class="proc-mem">4.5%</span></div>
+<div class="proc"><span class="proc-name">Discord.exe</span><span class="proc-cpu">3.2%</span><span class="proc-mem">2.1%</span></div>
+<div class="proc"><span class="proc-name">Spotify.exe</span><span class="proc-cpu">1.8%</span><span class="proc-mem">1.4%</span></div>
+</div>
+</div>
+<div class="osfoot"><span>Windows 10 22H2</span><span>⏱ 3d 14h</span></div>
+</div>
+</div>
+</div>
+
+</body>
+</html>

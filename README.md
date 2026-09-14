@@ -45,8 +45,10 @@ Built for power users, developers, and anyone who wants system vitals at a glanc
 - **Opacity control** — hover to reveal slider, adjust transparency
 - **Compact mode** — toggle from tray for a smaller footprint
 - **Dark & Light themes** — switch from tray menu
+- **🪟 Shell section** — replaces **TranslucentTB** + **Rainmeter**: taskbar dock position and auto-hide (StuckRects3), taskbar blur/acrylic through our own native helper, desktop wallpaper, accent colour sampled from the wallpaper, and Windows dark mode
 - **Zero server** — 100% local, no web server, no API calls, no telemetry
 - **Low footprint** — ~1.5s refresh interval, minimal CPU/RAM impact
+- **No extra dependencies** — the Shell features use in-box Windows APIs (`reg.exe`) plus one ~7 KB native helper compiled by the .NET Framework compiler that ships with Windows
 
 ## 📦 Install
 
@@ -59,12 +61,28 @@ Download the latest release from [Releases](https://github.com/sysglance/sysglan
 
 ### From Source
 
+The project folder is always spelled **`sysglance`** (`~/Projects/sysglance` in
+a WSL checkout, `%USERPROFILE%\Projects\sysglance` on native Windows). Windows
+reaches a WSL checkout through `\\wsl.localhost\<distro>\home\<user>\Projects\sysglance`.
+
 ```bash
 git clone https://github.com/sysglance/sysglance.git
 cd sysglance
 npm install
 npm start
 ```
+
+```powershell
+# native Windows (PowerShell)
+cd "$env:USERPROFILE\Projects\sysglance"
+npm install
+npm start
+```
+
+> The **Shell** features (taskbar position/auto-hide, blur, wallpaper, accent)
+> are Windows-only and need the native helper built once — see
+> [Build the native helper](#-build-the-native-helper). On Linux/macOS the Shell
+> panel hides itself and SysGlance runs as a plain monitoring overlay.
 
 ## 🛠️ Build
 
@@ -78,6 +96,28 @@ npm run build:win
 # Build for Linux
 npm run build:linux
 ```
+
+### Build the native helper
+
+The taskbar vibrancy helper is compiled by the .NET Framework compiler that ships
+with Windows — no SDK, no Visual Studio, no npm native module:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\build-native.ps1
+# -> src\native\trayblur\SysGlanceTrayBlur.exe
+```
+
+From a WSL checkout the same script runs through Windows interop (the full path
+is used because `powershell.exe` is not always on `PATH` inside WSL):
+
+```bash
+/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe \
+  -NoProfile -ExecutionPolicy Bypass -File scripts/build-native.ps1
+```
+
+The Shell panel reports `helper not built` while this step is missing. The helper
+also exposes `--wallpaper=<path>` and `--refresh-theme`, which is how SysGlance
+repaints the desktop and applies theme changes without any extra dependency.
 
 Built binaries go to `dist/`.
 
@@ -113,21 +153,60 @@ SysGlance uses CSS custom properties. Edit `src/styles.css` `:root` section:
 sysglance/
 ├── src/
 │   ├── main.js           # Electron main process (overlay, tray, IPC)
-│   ├── preload.js        # Secure IPC bridge (contextIsolation-ready)
+│   ├── preload.js        # Secure IPC bridge (contextIsolation-ready, not wired yet)
 │   ├── renderer.js       # UI logic & data binding
 │   ├── index.html        # Overlay layout
-│   └── styles.css        # Glass/HUD theme
+│   ├── styles.css        # Glass/HUD theme
+│   ├── shell/
+│   │   ├── taskbar.js    # Taskbar geometry, theme, accent, wallpaper (reg.exe, no deps)
+│   │   ├── ipc.js        # shell:* IPC channels
+│   │   ├── panel.js      # Shell panel (renderer, self-contained)
+│   │   └── panel.css     # Shell panel styling
+│   └── native/
+│       ├── trayBlurController.js        # Node wrapper around the helper
+│       └── trayblur/SysGlanceTrayBlur.cs # Native helper source (+ built .exe)
 ├── assets/
 │   ├── logo.svg          # Vector logo (white, transparent bg)
 │   ├── icon.png          # App icon (256×256)
 │   └── tray-icon.png     # System tray icon (16×16)
 ├── docs/
-│   └── screenshot.png    # App screenshot for README
+│   ├── SHELL.md          # Shell section: registry map, IPC reference, native build, verification
+│   └── TODO-IPC-SECURITY.md  # contextIsolation / nodeIntegration migration debt
+├── scripts/
+│   ├── build-native.ps1             # Builds the native helper with csc.exe
+│   ├── verify-shell.js              # Shell verification harness (no deps)
+│   └── verify-accent-pixels.ps1     # Windows-side accent-sampler cross-check
 ├── package.json
 ├── .gitignore
 ├── LICENSE               # MIT
 └── README.md
 ```
+
+## 🪟 Shell (TranslucentTB + Rainmeter replacement)
+
+The **Shell** panel in the overlay and the **🪟 Shell** tray submenu control the
+taskbar and the desktop look:
+
+| Control | What it does |
+|---|---|
+| Taskbar position | Left / Top / Right / Bottom — `StuckRects3` byte 12 |
+| Auto-hide | `StuckRects3` byte 8, bit 0 |
+| Taskbar blur | Apply once / resident watcher / stop (our native helper) |
+| Dark mode | `AppsUseLightTheme` + `SystemUsesLightTheme` |
+| Accent | Colour sampled from the wallpaper → DWM `AccentColor` / `ColorizationColor` / `AutoColorization` / `ColorPrevalence` |
+| Wallpaper | `Wallpaper` + `WallpaperStyle` + `TileWallpaper`, then `SystemParametersInfo` via the helper |
+
+Taskbar position and auto-hide only take effect after `explorer.exe` restarts;
+SysGlance says so in its log and offers **`⟳ Restart Explorer`** in the Shell
+tray submenu and inline in the panel.
+
+Full details — the verified registry byte map, the `reg.exe` access method, the
+`shell:*` IPC reference, the native build step and the verification commands —
+are in **[docs/SHELL.md](docs/SHELL.md)**.
+
+The IPC security model (`nodeIntegration: true`, `contextIsolation: false`) is
+**unchanged**; the migration plan is tracked in
+[docs/TODO-IPC-SECURITY.md](docs/TODO-IPC-SECURITY.md).
 
 ## 🧰 Tech Stack
 
