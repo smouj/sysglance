@@ -16,197 +16,121 @@
 </p>
 
 <p align="center">
-  <img src="docs/screenshot.png" width="420" alt="SysGlance Screenshot">
+  <img src="docs/screenshot.png" width="340" alt="SysGlance Sidebar Mode">
 </p>
 
 ---
 
 ## ✨ What is SysGlance?
 
-SysGlance is a **semi-transparent desktop overlay** that floats on top of your windows — like a sci-fi HUD — showing real-time CPU, memory, GPU, network, disk, temperature, and process data. No taskbar icon, no window chrome, no server required. Pure monitoring, always visible, never in the way.
+SysGlance is a **semi-transparent desktop overlay** that floats on top of your windows — like a sci-fi HUD — showing real-time CPU, memory, GPU, network, disk, temperature, processes, and **filesystem folders** you can click to open. No window, no server, no taskbar entry. Pure monitoring, always visible, never in the way.
 
-Built for power users, developers, and anyone who wants system vitals at a glance.
+Runs in the **system tray** as a background process. Close the window → it hides to tray. `Ctrl+Shift+S` toggles it. Fully configurable via the built-in **⚙️ Settings Panel**.
 
 ## 🖥️ Features
 
-- **Frameless overlay** — floats on top of all windows, no title bar, no taskbar entry
-- **Semi-transparent glass** — `backdrop-filter` blur with 78% opacity, see your desktop through it
-- **Always on top** — stays visible while you work, game, or stream
-- **Real-time stats** — CPU (per-core gauge), memory, GPU, network speed, disk usage, temperatures, top processes
-- **Circular CPU gauge** — animated SVG ring with color-coded load levels (cyan → orange → red)
-- **Per-core visualization** — individual load bars for every core
-- **GPU monitoring** — model name, VRAM usage, utilization
-- **Network speed** — live download/upload rates
-- **Disk usage** — color-coded bars per volume
-- **Temperature monitoring** — CPU package and core temps with color thresholds
-- **System tray** — show/hide from tray, position selector, quit
-- **Keyboard shortcut** — `Ctrl+Shift+S` to toggle visibility
-- **Adjustable position** — top-right, top-left, bottom-right, bottom-left from tray menu
-- **Opacity control** — hover to reveal slider, adjust transparency
-- **Compact mode** — toggle from tray for a smaller footprint
-- **Dark & Light themes** — switch from tray menu
-- **🪟 Shell section** — replaces **TranslucentTB** + **Rainmeter**: taskbar dock position and auto-hide (StuckRects3), taskbar blur/acrylic through our own native helper, desktop wallpaper, accent colour sampled from the wallpaper, and Windows dark mode
-- **Zero server** — 100% local, no web server, no API calls, no telemetry
-- **Low footprint** — ~1.5s refresh interval, minimal CPU/RAM impact
-- **No extra dependencies** — the Shell features use in-box Windows APIs (`reg.exe`) plus one ~7 KB native helper compiled by the .NET Framework compiler that ships with Windows
+### Monitoring
+- **CPU** — Per-core load bars, temperature, speed, model name
+- **Memory** — Usage bar, swap, formatted GB readout
+- **GPU** — Model, utilization, VRAM, temperature
+- **Filesystem** — Desktop, Documents, Downloads, Pictures, Videos, Music — click to open in file manager
+- **Disks** — Multi-volume usage with color-coded bars
+- **Network** — Live download/upload speed per interface
+- **Processes** — Top 8 by CPU with color-coded percentages
+- **Battery** — Percentage, charging status (laptops only)
+
+### Layout Modes
+| Mode | Description |
+|---|---|
+| **Sidebar** | Default vertical panel — full detail, scrollable |
+| **Dock** | Horizontal bar — compact, wide, sits at bottom |
+| **Corner** | Mini widget — ultra-compact, essential stats only |
+
+### Settings Panel
+Click the **⚙️** button or right-click → Settings Panel for:
+- **Layout** — Switch between Sidebar, Dock, Corner
+- **Position** — Snap to any of 4 screen corners
+- **Theme** — Dark / Light
+- **Opacity** — 30% to 100% transparency
+- **Refresh Rate** — 0.5s to 5s update interval
+- **Section Toggles** — Show/hide individual sections (CPU, Memory, GPU, etc.)
+- **Lock/Unlock** — Overlay mode (click-through) vs drag mode
+
+### Desktop Integration
+- **System tray icon** — Always running, never in your way
+- **Hide to tray** — Window close = hide, not quit
+- **Single instance** — No duplicate windows
+- **Auto-position** — Snaps to chosen corner, adapts to screen size
+- **`Ctrl+Shift+S`** — Toggle visibility globally
+- **`Ctrl+Shift+L`** — Toggle overlay/drag mode
+- **Right-click menu** — Position, theme, layout, settings
 
 ## 📦 Install
 
-### Pre-built (Recommended)
-
-Download the latest release from [Releases](https://github.com/sysglance/sysglance/releases):
-
-- **Windows**: `SysGlance-Setup-x.x.x.exe` (NSIS installer)
-- **Linux**: `SysGlance-x.x.x.AppImage`
-
 ### From Source
-
-The project folder is always spelled **`sysglance`** (`~/Projects/sysglance` in
-a WSL checkout, `%USERPROFILE%\Projects\sysglance` on native Windows). Windows
-reaches a WSL checkout through `\\wsl.localhost\<distro>\home\<user>\Projects\sysglance`.
-
 ```bash
-git clone https://github.com/sysglance/sysglance.git
+git clone https://github.com/smouj/sysglance.git
 cd sysglance
 npm install
 npm start
 ```
 
-```powershell
-# native Windows (PowerShell)
-cd "$env:USERPROFILE\Projects\sysglance"
-npm install
-npm start
-```
-
-> The **Shell** features (taskbar position/auto-hide, blur, wallpaper, accent)
-> are Windows-only and need the native helper built once — see
-> [Build the native helper](#-build-the-native-helper). On Linux/macOS the Shell
-> panel hides itself and SysGlance runs as a plain monitoring overlay.
-
-## 🛠️ Build
-
+### Build Installer (Windows)
 ```bash
-# Build for current platform
-npm run build
-
-# Build for Windows
 npm run build:win
+```
+Produces `dist/SysGlance-Setup-x.x.x.exe` — NSIS installer with Start Menu shortcut and desktop icon.
 
-# Build for Linux
+### Build (Linux)
+```bash
 npm run build:linux
 ```
-
-### Build the native helper
-
-The taskbar vibrancy helper is compiled by the .NET Framework compiler that ships
-with Windows — no SDK, no Visual Studio, no npm native module:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts\build-native.ps1
-# -> src\native\trayblur\SysGlanceTrayBlur.exe
-```
-
-From a WSL checkout the same script runs through Windows interop (the full path
-is used because `powershell.exe` is not always on `PATH` inside WSL):
-
-```bash
-/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe \
-  -NoProfile -ExecutionPolicy Bypass -File scripts/build-native.ps1
-```
-
-The Shell panel reports `helper not built` while this step is missing. The helper
-also exposes `--wallpaper=<path>` and `--refresh-theme`, which is how SysGlance
-repaints the desktop and applies theme changes without any extra dependency.
-
-Built binaries go to `dist/`.
 
 ## ⌨️ Shortcuts
 
 | Shortcut | Action |
 |---|---|
-| `Ctrl+Shift+S` | Toggle overlay visibility |
-| `Ctrl+Shift+L` | Lock/unlock position (overlay ↔ draggable) |
-| Tray click | Show / Hide overlay |
-| Tray menu | Position, Compact, Theme, Quit |
+| `Ctrl+Shift+S` | Show / Hide overlay |
+| `Ctrl+Shift+L` | Lock / Unlock position |
+| `⚙️` button | Open Settings Panel |
+| Right-click | Context menu (layout, theme, position) |
+| Tray double-click | Show / Hide |
+| Folder click | Opens folder in file manager |
 
 ## 🎨 Customization
 
-SysGlance uses CSS custom properties. Edit `src/styles.css` `:root` section:
+All visual customization happens in the **Settings Panel** (⚙️ button). Advanced users can edit `src/styles.css`:
 
 ```css
 :root {
   --accent: #00e5ff;                      /* Primary accent color */
-  --glass-bg: rgba(12, 14, 20, 0.78);     /* Background + opacity */
-  --card-radius: 14px;                     /* Card corner radius */
-  --glass-blur: 24px;                      /* Blur intensity */
+  --glass-blur: 22px;                      /* Blur intensity */
+  --bg-primary: rgba(10, 10, 20, 0.82);   /* Background + opacity */
+  --radius: 10px;                          /* Card corner radius */
 }
 ```
-
-- Change `--glass-bg` alpha to adjust transparency (0.0 = invisible, 1.0 = opaque)
-- Change `--accent` for a different color theme (e.g. `#ff6b35` for orange, `#a855f7` for purple)
-- Light theme available via tray menu (or set `data-theme="light"` on `<body>`)
 
 ## 📁 Project Structure
 
 ```
 sysglance/
 ├── src/
-│   ├── main.js           # Electron main process (overlay, tray, IPC)
-│   ├── preload.js        # Secure IPC bridge (contextIsolation-ready, not wired yet)
-│   ├── renderer.js       # UI logic & data binding
-│   ├── index.html        # Overlay layout
-│   ├── styles.css        # Glass/HUD theme
-│   ├── shell/
-│   │   ├── taskbar.js    # Taskbar geometry, theme, accent, wallpaper (reg.exe, no deps)
-│   │   ├── ipc.js        # shell:* IPC channels
-│   │   ├── panel.js      # Shell panel (renderer, self-contained)
-│   │   └── panel.css     # Shell panel styling
-│   └── native/
-│       ├── trayBlurController.js        # Node wrapper around the helper
-│       └── trayblur/SysGlanceTrayBlur.cs # Native helper source (+ built .exe)
+│   ├── main.js           # Electron main — overlay, tray, IPC, settings, layouts
+│   ├── preload.js        # Secure IPC bridge
+│   ├── renderer.js       # UI logic, settings panel, layout switching
+│   ├── index.html        # Overlay layout + settings panel
+│   └── styles.css        # Glass/HUD theme, 3 layout modes
 ├── assets/
 │   ├── logo.svg          # Vector logo (white, transparent bg)
 │   ├── icon.png          # App icon (256×256)
-│   └── tray-icon.png     # System tray icon (16×16)
+│   └── tray-icon.png      # System tray icon (16×16)
 ├── docs/
-│   ├── SHELL.md          # Shell section: registry map, IPC reference, native build, verification
-│   └── TODO-IPC-SECURITY.md  # contextIsolation / nodeIntegration migration debt
-├── scripts/
-│   ├── build-native.ps1             # Builds the native helper with csc.exe
-│   ├── verify-shell.js              # Shell verification harness (no deps)
-│   └── verify-accent-pixels.ps1     # Windows-side accent-sampler cross-check
+│   └── screenshot.png    # App screenshot for README
 ├── package.json
 ├── .gitignore
 ├── LICENSE               # MIT
 └── README.md
 ```
-
-## 🪟 Shell (TranslucentTB + Rainmeter replacement)
-
-The **Shell** panel in the overlay and the **🪟 Shell** tray submenu control the
-taskbar and the desktop look:
-
-| Control | What it does |
-|---|---|
-| Taskbar position | Left / Top / Right / Bottom — `StuckRects3` byte 12 |
-| Auto-hide | `StuckRects3` byte 8, bit 0 |
-| Taskbar blur | Apply once / resident watcher / stop (our native helper) |
-| Dark mode | `AppsUseLightTheme` + `SystemUsesLightTheme` |
-| Accent | Colour sampled from the wallpaper → DWM `AccentColor` / `ColorizationColor` / `AutoColorization` / `ColorPrevalence` |
-| Wallpaper | `Wallpaper` + `WallpaperStyle` + `TileWallpaper`, then `SystemParametersInfo` via the helper |
-
-Taskbar position and auto-hide only take effect after `explorer.exe` restarts;
-SysGlance says so in its log and offers **`⟳ Restart Explorer`** in the Shell
-tray submenu and inline in the panel.
-
-Full details — the verified registry byte map, the `reg.exe` access method, the
-`shell:*` IPC reference, the native build step and the verification commands —
-are in **[docs/SHELL.md](docs/SHELL.md)**.
-
-The IPC security model (`nodeIntegration: true`, `contextIsolation: false`) is
-**unchanged**; the migration plan is tracked in
-[docs/TODO-IPC-SECURITY.md](docs/TODO-IPC-SECURITY.md).
 
 ## 🧰 Tech Stack
 
@@ -216,14 +140,15 @@ The IPC security model (`nodeIntegration: true`, `contextIsolation: false`) is
 | **systeminformation** | Hardware & OS data |
 | **Vanilla JS** | Zero framework overhead |
 | **CSS backdrop-filter** | Native glass effect |
-| **SVG** | Animated gauge rings |
+| **SVG** | Animated progress indicators |
+| **rAF batching** | Smooth 60fps UI updates |
 
 ## 🤝 Contributing
 
 1. Fork the repo
-2. Create a feature branch (`git checkout -b feature/amazing-thing`)
-3. Commit your changes (`git commit -m 'feat: add amazing thing'`)
-4. Push to the branch (`git push origin feature/amazing-thing`)
+2. `git checkout -b feature/amazing-thing`
+3. `git commit -m 'feat: add amazing thing'`
+4. `git push origin feature/amazing-thing`
 5. Open a Pull Request
 
 ## 📄 License
