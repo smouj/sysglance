@@ -3,7 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' data:;">
+  <!-- No inline script anywhere: script-src stays 'self' with no escape hatch.
+       style-src keeps 'unsafe-inline' because the progress bars are sized with
+       inline style attributes. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none';">
   <title>SysGlance</title>
   <link rel="stylesheet" href="styles.css">
   <!-- Shell panel (self-contained: markup is injected by shell/panel.js) -->
@@ -47,8 +50,12 @@
         <input type="range" id="settings-opacity" min="30" max="100" value="90" class="settings-slider">
       </div>
       <div class="settings-group">
-        <div class="settings-label">Refresh <span id="refresh-val">1.5s</span></div>
+        <div class="settings-label">Fast refresh <span id="refresh-val">1.5s</span></div>
         <input type="range" id="settings-refresh" min="500" max="5000" step="500" value="1500" class="settings-slider">
+      </div>
+      <div class="settings-group">
+        <div class="settings-label">Hardware refresh <span id="slow-val">7.0s</span></div>
+        <input type="range" id="settings-slow" min="5000" max="10000" step="1000" value="7000" class="settings-slider">
       </div>
       <div class="settings-group">
         <div class="settings-label">Sections</div>
@@ -67,6 +74,10 @@
         <button id="btn-lock-settings" class="settings-action">🔒 Lock Position</button>
         <button id="btn-compact-settings" class="settings-action">📐 Compact Mode</button>
       </div>
+      <div class="settings-group settings-meta">
+        <div id="metric-info" class="info-small">fast — · hardware —</div>
+        <div id="app-info" class="info-small">SysGlance</div>
+      </div>
     </div>
   </div>
 
@@ -75,9 +86,11 @@
     <div class="status-left">
       <svg class="logo-icon" viewBox="0 0 32 32" fill="none"><path d="M16 2L28 9V23L16 30L4 23V9L16 2Z" stroke="currentColor" stroke-width="1.5" fill="none"/><circle cx="16" cy="16" r="5" stroke="currentColor" stroke-width="1.5" fill="none"/><circle cx="16" cy="16" r="2" fill="currentColor"/></svg>
       <span class="status-title">SysGlance</span>
+      <span id="app-version" class="status-version">v—</span>
       <span id="status-clock" class="status-clock"></span>
     </div>
     <div class="status-right">
+      <span id="perf-readout" class="status-metric" title="Measured refresh cost">⏱ —</span>
       <button id="btn-lock" class="status-btn" title="Lock/Unlock">🔒</button>
       <button id="btn-settings" class="status-btn" title="Settings">⚙️</button>
       <button id="btn-minimize" class="status-btn" title="Hide">−</button>

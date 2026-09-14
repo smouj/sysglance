@@ -189,6 +189,15 @@ body.locked .status-bar{opacity:0.35;pointer-events:none;padding:2px 11px}
 
 @keyframes fadeSlide{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:translateY(0)}}
 
+/* ── Header readouts (version, measured cycle cost) ── */
+.status-version{font-size:8.5px;color:var(--text-muted);letter-spacing:.4px;margin-left:2px}
+.status-metric{font-size:8.5px;color:var(--text-muted);font-variant-numeric:tabular-nums;align-self:center;margin-right:3px;cursor:default}
+body.locked .status-metric{pointer-events:none}
+
+/* ── Settings footer ──────────────────────────────── */
+.settings-meta{gap:3px;padding-top:7px;border-top:1px solid var(--border)}
+.settings-meta .info-small{font-variant-numeric:tabular-nums}
+
 /* ── Compact ──────────────────────────────────────── */
 body.compact .section{padding:5px 7px}
 body.compact .section-header{margin-bottom:2px}
