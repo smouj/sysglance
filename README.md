@@ -17,7 +17,12 @@
 </p>
 
 <p align="center">
-  <img src="docs/screenshot.png" width="340" alt="SysGlance Sidebar Mode">
+  <img src="docs/screenshot.png" width="270" alt="SysGlance in sidebar mode — CPU, memory, storage, network">
+  &nbsp;&nbsp;
+  <img src="docs/screenshot-mini.png" width="110" alt="SysGlance mini widget">
+</p>
+<p align="center">
+  <sub>Sidebar (default) and the Mini widget · also: <a href="docs/screenshot-dock.png">Dock</a> · <a href="docs/screenshot-settings.png">Settings</a></sub>
 </p>
 
 ---

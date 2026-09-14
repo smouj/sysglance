@@ -86,12 +86,52 @@ Performance, security and scope-alignment release. No new npm dependencies.
   hover.
 - `scripts/verify-syntax.js`, `scripts/verify-config.js`,
   `scripts/bench-metrics.js`; `npm run verify` runs the syntax, settings and
-  shell gates in one command.
-- `CHANGELOG.md`, `CONTRIBUTING.md`, `.github/workflows/ci.yml` and
+  shell gates in one command.- `CHANGELOG.md`, `CONTRIBUTING.md`, `.github/workflows/ci.yml` and
   `docs/IPC-SECURITY.md`.
+
+### Changed — visual system
+
+- **The whole interface was rebuilt on one token set** (surfaces, lines, text,
+a  accent, semantic colours, radius and spacing). Dark and light themes are now a
+  token swap rather than per-component overrides, so an accent or theme change
+  cannot leave a component behind.
+- **Emoji replaced with a monochrome SVG icon set** (24×24, one stroke weight,
+  `currentColor`) for every section, the header controls and the Shell panel.
+  Emoji could not be recoloured, had inconsistent metrics and rendered
+  differently per platform — the single biggest reason the panel read as
+  amateurish.
+- **Header rebuilt.** The previous bar (title, version, clock, performance
+  readout and three buttons) wrapped into three lines inside a 360 px window and
+  overlapped the wordmark. It is now a single non-wrapping row: brand + version
+  chip on the left, measured cycle cost + clock + icon buttons on the right,
+  with narrow-window rules that drop the least important readouts first.
+- **Settings panel rebuilt**: opaque overlay (the status bar no longer ghosted
+  through it), segmented controls for layout/position/theme, real switches,
+  sliders with a filled track, explanatory hints for the two refresh cadences,
+  and a proper meta footer.
+- Per-core load is now a row of bounded vertical bars (a wide full-width cell
+  read as a horizontal bar with four cores); process rows gained a rank column
+  and aligned tabular figures; storage, network and the home-folder tiles were
+  re-laid out around what is actually legible at this size.
+- The three layout modes were re-tuned rather than reused: **dock** is now a
+  142 px strip whose cards are complete instead of clipped mid-word, and
+  **mini** shows CPU, memory and both network directions without overflow.
+- `npm run screenshot` (`--screenshot`) boots the real app and refreshes
+  `docs/screenshot*.png`, so the README cannot drift from the code.
 
 ### Fixed
 
+- **Changing layout or screen corner from the settings panel never resized or
+  repositioned the window.** The panel sends `set-config`, which only updated
+  the DOM; the geometry code lived behind the separate `set-layout` channel
+  that nothing called. Window geometry now hangs off the config change itself,
+  so every path (settings, tray, context menu) moves the window.
+- **Storage listed pseudo-filesystems.** `si.fsSize()` reports every mount, so
+  the panel showed eight lines of squashfs snap loops, tmpfs and 9p drivers
+  with truncated paths (`/usr/lib/modules/6.18.33.2-microsoft-standard-WSL2`,
+  `0 B / 2.9 GB`) — indistinguishable from a raw `df` dump. Pseudo and
+  zero-size mounts are filtered out and the list is sorted largest-first.
+- A GPU-less machine no longer renders an empty card with a dangling `N/A`.
 - The settings panel's *Compact Mode* button sent a `toggle-compact` message
   that the main process never handled; it now toggles and persists.
 - Theme and compact-mode changes are broadcast on the dedicated channels the
