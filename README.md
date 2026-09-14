@@ -5,7 +5,7 @@
 <h1 align="center">SysGlance</h1>
 
 <p align="center">
-  <strong>Futuristic semi-transparent desktop overlay for real-time PC monitoring</strong>
+  <strong>On-demand desktop control center — real system metrics and Windows shell configuration, in one overlay</strong>
 </p>
 
 <p align="center">
@@ -13,6 +13,7 @@
   <img src="https://img.shields.io/badge/Electron-33-61dafb?style=flat-square" alt="Electron">
   <img src="https://img.shields.io/badge/license-MIT-green?style=flat-square" alt="License">
   <img src="https://img.shields.io/badge/status-stable-brightgreen?style=flat-square" alt="Status">
+  <img src="https://img.shields.io/badge/dependencies-1-blueviolet?style=flat-square" alt="Dependencies">
 </p>
 
 <p align="center">
@@ -23,133 +24,200 @@
 
 ## ✨ What is SysGlance?
 
-SysGlance is a **semi-transparent desktop overlay** that floats on top of your windows — like a sci-fi HUD — showing real-time CPU, memory, GPU, network, disk, temperature, processes, and **filesystem folders** you can click to open. No window, no server, no taskbar entry. Pure monitoring, always visible, never in the way.
+SysGlance is a semi-transparent desktop overlay that floats on top of your
+windows — like a sci-fi HUD — showing real-time CPU, memory, GPU, network, disk,
+temperature, processes, and **filesystem folders** you can click to open. On
+Windows it also **configures the shell** it sits on: taskbar position, auto-hide,
+dark mode, accent colour and wallpaper.
 
-Runs in the **system tray** as a background process. Close the window → it hides to tray. `Ctrl+Shift+S` toggles it. Fully configurable via the built-in **⚙️ Settings Panel**.
+It is the *on-demand* half of a two-app desktop suite. Its sibling,
+[OpenClaw Widget](https://github.com/smouj/openclaw-desktop-widget), is the
+always-resident glance; SysGlance is what you open when you want depth. See
+[`PRODUCT.md`](PRODUCT.md) for the split, which is enforced in code — not just in
+prose.
+
+Runs in the **system tray** as a background process. Close the window → it hides
+to tray. `Ctrl+Shift+S` toggles it. Everything is configurable from the built-in
+**⚙️ Settings Panel**.
 
 ## 🖥️ Features
 
 ### Monitoring
-- **CPU** — Per-core load bars, temperature, speed, model name
-- **Memory** — Usage bar, swap, formatted GB readout
-- **GPU** — Model, utilization, VRAM, temperature
-- **Filesystem** — Desktop, Documents, Downloads, Pictures, Videos, Music — click to open in file manager
-- **Disks** — Multi-volume usage with color-coded bars
-- **Network** — Live download/upload speed per interface
-- **Processes** — Top 8 by CPU with color-coded percentages
-- **Battery** — Percentage, charging status (laptops only)
+- **CPU** — per-core load, temperature, speed, model
+- **Memory** — usage, swap, formatted readout
+- **GPU** — model, utilization, VRAM, temperature
+- **Disks** — multi-volume usage with colour-coded bars
+- **Network** — live download/upload per interface
+- **Processes** — top 8 by CPU, colour-coded
+- **Battery** — percentage and charging state (laptops only)
+- **Filesystem** — Desktop, Documents, Downloads, Pictures, Videos, Music — click to open
 
-### Layout Modes
+### Windows shell configuration
+- **Taskbar position** — left / top / right / bottom (`StuckRects3`, one byte edited surgically)
+- **Auto-hide** — one bit of one byte, the other sticky-rect flags preserved
+- **Dark / light mode**, **accent colour derived from the wallpaper**, **wallpaper application**
+- Taskbar *vibrancy* is deliberately **not** here — that resident effect belongs
+  to OpenClaw Widget. The panel says so and links to it.
+
+### Layout modes
 | Mode | Description |
 |---|---|
 | **Sidebar** | Default vertical panel — full detail, scrollable |
-| **Dock** | Horizontal bar — compact, wide, sits at bottom |
-| **Corner** | Mini widget — ultra-compact, essential stats only |
+| **Dock** | Horizontal bar — compact, wide, sits at the bottom |
+| **Corner** | Mini widget — ultra-compact, essentials only |
 
-### Settings Panel
-Click the **⚙️** button or right-click → Settings Panel for:
-- **Layout** — Switch between Sidebar, Dock, Corner
-- **Position** — Snap to any of 4 screen corners
-- **Theme** — Dark / Light
-- **Opacity** — 30% to 100% transparency
-- **Refresh Rate** — 0.5s to 5s update interval
-- **Section Toggles** — Show/hide individual sections (CPU, Memory, GPU, etc.)
-- **Lock/Unlock** — Overlay mode (click-through) vs drag mode
+### Settings panel
+Layout · position · theme · opacity (30–100%) · **fast refresh (0.5–5 s)** ·
+**hardware refresh (5–10 s)** · per-section toggles · lock/drag mode ·
+compact mode. Every value is persisted, validated and clamped.
 
-### Desktop Integration
-- **System tray icon** — Always running, never in your way
-- **Hide to tray** — Window close = hide, not quit
-- **Single instance** — No duplicate windows
-- **Auto-position** — Snaps to chosen corner, adapts to screen size
-- **`Ctrl+Shift+S`** — Toggle visibility globally
-- **`Ctrl+Shift+L`** — Toggle overlay/drag mode
-- **Right-click menu** — Position, theme, layout, settings
+### Performance, measured
+The hot path uses **Node's own `os` module in process** — no `wmic`, no
+`powershell`, no `df`, no child process at all. `systeminformation` is reserved
+for what Node cannot read (GPU, temperatures, disks, network counters,
+processes, battery) and runs on a slower, configurable cadence.
+
+Measured with `npm run bench` on the same host, same run:
+
+| | before | after |
+|---|---|---|
+| cost of one fast cycle | ~47 ms | **0.47 ms** |
+| child processes per fast cycle | ~12.5 | **0** |
+| steady state, per second of uptime | 31.1 ms / 8.3 spawns | **11.8 ms / 2.9 spawns** |
+
+The status bar shows the measured cost of the last cycle (`⏱ 0.4 ms`), so the
+number above is verifiable in the app rather than taken on faith.
 
 ## 📦 Install
 
-### From Source
+### Installer (Windows)
+Download `SysGlance-Setup-x.y.z.exe` from the releases page and run it. The
+installer is a normal NSIS package: per-user by default, no elevation
+(`asInvoker`), with Start Menu and desktop shortcuts.
+
+### From source
 ```bash
 git clone https://github.com/smouj/sysglance.git
 cd sysglance
-npm install
+npm ci
 npm start
 ```
+Node 20 or newer. There are no native npm modules and no build step.
 
-### Build Installer (Windows)
+> On Linux, Electron needs a display. For a headless machine or CI:
+> `xvfb-run -a npm start`
+
+### Build it yourself
 ```bash
-npm run build:win
+npm run build:win      # -> dist/SysGlance-Setup-1.2.0.exe   (NSIS)
+npm run build:linux    # -> dist/SysGlance-1.2.0.AppImage + .deb
+npm run build:mac      # -> dist/*.dmg
 ```
-Produces `dist/SysGlance-Setup-x.x.x.exe` — NSIS installer with Start Menu shortcut and desktop icon.
+Building Windows targets from Linux/macOS requires Wine plus the electron-builder
+toolchain; CI builds the installer on `windows-latest` (see
+`.github/workflows/ci.yml`).
 
-### Build (Linux)
+## 🛠️ Development
+
 ```bash
-npm run build:linux
+npm start              # run the app
+npm run self-test      # boot, read metrics, assert the IPC bridge, exit non-zero on error
+npm run verify         # syntax + settings validation + shell harness
+npm run bench          # before/after refresh-cycle benchmark
+```
+
+| Gate | Command | Covers |
+|---|---|---|
+| Syntax | `npm run verify:syntax` | `node --check` on every JS file in `src/` and `scripts/` |
+| Settings | `npm run verify:config` | defaults, clamping, enums, hostile input, atomic persistence |
+| Shell | `npm run verify:shell` | live Windows state, byte-precise registry math, accent math |
+| End to end | `npm run self-test` | real window, real metrics, `window.sysglance` present, version rendered |
+
+The shell harness is read-only; its only write is a scratch registry key it
+deletes in the same run. It never moves the taskbar and never restarts explorer.
+
+## 🔐 Security model
+
+The renderer is untrusted UI code:
+
+```js
+webPreferences: {
+  contextIsolation: true,
+  nodeIntegration: false,
+  sandbox: true
+}
+```
+
+`src/preload.js` exposes a narrow `window.sysglance` through `contextBridge` —
+one named wrapper per channel, no generic `invoke`/`send` escape hatch, and an
+allow-list for event subscriptions. Every argument is validated again in the
+main process (`src/config.js` for settings, explicit checks for paths).
+The CSP allows no inline script and no network access from the page.
+Details: [`docs/IPC-SECURITY.md`](docs/IPC-SECURITY.md).
+
+## 📁 Project structure
+
+```
+sysglance/
+├── src/
+│   ├── main.js            # Electron main — window, tray, IPC, metrics loop, self-test
+│   ├── preload.js         # contextBridge surface (the only renderer↔main path)
+│   ├── renderer.js        # UI logic, settings panel, rAF-batched rendering
+│   ├── config.js          # defaults, validation, atomic persistence
+│   ├── log.js             # console + rotating file log
+│   ├── metrics.js         # fast (node:os) / slow (systeminformation) / static tiers
+│   ├── index.html         # overlay layout + settings panel
+│   ├── styles.css         # glass/HUD theme, 3 layout modes
+│   ├── shell/             # Windows shell configuration
+│   │   ├── taskbar.js     #   registry byte math, theme, accent, wallpaper
+│   │   ├── ipc.js         #   the shell:* channel surface
+│   │   ├── panel.js       #   renderer-side panel (self-contained DOM)
+│   │   └── panel.css
+│   └── native/
+│       ├── shellHelper.js          # controller for the one native binary
+│       └── shell/SysGlanceShellHelper.cs   # wallpaper + theme broadcast (one-shot)
+├── scripts/
+│   ├── verify-syntax.js   # node --check gate
+│   ├── verify-config.js   # settings validation harness
+│   ├── verify-shell.js    # registry/accent harness (read-only)
+│   ├── bench-metrics.js   # before/after refresh-cycle benchmark
+│   ├── build-native.ps1   # compiles the C# helper with in-box csc.exe
+│   └── verify-accent-pixels.ps1  # independent accent-sampler cross-check
+├── assets/                # logo, icons
+├── docs/                  # screenshot, SHELL.md, IPC-SECURITY.md
+├── CONTRIBUTING.md
+├── CHANGELOG.md
+├── PRODUCT.md             # the split with OpenClaw Widget (tie-breaker)
+└── LICENSE                # MIT
 ```
 
 ## ⌨️ Shortcuts
 
 | Shortcut | Action |
 |---|---|
-| `Ctrl+Shift+S` | Show / Hide overlay |
-| `Ctrl+Shift+L` | Lock / Unlock position |
-| `⚙️` button | Open Settings Panel |
-| Right-click | Context menu (layout, theme, position) |
-| Tray double-click | Show / Hide |
-| Folder click | Opens folder in file manager |
+| `Ctrl+Shift+S` | Show / hide overlay |
+| `Ctrl+Shift+L` | Lock / unlock position (click-through ↔ draggable) |
+| `⚙️` button | Settings panel |
+| Right-click | Context menu (layout, position, theme, shell) |
+| Tray double-click | Show / hide |
+| Folder click | Open in the file manager |
 
-## 🎨 Customization
-
-All visual customization happens in the **Settings Panel** (⚙️ button). Advanced users can edit `src/styles.css`:
-
-```css
-:root {
-  --accent: #00e5ff;                      /* Primary accent color */
-  --glass-blur: 22px;                      /* Blur intensity */
-  --bg-primary: rgba(10, 10, 20, 0.82);   /* Background + opacity */
-  --radius: 10px;                          /* Card corner radius */
-}
-```
-
-## 📁 Project Structure
-
-```
-sysglance/
-├── src/
-│   ├── main.js           # Electron main — overlay, tray, IPC, settings, layouts
-│   ├── preload.js        # Secure IPC bridge
-│   ├── renderer.js       # UI logic, settings panel, layout switching
-│   ├── index.html        # Overlay layout + settings panel
-│   └── styles.css        # Glass/HUD theme, 3 layout modes
-├── assets/
-│   ├── logo.svg          # Vector logo (white, transparent bg)
-│   ├── icon.png          # App icon (256×256)
-│   └── tray-icon.png      # System tray icon (16×16)
-├── docs/
-│   └── screenshot.png    # App screenshot for README
-├── package.json
-├── .gitignore
-├── LICENSE               # MIT
-└── README.md
-```
-
-## 🧰 Tech Stack
+## 🧰 Tech stack
 
 | Technology | Purpose |
 |---|---|
 | **Electron 33** | Desktop runtime |
-| **systeminformation** | Hardware & OS data |
-| **Vanilla JS** | Zero framework overhead |
-| **CSS backdrop-filter** | Native glass effect |
-| **SVG** | Animated progress indicators |
-| **rAF batching** | Smooth 60fps UI updates |
+| **Node `os` / `/proc`** | Fast metrics tier — in-process, zero spawns |
+| **systeminformation** | Hardware tier only (GPU, temps, disks, network, processes, battery) |
+| **Vanilla JS + CSS** | Zero framework overhead; `backdrop-filter` for the glass |
+| **reg.exe via `execFile`** | Windows shell configuration, argument-array invocation only |
+| **In-box `csc.exe`** | The one native helper (wallpaper / theme broadcast) |
 
 ## 🤝 Contributing
 
-1. Fork the repo
-2. `git checkout -b feature/amazing-thing`
-3. `git commit -m 'feat: add amazing thing'`
-4. `git push origin feature/amazing-thing`
-5. Open a Pull Request
+See [`CONTRIBUTING.md`](CONTRIBUTING.md). The short version: run `npm run verify`
+before you push, keep the fast tier free of child processes, and do not give
+SysGlance a resident taskbar effect.
 
 ## 📄 License
 
@@ -158,5 +226,5 @@ sysglance/
 ---
 
 <p align="center">
-  <sub>Built with ♥ for people who want their system stats always visible.</sub>
+  <sub>A control center you open, next to a widget that stays. Built for people who want their system stats always visible.</sub>
 </p>
