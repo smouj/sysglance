@@ -1,3 +1,12 @@
+
+
+> [!IMPORTANT]
+> **Retirada: la suite se queda con una sola aplicación.**
+> SysGlance se retira en favor de **[OpenClaw Widget](https://github.com/smouj/openclaw-desktop-widget)**,
+> que es nativo (C# / .NET Framework del sistema), tiene **cero dependencias** y hace el mismo
+> trabajo a una fracción del coste: **~85 MB de RAM frente a ~363 MB**, sin Electron y sin
+> composición por software. Este repositorio se conserva como referencia y queda en solo lectura.
+
 <p align="center">
   <img src="assets/logo.svg" width="128" height="128" alt="SysGlance Logo">
 </p>
