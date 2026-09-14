@@ -21,6 +21,9 @@ const LAYOUTS = ['sidebar', 'dock', 'corner'];
 const ANCHORS = ['top-right', 'top-left', 'bottom-right', 'bottom-left'];
 const THEMES = ['dark', 'light'];
 const SECTION_KEYS = ['cpu', 'memory', 'gpu', 'filesystem', 'disks', 'network', 'processes', 'battery'];
+// Cards the user may fold away. `shell` is injected by src/shell/panel.js, so it
+// is a collapsible view too even though it is not a metrics section.
+const COLLAPSIBLE_KEYS = SECTION_KEYS.concat(['shell']);
 
 // Refresh cadences. The fast tier is in-process (`os` module only, see
 // src/metrics.js); the slow tier is the systeminformation hardware tier.
@@ -32,7 +35,7 @@ const LIMITS = {
 };
 
 // Keys a renderer is allowed to write through `set-config`.
-const WRITABLE_KEYS = ['opacity', 'refreshInterval', 'slowInterval', 'fontSize', 'compactMode', 'showFilesystem', 'theme', 'layout', 'anchor', 'showSections'];
+const WRITABLE_KEYS = ['opacity', 'refreshInterval', 'slowInterval', 'fontSize', 'compactMode', 'showFilesystem', 'theme', 'layout', 'anchor', 'showSections', 'collapsedSections'];
 
 // Shell state. SysGlance *configures* Windows and remembers what it wrote;
 // it never keeps a resident effect alive (that is OpenClaw Widget's job — see
@@ -62,6 +65,7 @@ function defaults() {
     anchor: 'top-right',
     fontSize: 13,
     showSections: { cpu: true, memory: true, gpu: true, filesystem: true, disks: true, network: true, processes: true, battery: true },
+    collapsedSections: [],
     shell: defaultShell()
   };
 }
@@ -119,6 +123,14 @@ function validateKey(key, value, fallback) {
       if (!isPlainObject(value)) return { ok: false, value: fallback };
       const out = {};
       for (const s of SECTION_KEYS) out[s] = typeof value[s] === 'boolean' ? value[s] : (fallback[s] !== false);
+      return { ok: true, value: out };
+    }
+    case 'collapsedSections': {
+      if (!Array.isArray(value)) return { ok: false, value: fallback };
+      const out = [];
+      for (const k of value) {
+        if (typeof k === 'string' && COLLAPSIBLE_KEYS.includes(k) && !out.includes(k)) out.push(k);
+      }
       return { ok: true, value: out };
     }
     default:
@@ -243,6 +255,6 @@ function save(file, config) {
 }
 
 module.exports = {
-  CONFIG_VERSION, LAYOUTS, ANCHORS, THEMES, SECTION_KEYS, LIMITS, WRITABLE_KEYS,
+  CONFIG_VERSION, LAYOUTS, ANCHORS, THEMES, SECTION_KEYS, COLLAPSIBLE_KEYS, LIMITS, WRITABLE_KEYS,
   defaults, defaultShell, normalize, validateKey, validatePatch, load, save
 };

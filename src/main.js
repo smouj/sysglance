@@ -31,6 +31,10 @@ const SELF_TEST = process.argv.includes('--self-test');
 const SCREENSHOT_ARG = process.argv.find((a) => a.startsWith('--screenshot'));
 const SCREENSHOT = !!SCREENSHOT_ARG;
 const SCREENSHOT_DIR = SCREENSHOT_ARG && SCREENSHOT_ARG.includes('=') ? SCREENSHOT_ARG.split('=')[1] : path.join(__dirname, '..', 'docs');
+// --icons renders assets/logo.svg into every raster icon the app ships, so the
+// mark cannot drift between the header, the tray, the installer and the README.
+// Electron is the rasteriser — no image dependency is added.
+const ICONS = process.argv.includes('--icons');
 const APP_VERSION = app.getVersion();
 
 // The suite footer, identical in the window, the tray menu and both repositories'
@@ -167,7 +171,9 @@ function createWindow() {
       sandbox: true,
       webSecurity: true,
       spellcheck: false,
-      backgroundThrottling: false
+      // Only throttles when the window is hidden, which for an overlay is
+      // exactly when we want the renderer to sleep.
+      backgroundThrottling: true
     }
   });
 
@@ -255,12 +261,20 @@ function sendConfig() { send('config-changed', config); }
 // ── tray ────────────────────────────────────────────────
 function createTray() {
   const iconPath = path.join(__dirname, '..', 'assets', 'tray-icon.png');
-  let trayIcon;
+  let trayIcon = null;
   try {
     trayIcon = nativeImage.createFromPath(iconPath);
-    if (trayIcon.isEmpty()) throw new Error('empty image');
-  } catch (_) {
-    // 16×16 opaque fallback so a missing asset never leaves the app trayless.
+    if (trayIcon.isEmpty()) trayIcon = null;
+    else {
+      // Add the 2x representation so the glyph stays crisp on HiDPI taskbars.
+      try {
+        const hi = nativeImage.createFromPath(path.join(__dirname, '..', 'assets', 'tray-icon@2x.png'));
+        if (!hi.isEmpty()) trayIcon.addRepresentation({ scaleFactor: 2, buffer: hi.toPNG() });
+      } catch (_) { /* 2x is optional */ }
+    }
+  } catch (_) { trayIcon = null; }
+  if (!trayIcon) {
+    log.warn('tray icon unreadable at ' + iconPath + ' — run `npm run icons`; using the built-in fallback');
     trayIcon = nativeImage.createFromBuffer(Buffer.from([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x10, 0x00, 0x00, 0x00, 0x10, 0x08, 0x06, 0x00, 0x00, 0x00, 0x31, 0xF7, 0x2E, 0x7A, 0x00, 0x00, 0x00, 0x01, 0x73, 0x52, 0x47, 0x42, 0x00, 0xAE, 0xCE, 0x1C, 0xE9, 0x00, 0x00, 0x00, 0x04, 0x67, 0x41, 0x4D, 0x41, 0x00, 0x00, 0xB1, 0x8F, 0x0B, 0xFC, 0x61, 0x05, 0x00, 0x00, 0x00, 0x09, 0x70, 0x48, 0x59, 0x73, 0x00, 0x00, 0x0E, 0xC3, 0x00, 0x00, 0x0E, 0xC3, 0x01, 0xC7, 0x6F, 0xA8, 0x64, 0x00, 0x00, 0x00, 0x18, 0x49, 0x44, 0x41, 0x54, 0x38, 0x4F, 0x63, 0x60, 0x18, 0x15, 0x30, 0x06, 0x64, 0x18, 0x14, 0x0C, 0x42, 0x03, 0xA6, 0x01, 0x14, 0x00, 0x01, 0x63, 0x08, 0x30, 0x7A, 0x5E, 0x49, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82]));
   }
   tray = new Tray(trayIcon);
@@ -665,6 +679,7 @@ app.whenReady().then(() => {
   send('app-version', { version: APP_VERSION, electron: process.versions.electron });
   if (SELF_TEST) runSelfTest();
   if (SCREENSHOT) runScreenshot();
+  if (ICONS) runIcons();
 }).catch((err) => {
   log.exception('app.whenReady', err);
   app.exit(1);
@@ -689,6 +704,72 @@ function trayFooterLabelMatches() {
   return SUITE_FOOTER_LABEL() === SUITE_FOOTER + ' · v' + APP_VERSION;
 }
 
+// ── icon generation (dev) ───────────────────────────────
+// assets/logo.svg is the single source of truth for the mark; everything raster
+// is generated from it here. The plate matters: the mark is drawn white, so on a
+// light background (light taskbar, GitHub's light theme, a white installer page)
+// it disappears without one. The tray glyph deliberately has no plate and uses
+// the accent colour, because a tray icon must read over both a dark and a light
+// taskbar — and at 16 px the fine spokes of the mark are sub-pixel, which is why
+// the small variants simply drop them.
+function iconHtml(svg, size, opts) {
+  const color = opts.color || '#ffffff';
+  const pad = opts.plate ? Math.round(size * 0.17) : Math.max(0, Math.round(size * 0.02));
+  const mark = size - pad * 2;
+  const recoloured = svg
+    .replace(/stroke="white"/g, 'stroke="' + color + '"')
+    .replace(/fill="white"/g, 'fill="' + color + '"')
+    .replace(/<svg\s/, '<svg width="' + mark + '" height="' + mark + '" ');
+  const r = Math.round(size * 0.225);
+  return '<!doctype html><html><head><meta charset="utf-8"><style>' +
+    'html,body{margin:0;padding:0;width:' + size + 'px;height:' + size + 'px;background:transparent;overflow:hidden}' +
+    '.plate{width:' + size + 'px;height:' + size + 'px;display:grid;place-items:center;border-radius:' + r + 'px;' +
+    'background:linear-gradient(150deg,#1b2437 0%,#0c1120 55%,#0a0e18 100%);' +
+    'box-shadow:inset 0 0 0 ' + Math.max(1, Math.round(size * 0.006)) + 'px rgba(255,255,255,0.12)}' +
+    'svg{display:block}</style></head><body>' +
+    (opts.plate ? '<div class="plate">' + recoloured + '</div>' : recoloured) +
+    '</body></html>';
+}
+
+async function runIcons() {
+  const fsx = require('fs');
+  const outDir = path.join(__dirname, '..', 'assets');
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const ACCENT = '#3fe0ff';
+  const targets = [
+    { file: 'icon.png', size: 256, plate: true, color: '#ffffff' },
+    { file: 'icon-512.png', size: 512, plate: true, color: '#ffffff' },
+    { file: 'tray-icon.png', size: 16, plate: false, color: ACCENT },
+    { file: 'tray-icon@2x.png', size: 32, plate: false, color: ACCENT }
+  ];
+  try {
+    const svg = fsx.readFileSync(path.join(outDir, 'logo.svg'), 'utf8');
+    console.log('[icons] source: assets/logo.svg');
+    for (const t of targets) {
+      const win = new BrowserWindow({
+        width: t.size, height: t.size, show: true, frame: false, transparent: true,
+        resizable: false, skipTaskbar: true, hasShadow: false,
+        webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true }
+      });
+      await win.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(iconHtml(svg, t.size, t)));
+      await sleep(220);
+      const shot = await win.webContents.capturePage();
+      const exact = shot.getSize().width === t.size ? shot : shot.resize({ width: t.size, height: t.size, quality: 'best' });
+      fsx.writeFileSync(path.join(outDir, t.file), exact.toPNG());
+      console.log('[icons] ' + t.file.padEnd(18) + t.size + 'x' + t.size + (t.plate ? ' plate' : ' transparent') + ' ok');
+      win.destroy();
+    }
+    console.log('[icons] done');
+  } catch (err) {
+    console.error('[icons] failed: ' + (err && err.stack ? err.stack : err));
+    isQuitting = true;
+    app.exit(1);
+    return;
+  }
+  isQuitting = true;
+  app.exit(0);
+}
+
 // ── screenshot (dev/docs) ───────────────────────────────
 // A transparent window over nothing has no backdrop to blur, so the glass looks
 // flat. This paints a desktop-like gradient behind the page (html.shot) purely
@@ -705,7 +786,9 @@ async function runScreenshot() {
     { file: 'screenshot-mini.png', label: 'mini', layout: 'corner', settings: false },
     // The Shell card lives below the fold in a 720 px window, so the shell shot
     // hides every metric section to bring it into view.
-    { file: 'screenshot-shell.png', label: 'shell', layout: 'sidebar', settings: false, sections: ALL_OFF }
+    { file: 'screenshot-shell.png', label: 'shell', layout: 'sidebar', settings: false, sections: ALL_OFF },
+    // The smallest sidebar the app allows: the place where clipping shows up.
+    { file: 'screenshot-small.png', label: 'minimum size', layout: 'sidebar', settings: false, sections: ALL_ON, size: { w: 280, h: 400 } }
   ];
   try {
     fsx.mkdirSync(SCREENSHOT_DIR, { recursive: true });
@@ -728,6 +811,12 @@ async function runScreenshot() {
         `document.getElementById('settings-panel').classList.toggle('hidden', ${shot.settings ? 'false' : 'true'});` +
         `true;`, true);
       await sleep(1000);
+      // Geometry is owned by the main process, so a shot that wants a specific
+      // size asks here rather than through the renderer API.
+      if (shot.size) {
+        mainWindow.setSize(shot.size.w, shot.size.h);
+        await sleep(500);
+      }
       const image = await mainWindow.webContents.capturePage();
       const out = path.join(SCREENSHOT_DIR, shot.file);
       fsx.writeFileSync(out, image.toPNG());
@@ -779,6 +868,19 @@ async function runSelfTest() {
     if (!state.suiteFooter || !state.suiteFooter.includes(SUITE_FOOTER) || !state.suiteFooter.includes(APP_VERSION)) {
       fail.push('shared suite footer missing or wrong: ' + state.suiteFooter);
     }
+
+    // Collapsing is a full round trip: renderer -> IPC -> config validation ->
+    // disk. Toggled twice so the user's saved layout is left as it was found.
+    await mainWindow.webContents.executeJavaScript('document.querySelector("#sec-memory .section-header").click(); true;', true);
+    await sleep(350);
+    const collapsed = await mainWindow.webContents.executeJavaScript(
+      'JSON.stringify({ dom: document.getElementById("sec-memory").classList.contains("is-collapsed"), aria: document.querySelector("#sec-memory .section-header").getAttribute("aria-expanded") })', true);
+    console.log('[self-test] collapse round trip -> ' + collapsed + ' config=' + JSON.stringify(config.collapsedSections));
+    const collapsedState = JSON.parse(collapsed);
+    if (!collapsedState.dom || collapsedState.aria !== 'false') fail.push('collapsing a card did not take effect');
+    if (!(config.collapsedSections || []).includes('memory')) fail.push('collapsed state was not persisted through the config layer');
+    await mainWindow.webContents.executeJavaScript('document.querySelector("#sec-memory .section-header").click(); true;', true);
+    await sleep(250);
 
     await sleep(400);
     if (rendererErrors.length) fail.push('renderer errors: ' + rendererErrors.join(' | '));

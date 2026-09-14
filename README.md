@@ -1,15 +1,5 @@
-
-
-> [!IMPORTANT]
-> **Retirada: la suite se queda con una sola aplicacion.**
-> SysGlance se retira en favor de **[OpenClaw Widget](https://github.com/smouj/openclaw-desktop-widget)**,
-> que es nativo (C# / .NET Framework del sistema), tiene **cero dependencias** y hace el mismo
-> trabajo a una fraccion del coste: **~85 MB de RAM frente a ~363 MB**, sin Electron y sin
-> composicion por software. Mediciones y causas en [`docs/PERFORMANCE-FINDINGS.md`](docs/PERFORMANCE-FINDINGS.md).
-> Este repositorio se conserva como referencia y queda en solo lectura.
-
 <p align="center">
-  <img src="assets/logo.svg" width="128" height="128" alt="SysGlance Logo">
+  <img src="assets/logo-badge.svg" width="116" height="116" alt="SysGlance">
 </p>
 
 <h1 align="center">SysGlance</h1>
@@ -129,10 +119,35 @@ Node 20 or newer. There are no native npm modules and no build step.
 > On Linux, Electron needs a display. For a headless machine or CI:
 > `xvfb-run -a npm start`
 
+### Installing without an installer (per-user, no admin)
+
+Two environment facts that bite when you build for Windows:
+
+- **On Windows**, electron-builder unpacks `winCodeSign` into its cache and that
+  archive contains macOS symlinks. Without elevation it fails with
+  `Cannot create symbolic link : ... no dispone de un privilegio requerido`.
+  Fix: enable **Developer Mode** (Settings → Privacy & security → For
+  developers) or build from an elevated shell.
+- **On Linux/macOS**, Windows targets need a 32-bit-capable Wine, because
+  `rcedit` is a 32-bit binary.
+
+If you only need the app for the current user, skip NSIS entirely and install the
+unpacked build:
+
+```powershell
+npm run build:win -- --dir      # or: npx electron-builder --win dir
+powershell -File scripts\install-user.ps1
+```
+
+`scripts/install-user.ps1` copies the build to
+`%LOCALAPPDATA%\Programs\SysGlance`, creates the Start-menu and desktop
+shortcuts, registers it in *Apps & features* with its own uninstaller
+(`scripts\uninstall-user.ps1`) and launches it.
+
 ### Build it yourself
 ```bash
 npm run build:win      # -> dist/SysGlance-Setup-1.2.0.exe   (NSIS)
-npm run build:linux    # -> dist/SysGlance-1.2.0.AppImage + .deb
+npm run build:linux    # -> dist/SysGlance-1.2.0-x64.AppImage + .deb
 npm run build:mac      # -> dist/*.dmg
 ```
 Building Windows targets from Linux/macOS requires a **32-bit-capable** Wine:
@@ -252,29 +267,6 @@ sysglance/
 See [`CONTRIBUTING.md`](CONTRIBUTING.md). The short version: run `npm run verify`
 before you push, keep the fast tier free of child processes, and do not give
 SysGlance a resident taskbar effect.
-
-### Installing without an installer (per-user, no admin)
-
-Two environment facts that bite when you build for Windows:
-
-- **On Windows**, electron-builder unpacks `winCodeSign` into its cache and that archive
-  contains macOS symlinks. Without elevation it fails with
-  `Cannot create symbolic link : ... no dispone de un privilegio requerido`.
-  Fix: enable **Developer Mode** (Settings → Privacy & security → For developers) or run the
-  build from an elevated shell.
-- **On Linux/macOS**, Windows targets need a 32-bit-capable Wine, because `rcedit` is a 32-bit binary.
-
-If you only need the app for the current user, skip NSIS entirely and install the unpacked build:
-
-```powershell
-npm run build:win -- --dir      # or: npx electron-builder --win dir
-powershell -File scripts\install-user.ps1
-```
-
-`scripts/install-user.ps1` copies the build to `%LOCALAPPDATA%\Programs\SysGlance`, creates the
-Start-menu and desktop shortcuts, registers it in *Apps & features* with its own uninstaller
-(`scripts\uninstall-user.ps1`) and launches it. **This is exactly how SysGlance is installed on the
-development machine**, because the NSIS route needs the privilege described above.
 
 ## 📄 License
 

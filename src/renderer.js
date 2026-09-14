@@ -35,6 +35,7 @@
     osDistro: $('os-distro'), osUptime: $('os-uptime'),
     btnLock: $('btn-lock'), btnSettings: $('btn-settings'), btnMinimize: $('btn-minimize'),
     statusClock: $('status-clock'), perfReadout: $('perf-readout'), appVersion: $('app-version'),
+    content: $('content'),
     suiteVersion: $('suite-version'),
     settingsPanel: $('settings-panel'), btnCloseSettings: $('btn-close-settings'),
     settingsOpacity: $('settings-opacity'), settingsRefresh: $('settings-refresh'), settingsSlow: $('settings-slow'),
@@ -70,6 +71,11 @@
     return m + 'm';
   }
   function loadClass(p) { return p >= 90 ? 'danger' : p >= 70 ? 'warn' : ''; }
+  // Assigning textContent unconditionally invalidates style and layout even when
+  // the value is identical. Every value that updates on a timer goes through
+  // these, so a steady reading costs no repaint at all.
+  function setText(el, v) { if (el && el.textContent !== v) el.textContent = v; }
+  function setWidth(el, pct) { var w = pct + '%'; if (el && el.style.width !== w) el.style.width = w; }
   function esc(s) {
     return String(s).replace(/[&<>"']/g, function (c) {
       return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
@@ -86,11 +92,76 @@
   var FOLDER_ICON = '<svg class="ic" viewBox="0 0 24 24"><use href="#i-files"/></svg>';
 
   // ── clock ─────────────────────────────────────────────
+  // Minute precision is all a clock needs: schedule the next repaint for the
+  // top of the next minute instead of firing once a second for nothing.
   function updateClock() {
-    dom.statusClock.textContent = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+    setText(dom.statusClock, new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }));
   }
-  setInterval(updateClock, 1000);
-  updateClock();
+  function startClock() {
+    updateClock();
+    var now = new Date();
+    var delay = (60 - now.getSeconds()) * 1000 - now.getMilliseconds() + 40;
+    setTimeout(startClock, delay);
+  }
+  startClock();
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) updateClock(); });
+  window.addEventListener('focus', updateClock);
+
+  // ── collapsible cards ─────────────────────────────────
+  // One delegated listener covers every card, including the Shell panel that
+  // shell/panel.js injects after this file has already run. Collapsing keeps the
+  // card's headline value visible, so a folded card still tells you the number.
+  var COLLAPSIBLE = ['cpu', 'memory', 'gpu', 'filesystem', 'disks', 'network', 'processes', 'battery', 'shell'];
+
+  function sectionKey(sec) {
+    if (!sec || !sec.id) return null;
+    var key = sec.id.replace(/^sec-/, '');
+    return COLLAPSIBLE.indexOf(key) === -1 ? null : key;
+  }
+
+  function applyCollapsed(cfg) {
+    var list = (cfg && cfg.collapsedSections) || [];
+    document.querySelectorAll('.section').forEach(function (sec) {
+      var key = sectionKey(sec);
+      var header = sec.querySelector('.section-header');
+      if (!key || !header) return;
+      var collapsed = list.indexOf(key) !== -1;
+      sec.classList.toggle('is-collapsed', collapsed);
+      header.setAttribute('role', 'button');
+      header.setAttribute('tabindex', '0');
+      header.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+      header.title = collapsed ? 'Expand' : 'Collapse';
+    });
+  }
+
+  function toggleSection(sec) {
+    var key = sectionKey(sec);
+    if (!key) return;
+    var list = ((currentConfig && currentConfig.collapsedSections) || []).slice();
+    var i = list.indexOf(key);
+    if (i === -1) list.push(key); else list.splice(i, 1);
+    currentConfig.collapsedSections = list;
+    applyCollapsed(currentConfig);
+    api.setConfig('collapsedSections', list);
+  }
+
+  function sectionFromEvent(ev) {
+    if (!ev.target || !ev.target.closest) return null;
+    var header = ev.target.closest('.section-header');
+    if (!header) return null;
+    if (ev.target.closest('button')) return null;   // the Shell card has one
+    return header.parentElement;
+  }
+
+  dom.content.addEventListener('click', function (ev) {
+    var sec = sectionFromEvent(ev);
+    if (sec) toggleSection(sec);
+  });
+  dom.content.addEventListener('keydown', function (ev) {
+    if (ev.key !== 'Enter' && ev.key !== ' ') return;
+    var sec = sectionFromEvent(ev);
+    if (sec) { ev.preventDefault(); toggleSection(sec); }
+  });
 
   // ── settings panel ────────────────────────────────────
   function toggleSettings(show) {
@@ -428,6 +499,7 @@
     document.body.setAttribute('data-theme', cfg.theme);
     document.body.setAttribute('data-layout', cfg.layout || 'sidebar');
     applySectionVisibility(cfg);
+    applyCollapsed(cfg);
     updateSettingsUI(cfg);
   });
   api.on('toggle-settings', function () { toggleSettings(); });
@@ -453,8 +525,13 @@
     if (data.config) {
       currentConfig = data.config;
       applySectionVisibility(data.config);
+      applyCollapsed(data.config);
       updateSettingsUI(data.config);
     }
     scheduleUpdate(data);
   }).catch(function () { /* the interval will retry */ });
+
+  // The Shell card is injected by shell/panel.js, so decorate again once it is
+  // in the DOM.
+  setTimeout(function () { applyCollapsed(currentConfig); }, 0);
 })();

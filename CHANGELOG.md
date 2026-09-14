@@ -6,6 +6,50 @@ the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- **SysGlance is not retired.** A concurrent session had added a retirement
+  banner to the README and a "queda retirada" status to `PRODUCT.md`, alongside a
+  rewrite that reverted the folder tiles, the `open-folder` allow-list, the dock
+  height fix and the Dock/Mini captures, and turned the overlay into an opaque
+  normal window. The retirement is removed and the app keeps its scope; the
+  session's genuinely good additions are kept (see below).
+- **The auto-hide assertions in the shell harness no longer assume the bit starts
+  clear.** They compared the live `StuckRects3` blob against a canonical off-blob,
+  which only held while the user's auto-hide happened to be disabled. They are now
+  state-independent, so the harness passes whether auto-hide is on or off. The
+  live setting is never modified by the harness.
+
+### Added
+
+- **One logo, everywhere.** `assets/logo.svg` is now the single source of truth.
+  The header, the app icon, the tray glyph and the README badge all derive from
+  it: previously the header drew a *different* mark (missing the spokes), the app
+  icon was white-on-near-white and therefore invisible, and the 16 px tray icon
+  was an unreadable blob. `npm run icons` regenerates every raster with Electron
+  as the rasteriser — no image dependency. The tray glyph carries no plate and
+  uses the accent colour so it reads on both a dark and a light taskbar.
+- **Collapsible cards.** Clicking (or Enter/Space on) a card header folds it; the
+  headline value stays visible, so a folded card still reports its number. The
+  state is persisted through the validated config layer (`collapsedSections`),
+  and a single delegated listener also covers the Shell card that `panel.js`
+  injects after the renderer has run.
+- `npm run icons`, and a sixth capture (`docs/screenshot-small.png`) at the
+  smallest supported window, where clipping would show up.
+
+### Changed
+
+- Adopted the concurrent session's cheaper DOM writes: `setText`/`setWidth` only
+  touch the DOM when a value actually changed, and the clock ticks on the minute
+  boundary (with a refresh on focus/visibility) instead of once a second.
+- `backgroundThrottling` is on, so the renderer sleeps while the overlay is
+  hidden. The transparent always-on-top window is kept: it is the product's
+  identity, and the measured cost the other session reported came from software
+  compositing. If it costs CPU on your machine, `createWindow()` has one line to
+  flip (`transparent`/`alwaysOnTop`).
+- `scripts/install-user.ps1` and `scripts/uninstall-user.ps1` (from the other
+  session) are kept and documented in the README.
+
 ## [1.2.0] — 2026-09-15
 
 Performance, security and scope-alignment release. No new npm dependencies.

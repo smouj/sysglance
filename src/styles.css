@@ -162,7 +162,20 @@ body.unlocked .ic-unlocked{display:block}
 .section.is-empty{padding:8px 10px;background:var(--bg-card);border-style:dashed;border-color:var(--line)}
 .section.is-empty .section-value{display:none}
 
-.section-header{display:flex;align-items:center;gap:7px;margin-bottom:7px;min-width:0}
+.section-header{display:flex;align-items:center;gap:7px;margin-bottom:7px;min-width:0;cursor:pointer}
+/* Fold affordance, drawn with borders so it needs no icon or extra markup. */
+.section-header::after{
+  content:'';flex:0 0 auto;width:5px;height:5px;margin-left:1px;
+  border-right:1.4px solid var(--fg-4);border-bottom:1.4px solid var(--fg-4);
+  transform:rotate(45deg) translate(-1px,-1px);
+  transition:transform .18s cubic-bezier(.22,1,.36,1),border-color .15s;
+}
+.section-header:hover::after{border-color:var(--accent)}
+/* A folded card keeps its headline value: you still see the number. */
+.section.is-collapsed > :not(.section-header){display:none}
+.section.is-collapsed .section-header{margin-bottom:0}
+.section.is-collapsed .section-header::after{transform:rotate(-45deg) translate(-1px,-1px)}
+.section.is-collapsed{background:var(--bg-card)}
 .section-icon{display:grid;place-items:center;flex:0 0 auto;color:var(--fg-4)}
 .section-icon .ic{width:13px;height:13px}
 .section-title{

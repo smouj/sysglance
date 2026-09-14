@@ -109,13 +109,24 @@ function diffBytes(a, b) {
 
     const hidOn = taskbar.applyAutoHideToBlob(real, true);
     const hidOnDiff = diffBytes(real, hidOn);
-    const hidOff = taskbar.applyAutoHideToBlob(hidOn, false);
     check('setAutoHide(on) touches only byte ' + taskbar.constants.AUTOHIDE_BYTE,
       hidOnDiff.length <= 1 && (hidOnDiff.length === 0 || hidOnDiff[0] === taskbar.constants.AUTOHIDE_BYTE),
       'changed: ' + JSON.stringify(hidOnDiff));
     check('setAutoHide(on) sets bit 0 and keeps the other flags in that byte',
       (hidOn[8] & 0x01) === 1, 'byte[8] 0x' + real[8].toString(16) + ' -> 0x' + hidOn[8].toString(16));
-    check('setAutoHide is reversible (off restores the original blob)', hidOff.equals(real));
+    // State-independent on purpose: auto-hide may already be ON in the live key
+    // (the panel writes that bit for real), so "off" is compared against the
+    // canonical off-blob rather than against whatever the key happens to hold.
+    // An earlier version of this check asserted `off == live`, which passed only
+    // while the user's auto-hide happened to be disabled.
+    const canonicalOff = taskbar.applyAutoHideToBlob(real, false);
+    check('setAutoHide(off) clears bit 0 and keeps the other flags in that byte',
+      (canonicalOff[8] & 0x01) === 0 && (canonicalOff[8] & 0xFE) === (real[8] & 0xFE),
+      'byte[8] 0x' + real[8].toString(16) + ' -> 0x' + canonicalOff[8].toString(16));
+    check('setAutoHide is idempotent (on then off equals plain off)',
+      taskbar.applyAutoHideToBlob(hidOn, false).equals(canonicalOff));
+    check('setAutoHide(off) is a no-op when bit 0 is already clear',
+      taskbar.applyAutoHideToBlob(canonicalOff, false).equals(canonicalOff));
   }
 
   // ── 4. reversible registry write (scratch key) ────────

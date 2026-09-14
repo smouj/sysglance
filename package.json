@@ -40,6 +40,7 @@
     "dev": "electron . --dev",
     "self-test": "electron . --self-test",
     "screenshot": "electron . --screenshot",
+    "icons": "electron . --icons",
     "verify": "node scripts/verify-syntax.js && node scripts/verify-config.js && node scripts/verify-shell.js",
     "verify:config": "node scripts/verify-config.js",
     "verify:shell": "node scripts/verify-shell.js",
