@@ -27,6 +27,7 @@
     memPct: $('mem-pct'), memBar: $('mem-bar'), memUsed: $('mem-used'), memSwap: $('mem-swap'),
     gpuLoad: $('gpu-load'), gpuName: $('gpu-name'), gpuBars: $('gpu-bars'),
     fsHome: $('fs-home'), fsFolders: $('fs-folders'), secFs: $('sec-filesystem'),
+    secGpu: $('sec-gpu'),
     diskList: $('disk-list'),
     netIface: $('net-iface'), netRx: $('net-rx'), netTx: $('net-tx'),
     procList: $('proc-list'),
@@ -74,6 +75,15 @@
       return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
     });
   }
+  // Sliders paint their filled track from --fill, so the control reads at a
+  // glance instead of being a bare line with a floating knob.
+  function setSliderFill(input) {
+    if (!input) return;
+    var min = Number(input.min) || 0, max = Number(input.max) || 100, v = Number(input.value) || 0;
+    var pct = max > min ? ((v - min) / (max - min)) * 100 : 0;
+    input.style.setProperty('--fill', Math.max(0, Math.min(100, pct)).toFixed(1) + '%');
+  }
+  var FOLDER_ICON = '<svg class="ic" viewBox="0 0 24 24"><use href="#i-files"/></svg>';
 
   // ── clock ─────────────────────────────────────────────
   function updateClock() {
@@ -104,12 +114,15 @@
     dom.refreshVal.textContent = ((cfg.refreshInterval || 1500) / 1000).toFixed(1) + 's';
     dom.settingsSlow.value = cfg.slowInterval || 7000;
     dom.slowVal.textContent = ((cfg.slowInterval || 7000) / 1000).toFixed(1) + 's';
+    setSliderFill(dom.settingsOpacity);
+    setSliderFill(dom.settingsRefresh);
+    setSliderFill(dom.settingsSlow);
     var sections = cfg.showSections || {};
     dom.sectionToggles.querySelectorAll('input[type="checkbox"]').forEach(function (cb) {
       cb.checked = sections[cb.dataset.section] !== false;
     });
-    dom.btnCompactSettings.textContent = cfg.compactMode ? '📐 Compact (On)' : '📐 Compact Mode';
-    dom.btnLockSettings.textContent = positionLocked ? '🔒 Unlock Position' : '🔓 Lock Position';
+    dom.btnCompactSettings.textContent = cfg.compactMode ? 'Compact: on' : 'Compact mode';
+    dom.btnLockSettings.textContent = positionLocked ? 'Unlock position' : 'Lock position';
   }
 
   function applySectionVisibility(cfg) {
@@ -143,15 +156,18 @@
     if (btn && btn.dataset.theme) api.setConfig('theme', btn.dataset.theme);
   });
   dom.settingsOpacity.addEventListener('input', function (e) {
+    setSliderFill(e.target);
     dom.opacityVal.textContent = e.target.value + '%';
     api.setOpacity(parseInt(e.target.value, 10) / 100);
   });
   dom.settingsRefresh.addEventListener('input', function (e) {
+    setSliderFill(e.target);
     var val = parseInt(e.target.value, 10);
     dom.refreshVal.textContent = (val / 1000).toFixed(1) + 's';
     api.setConfig('refreshInterval', val);
   });
   dom.settingsSlow.addEventListener('input', function (e) {
+    setSliderFill(e.target);
     var val = parseInt(e.target.value, 10);
     dom.slowVal.textContent = (val / 1000).toFixed(1) + 's';
     api.setConfig('slowInterval', val);
@@ -197,15 +213,16 @@
       dom.cpuSpeed.textContent = data.cpu.speed ? (data.cpu.speed / 1000).toFixed(2) + ' GHz' : '';
       if (data.cpu.temp != null) {
         var hot = data.cpu.temp >= 80;
-        dom.cpuTemp.textContent = (hot ? '🔥 ' : '🌡️ ') + data.cpu.temp.toFixed(0) + '°C';
+        dom.cpuTemp.textContent = data.cpu.temp.toFixed(0) + '\u00b0C';
         dom.cpuTemp.style.display = '';
         dom.cpuTemp.className = 'info-badge' + (hot ? ' danger' : data.cpu.temp >= 65 ? ' warn' : '');
       } else dom.cpuTemp.style.display = 'none';
       if (data.cpu.perCore && data.cpu.perCore.length) {
         var html = '';
         for (var i = 0; i < data.cpu.perCore.length; i++) {
-          html += '<div class="core-bar" title="Core ' + i + ' — ' + data.cpu.perCore[i] + '%"><div class="core-fill ' +
-            loadClass(data.cpu.perCore[i]) + '" style="width:' + Math.min(data.cpu.perCore[i], 100) + '%"></div></div>';
+          var coreVal = Math.max(2, Math.min(data.cpu.perCore[i], 100));
+          html += '<div class="core-bar" title="Core ' + i + ' \u2014 ' + data.cpu.perCore[i] + '%"><div class="core-fill ' +
+            loadClass(data.cpu.perCore[i]) + '" style="height:' + coreVal + '%"></div></div>';
         }
         dom.cpuPercore.innerHTML = html;
       }
@@ -237,11 +254,15 @@
         bars += '<div class="disk-item"><div class="disk-label"><span class="disk-fs">VRAM</span><span class="disk-pct">' + fmtBytes(gpu.vramUsed) + ' / ' + fmtBytes(gpu.vram) +
           '</span></div><div class="progress-bar"><div class="progress-fill ' + loadClass(vr) + '" style="width:' + Math.min(vr, 100) + '%"></div></div></div>';
       }
-      if (gpu.temp != null) bars += '<div class="info-row" style="margin-top:3px"><span class="info-small">🌡️ ' + gpu.temp + '°C</span></div>';
+      if (gpu.temp != null) bars += '<div class="info-row info-row-secondary"><span class="info-small">' + gpu.temp + ' \u00b0C</span></div>';
       dom.gpuBars.innerHTML = bars;
+      dom.secGpu.classList.remove('is-empty');
     } else {
-      dom.gpuLoad.textContent = 'N/A';
-      dom.gpuName.textContent = 'No GPU';
+      dom.gpuLoad.textContent = '';
+      dom.gpuName.textContent = 'No GPU reported on this system';
+      dom.gpuName.classList.add('is-empty');
+      dom.gpuBars.innerHTML = '';
+      dom.secGpu.classList.add('is-empty');
     }
 
     // Filesystem folders
@@ -251,7 +272,7 @@
       for (var f = 0; f < data.filesystem.folders.length; f++) {
         var folder = data.filesystem.folders[f];
         fhtml += '<div class="fs-item" data-path="' + esc(folder.path) + '" title="' + esc(folder.path) + ' (' + folder.count + ' items)">' +
-          '<span class="fs-item-icon">' + folder.icon + '</span><div class="fs-item-info">' +
+          '<span class="fs-item-icon">' + FOLDER_ICON + '</span><div class="fs-item-info">' +
           '<div class="fs-item-name">' + esc(folder.name) + '</div>' +
           '<div class="fs-item-count">' + folder.count + ' items</div></div></div>';
       }
@@ -285,9 +306,11 @@
       var phtml = '<div class="proc-row proc-header"><span>Process</span><span style="text-align:right">CPU</span><span style="text-align:right">MEM</span></div>';
       for (var p = 0; p < data.processes.length; p++) {
         var proc = data.processes[p];
-        var colour = proc.cpu >= 10 ? 'var(--danger)' : proc.cpu >= 5 ? 'var(--warning)' : 'var(--text-muted)';
-        phtml += '<div class="proc-row"><span class="proc-name">' + esc(proc.name) + '</span><span class="proc-cpu" style="color:' + colour + '">' +
-          proc.cpu + '%</span><span class="proc-mem">' + proc.mem + '%</span></div>';
+        var colour = proc.cpu >= 10 ? 'var(--bad)' : proc.cpu >= 5 ? 'var(--warn)' : 'var(--fg-3)';
+        phtml += '<div class="proc-row"><span class="proc-rank">' + (p + 1) + '</span>' +
+          '<span class="proc-name">' + esc(proc.name) + '</span>' +
+          '<span class="proc-cpu" style="color:' + colour + '">' + proc.cpu + '%</span>' +
+          '<span class="proc-mem">' + proc.mem + '%</span></div>';
       }
       dom.procList.innerHTML = phtml;
     }
@@ -298,20 +321,20 @@
       dom.batPct.textContent = data.battery.percent + '%';
       dom.batBar.className = 'progress-fill ' + loadClass(100 - data.battery.percent);
       dom.batBar.style.width = data.battery.percent + '%';
-      dom.batStatus.textContent = data.battery.charging ? '⚡ Charging' : data.battery.acConnected ? '🔌 AC' : '🔋 Battery';
+      dom.batStatus.textContent = data.battery.charging ? 'Charging' : data.battery.acConnected ? 'On AC' : 'On battery';
     } else dom.secBattery.style.display = 'none';
 
     // OS
     if (data.os) {
       dom.osDistro.textContent = data.os.distro + ' ' + data.os.release;
-      if (data.os.uptime) dom.osUptime.textContent = '⏱ ' + fmtUptime(data.os.uptime);
+      if (data.os.uptime) dom.osUptime.textContent = 'up ' + fmtUptime(data.os.uptime);
     }
 
     // Measured cost of the last cycle — the performance claim, on screen.
     if (data.metrics) {
       var m = data.metrics;
       if (m.fastMs != null) {
-        dom.perfReadout.textContent = '⏱ ' + m.fastMs.toFixed(1) + ' ms';
+        dom.perfReadout.textContent = m.fastMs.toFixed(1) + ' ms';
         dom.perfReadout.title = 'Fast metrics cycle: ' + m.fastMs.toFixed(1) + ' ms (node:os, every ' + m.refreshInterval +
           ' ms)\nHardware cycle: ' + (m.slowMs != null ? m.slowMs.toFixed(1) + ' ms' : '—') + ' (systeminformation, every ' + m.slowInterval +
           ' ms)\nHardware calls: ' + (m.slowCalls || []).join(', ');
@@ -328,7 +351,8 @@
   api.on('visibility-changed', function (v) { document.body.style.opacity = v ? '1' : '0'; });
   api.on('position-lock-changed', function (locked) {
     positionLocked = locked;
-    dom.btnLock.textContent = locked ? '🔒' : '🔓';
+    // The padlock icon follows from the body class (see styles.css), so the
+    // button's markup is never rewritten here.
     document.body.classList.toggle('locked', locked);
     document.body.classList.toggle('unlocked', !locked);
     updateSettingsUI(currentConfig);

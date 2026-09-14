@@ -33,10 +33,11 @@
   var HTML =
     '<div class="section" id="sec-shell">' +
       '<div class="section-header">' +
-        '<span class="section-icon">🪟</span>' +
+        '<span class="section-icon"><svg class="ic" viewBox="0 0 24 24"><use href="#i-shell"/></svg></span>' +
         '<span class="section-title">Shell</span>' +
-        '<span class="section-value" id="shell-summary">—</span>' +
-        '<button class="status-btn shell-refresh" id="shell-refresh" title="Re-read Windows state">⟳</button>' +
+        '<span class="section-value" id="shell-summary">\u2014</span>' +
+        '<button class="status-btn shell-refresh" id="shell-refresh" title="Re-read Windows state">' +
+          '<svg class="ic" viewBox="0 0 24 24"><use href="#i-refresh"/></svg></button>' +
       '</div>' +
 
       '<div class="shell-group">' +
@@ -73,11 +74,11 @@
 
       // Not a control: an ownership statement. Vibrancy is the sibling app's job.
       '<div class="shell-widget" id="shell-widget">' +
-        '<span class="shell-widget-icon">✨</span>' +
+        '<span class="shell-widget-icon"><svg class="ic" viewBox="0 0 24 24"><use href="#i-gpu"/></svg></span>' +
         '<span class="shell-widget-text">Taskbar vibrancy (blur / acrylic) is kept alive by ' +
-          '<strong id="shell-widget-name">OpenClaw Widget</strong>, not by SysGlance — one process owns that effect.' +
+          '<strong id="shell-widget-name">OpenClaw Widget</strong>, not by SysGlance \u2014 one process owns that effect.' +
         '</span>' +
-        '<button class="shell-mini-btn" id="shell-widget-open">Open repository ↗</button>' +
+        '<button class="shell-mini-btn" id="shell-widget-open">Open repository</button>' +
       '</div>' +
 
       '<div class="shell-note" id="shell-message" style="display:none"></div>' +

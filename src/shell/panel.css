@@ -1,85 +1,95 @@
-/* ── Shell (taskbar / theme / accent / wallpaper) ──────── */
-.shell-group { margin-top: 7px; }
-.shell-label {
-  display: flex; align-items: center; gap: 5px;
-  font-size: 8.5px; text-transform: uppercase; letter-spacing: 0.6px;
-  color: var(--text-muted); margin-bottom: 4px;
-}
-.shell-actions { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; margin-top: 4px; }
+/* ── Shell panel (taskbar / theme / accent / wallpaper) ──────────────────
+   Same tokens as styles.css: a theme swap or an accent change is inherited,
+   nothing here hard-codes a colour. */
 
-.shell-btn {
-  flex: 1; min-width: 54px;
-  background: rgba(255, 255, 255, 0.04); border: 1px solid var(--border);
-  color: var(--text-secondary); font-family: inherit; font-size: 9.5px;
-  padding: 4px 6px; border-radius: 5px; cursor: pointer; transition: all 0.15s;
+.shell-group{margin-top:9px}
+.shell-label{
+  display:flex;align-items:baseline;justify-content:space-between;gap:var(--sp-2);
+  font-size:9px;font-weight:650;text-transform:uppercase;letter-spacing:.8px;
+  color:var(--fg-3);margin-bottom:6px;
 }
-.shell-btn:hover { background: var(--accent-dim); color: var(--accent); border-color: var(--accent); }
-.shell-btn:disabled { opacity: 0.35; cursor: not-allowed; }
-.shell-btn.tight { flex: 0 0 auto; min-width: 0; padding: 4px 8px; }
-.shell-btn.primary { background: var(--accent-dim); color: var(--accent); border-color: var(--border-accent); }
+.shell-actions{display:flex;gap:4px;align-items:center;flex-wrap:wrap}
 
-.shell-seg { display: flex; gap: 3px; }
-.shell-seg-btn {
-  flex: 1; background: var(--bg-hover); border: 1px solid var(--border);
-  color: var(--text-muted); font-family: inherit; font-size: 9px;
-  padding: 4px 2px; border-radius: 5px; cursor: pointer; transition: all 0.15s;
+.shell-btn{
+  flex:1 1 62px;min-width:0;
+  background:var(--bg-control);border:1px solid var(--line-2);border-radius:var(--r-sm);
+  color:var(--fg-2);font-family:inherit;font-size:10px;font-weight:600;
+  padding:6px 8px;cursor:pointer;
+  transition:background .15s,color .15s,border-color .15s;
 }
-.shell-seg-btn:hover { color: var(--text-primary); border-color: var(--border-accent); }
-.shell-seg-btn.active {
-  background: var(--accent-dim); color: var(--accent);
-  border-color: var(--accent); box-shadow: 0 0 6px var(--accent-glow);
+.shell-btn:hover:not(:disabled){background:var(--accent-soft);border-color:var(--accent-line);color:var(--accent)}
+.shell-btn:disabled{opacity:.35;cursor:not-allowed}
+.shell-btn.tight{flex:0 0 auto;padding:6px 9px}
+.shell-btn.primary{background:var(--accent-soft);border-color:var(--accent-line);color:var(--accent)}
+
+.shell-seg{display:flex;gap:2px;padding:2px;background:var(--bg-inset);border-radius:8px}
+.shell-seg-btn{
+  flex:1 1 0;min-width:0;padding:5px 4px;cursor:pointer;
+  background:transparent;border:1px solid transparent;border-radius:var(--r-sm);
+  color:var(--fg-3);font-family:inherit;font-size:9.5px;font-weight:600;
+  transition:background .15s,color .15s,border-color .15s;
+}
+.shell-seg-btn:hover{background:var(--bg-control);color:var(--fg-2)}
+.shell-seg-btn.active{background:var(--accent-soft);border-color:var(--accent-line);color:var(--accent)}
+
+.shell-toggle{
+  flex:1 1 84px;display:flex;align-items:center;gap:7px;
+  font-size:10px;color:var(--fg-2);cursor:pointer;padding:4px 6px;border-radius:var(--r-sm);
+  background:var(--bg-inset);border:1px solid transparent;transition:background .15s,border-color .15s;
+}
+.shell-toggle:hover{border-color:var(--line-2)}
+.shell-toggle input[type="checkbox"]{
+  -webkit-appearance:none;appearance:none;position:relative;flex:0 0 auto;
+  width:26px;height:15px;border-radius:99px;background:var(--bg-inset);
+  border:1px solid var(--line-2);cursor:pointer;transition:background .18s,border-color .18s;margin:0;
+}
+.shell-toggle input[type="checkbox"]::after{
+  content:'';position:absolute;top:1px;left:1px;width:11px;height:11px;border-radius:50%;
+  background:var(--fg-4);transition:transform .18s cubic-bezier(.22,1,.36,1),background .18s;
+}
+.shell-toggle input[type="checkbox"]:checked{background:var(--accent-soft);border-color:var(--accent-line)}
+.shell-toggle input[type="checkbox"]:checked::after{transform:translateX(11px);background:var(--accent)}
+.shell-toggle:has(input:checked){color:var(--fg)}
+
+.shell-input{
+  flex:1 1 90px;min-width:0;padding:6px 8px;border-radius:var(--r-sm);
+  background:var(--bg-inset);border:1px solid var(--line-2);color:var(--fg);
+  font-family:inherit;font-size:9.5px;
+}
+.shell-input::placeholder{color:var(--fg-4)}
+.shell-input:focus{outline:none;border-color:var(--accent-line);background:var(--bg-control)}
+
+.shell-swatch{
+  width:11px;height:11px;border-radius:3px;display:inline-block;vertical-align:middle;
+  border:1px solid var(--line-2);background:var(--bg-inset);
 }
 
-.shell-toggle {
-  flex: 1; display: flex; align-items: center; gap: 5px;
-  font-size: 9.5px; color: var(--text-secondary); cursor: pointer;
-  padding: 3px 6px; border-radius: 5px;
-  background: var(--bg-hover); border: 1px solid var(--border);
+.shell-note{
+  display:flex;align-items:center;gap:6px;flex-wrap:wrap;
+  margin-top:8px;font-size:9px;line-height:1.45;color:var(--fg-3);
 }
-.shell-toggle:hover { border-color: var(--border-accent); }
-.shell-toggle input { accent-color: var(--accent); width: 12px; height: 12px; margin: 0; cursor: pointer; }
-
-.shell-input {
-  flex: 1; min-width: 0; background: var(--bg-bar);
-  border: 1px solid var(--border); border-radius: 5px;
-  color: var(--text-primary); font-family: inherit; font-size: 9px;
-  padding: 4px 6px;
+.shell-note.warn{color:var(--warn)}
+.shell-note.err{color:var(--bad)}
+.shell-note.ok{color:var(--ok)}
+.shell-mini-btn{
+  background:transparent;border:1px solid currentColor;color:inherit;
+  font-family:inherit;font-size:8.5px;font-weight:600;padding:2px 7px;
+  border-radius:99px;cursor:pointer;transition:background .15s;
 }
-.shell-input:focus { outline: none; border-color: var(--accent); }
-
-.shell-swatch {
-  width: 12px; height: 12px; border-radius: 3px;
-  border: 1px solid var(--border); display: inline-block;
-  background: var(--bg-bar); vertical-align: middle;
-}
-
-.shell-note {
-  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
-  margin-top: 6px; font-size: 9px; line-height: 1.4;
-  color: var(--text-secondary);
-}
-.shell-note.warn { color: var(--warning); }
-.shell-note.err { color: var(--danger); }
-.shell-note.ok { color: var(--success); }
-.shell-mini-btn {
-  background: transparent; border: 1px solid currentColor; color: inherit;
-  font-family: inherit; font-size: 8.5px; padding: 2px 6px;
-  border-radius: 4px; cursor: pointer;
-}
-.shell-mini-btn:hover { background: var(--accent-dim); }
+.shell-mini-btn:hover{background:var(--accent-soft)}
 
 /* Ownership note: vibrancy belongs to the sibling app, not to this panel. */
-.shell-widget {
-  display: flex; align-items: flex-start; gap: 6px; flex-wrap: wrap;
-  margin-top: 7px; padding: 6px 7px; border-radius: 6px;
-  background: var(--accent-dim); border: 1px solid var(--border-accent);
-  font-size: 8.5px; line-height: 1.45; color: var(--text-secondary);
+.shell-widget{
+  display:flex;align-items:flex-start;gap:7px;flex-wrap:wrap;
+  margin-top:9px;padding:7px 8px;border-radius:var(--r-sm);
+  background:var(--accent-soft);border:1px solid var(--accent-line);
+  font-size:8.5px;line-height:1.5;color:var(--fg-2);
 }
-.shell-widget-icon { color: var(--accent); font-size: 10px; line-height: 1.2; }
-.shell-widget-text { flex: 1; min-width: 120px; }
-.shell-widget-text strong { color: var(--accent); font-weight: 600; }
-.shell-widget .shell-mini-btn { color: var(--accent); }
+.shell-widget-icon{color:var(--accent);display:grid;place-items:center;flex:0 0 auto;margin-top:1px}
+.shell-widget-text{flex:1 1 120px;min-width:0}
+.shell-widget-text strong{color:var(--accent);font-weight:650}
+.shell-widget .shell-mini-btn{color:var(--accent);flex:0 0 auto}
 
-body.compact .shell-group { margin-top: 4px; }
-body.compact .shell-actions { gap: 3px; }
-body.compact .shell-widget { margin-top: 4px; padding: 4px 5px; }
+body.compact .shell-group{margin-top:6px}
+body.compact .shell-actions{gap:3px}
+body.compact .shell-widget{margin-top:6px;padding:5px 6px}
