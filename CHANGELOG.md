@@ -61,16 +61,52 @@ Performance, security and scope-alignment release. No new npm dependencies.
   `docs/TODO-IPC-SECURITY.md` is replaced by `docs/IPC-SECURITY.md`, which
   documents the model now in force.
 - **Every IPC argument is validated in the main process**: settings go through
-  the schema in `src/config.js` (type, range, enum), `open-folder` requires an
-  absolute path to an existing directory, and wallpaper paths must be absolute
-  and exist.
+  the schema in `src/config.js` (type, range, enum), folder opening is
+  restricted to an allow-list (see below), and wallpaper paths must be absolute
+  image files that exist.
 - The Content-Security-Policy no longer allows inline scripts
   (`script-src 'self'`), and adds `object-src`, `base-uri`, `form-action` and
   `connect-src` restrictions.
+- **`open-folder` is now an allow-list, not a generic "open any path".** The
+  renderer may only ask for the six home folders SysGlance actually offers;
+  anything else is refused and logged (`open-folder(/etc)` →
+  `{"ok":false,"error":"path not allowed"}`). The self-test asserts this on
+  every run.
+- **Wallpaper paths are validated as regular files with an image extension**
+  before anything decodes them, writes them to the registry or hands them to the
+  native helper, so `nativeImage` is never pointed at an arbitrary path.
+- The renderer receives a downscaled **data URL** for the wallpaper preview —
+  never a file handle, and never a path of its choosing.
+
+### Changed — folder menu and Windows shell panel
+
+- **Home folders are real tiles now**: icon, item count with correct
+  singular/plural, a hover/focus "open" affordance, `role="button"` with
+  Enter/Space activation, an `aria-label` naming the folder, and a short status
+  message in the section header when a folder cannot be opened. Previously the
+  grid showed a single stretched tile with no sign it was clickable.
+- The grid no longer repaints on every slow cycle — it compares a signature of
+  the folder list first, so keyboard focus and hover state survive a refresh.
+- An explicit empty state replaces a silently blank card when none of the six
+  home folders exist.
+- **The Shell panel is visual instead of abstract**: taskbar position is drawn as
+  a miniature desktop with the bar on the selected edge (one element, four
+  rules, accent-aware), the position readout sits beside the label, auto-hide
+  and dark mode are switches, and the wallpaper row carries a **thumbnail of the
+  current wallpaper** (rendered by the main process) next to the path and its
+  Browse/Apply actions.
+- Applying a wallpaper now distinguishes "helper not built, repaint at next
+  logon" from plain success, instead of reporting both as applied.
+- `npm run screenshot` gained a fifth capture (`docs/screenshot-shell.png`) that
+  temporarily hides the metric sections so the Shell card is in view.
 
 ### Added
 
-- `src/config.js` — one owner for defaults, validation and atomic persistence
+- `shell:wallpaper:preview` channel (12 channels total), `i-open` and
+  `i-sparkle` icons, and `taskbar.validateImagePath()` /
+  `taskbar.wallpaperPreview()`.
+- The self-test now proves the two refusals above rather than documenting them.
+
   (temp file + rename). Unknown keys are dropped, out-of-range values are
   clamped, prototype-pollution keys are refused, corrupt files fall back to
   defaults with a logged warning.

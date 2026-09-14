@@ -55,14 +55,21 @@ to tray. `Ctrl+Shift+S` toggles it. Everything is configurable from the built-in
 - **Network** — live download/upload per interface
 - **Processes** — top 8 by CPU, colour-coded
 - **Battery** — percentage and charging state (laptops only)
-- **Filesystem** — Desktop, Documents, Downloads, Pictures, Videos, Music — click to open
+- **Filesystem** — Desktop, Documents, Downloads, Pictures, Videos, Music as real
+  tiles: item counts, a hover/focus affordance, Enter/Space activation, and a
+  status message when a folder cannot be opened
 
 ### Windows shell configuration
-- **Taskbar position** — left / top / right / bottom (`StuckRects3`, one byte edited surgically)
-- **Auto-hide** — one bit of one byte, the other sticky-rect flags preserved
-- **Dark / light mode**, **accent colour derived from the wallpaper**, **wallpaper application**
+- **Taskbar position** — left / top / right / bottom (`StuckRects3`, exactly one
+  byte edited and the rest of the blob written back verbatim), shown as a
+  **miniature desktop with the bar drawn on the selected edge**
+- **Auto-hide** — one bit of one byte; the other sticky-rect flags are preserved
+- **Dark / light mode**, **accent derived from the wallpaper** (hex and swatch
+  shown), **wallpaper application** with a **thumbnail of the current wallpaper**
 - Taskbar *vibrancy* is deliberately **not** here — that resident effect belongs
   to OpenClaw Widget. The panel says so and links to it.
+- Nothing is applied behind your back: changing position or auto-hide asks for an
+  explorer restart and offers the button; it never restarts on its own.
 
 ### Layout modes
 | Mode | Description |
@@ -166,7 +173,9 @@ webPreferences: {
 `src/preload.js` exposes a narrow `window.sysglance` through `contextBridge` —
 one named wrapper per channel, no generic `invoke`/`send` escape hatch, and an
 allow-list for event subscriptions. Every argument is validated again in the
-main process (`src/config.js` for settings, explicit checks for paths).
+main process (`src/config.js` for settings, explicit checks for paths), and the
+renderer can only ask to open the home folders the app offers — not any
+directory it names.
 The CSP allows no inline script and no network access from the page.
 Details: [`docs/IPC-SECURITY.md`](docs/IPC-SECURITY.md).
 
