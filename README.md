@@ -113,9 +113,19 @@ npm run build:win      # -> dist/SysGlance-Setup-1.2.0.exe   (NSIS)
 npm run build:linux    # -> dist/SysGlance-1.2.0.AppImage + .deb
 npm run build:mac      # -> dist/*.dmg
 ```
-Building Windows targets from Linux/macOS requires Wine plus the electron-builder
-toolchain; CI builds the installer on `windows-latest` (see
-`.github/workflows/ci.yml`).
+Building Windows targets from Linux/macOS requires a **32-bit-capable** Wine:
+electron-builder runs `rcedit-ia32.exe` to stamp the installer's icon and
+version resources, and that is a 32-bit binary. A wine64-only install gets as
+far as packaging `dist/win-unpacked/SysGlance.exe` and then fails with
+`wine: failed to load ... syswow64\ntdll.dll`. The prerequisite is:
+
+```bash
+sudo dpkg --add-architecture i386 && sudo apt-get update
+sudo apt-get install wine32:i386
+```
+
+CI does not need any of this: `.github/workflows/ci.yml` builds the NSIS
+installer on `windows-latest`.
 
 ## 🛠️ Development
 

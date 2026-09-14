@@ -121,6 +121,25 @@ powershell -ExecutionPolicy Bypass -File scripts\build-native.ps1
 # -> src\native\shell\SysGlanceShellHelper.exe   (git-ignored)
 ```
 
+## Building the Windows installer from Linux
+
+`npm run build:win` works on Linux only with a 32-bit-capable Wine (electron-builder
+stamps the installer through `rcedit-ia32.exe`, a 32-bit binary). A wine64-only
+install packages `dist/win-unpacked/SysGlance.exe` and then fails on the resource
+step. If you need it locally:
+
+```bash
+sudo dpkg --add-architecture i386 && sudo apt-get update
+sudo apt-get install wine32:i386
+```
+
+Otherwise rely on CI, which builds NSIS on `windows-latest`
+(`.github/workflows/ci.yml`) and uploads the installer as an artifact on every
+build, attaching it to the release on `v*` tags. Only `npm run build:linux`
+(`AppImage` + `deb`) is expected to work on Linux out of the box, and
+`sudo dpkg --add-architecture i386` is a system-wide change worth deciding
+consciously rather than as a side effect of a build.
+
 ## Reporting bugs
 
 Include your OS and version, `package.json` version (or the number shown in the
