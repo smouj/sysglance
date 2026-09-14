@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="128" height="128" role="img" aria-label="SysGlance">
+  <!-- The mark on its own plate. assets/logo.svg draws the mark in white on
+       transparency, which disappears on a light page (GitHub's light theme, a
+       white installer background); this variant is what the README uses. -->
+  <defs>
+    <linearGradient id="plate" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1b2437"/>
+      <stop offset="0.55" stop-color="#0c1120"/>
+      <stop offset="1" stop-color="#0a0e18"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="116" fill="url(#plate)"/>
+  <rect x="3" y="3" width="506" height="506" rx="113" fill="none" stroke="#ffffff" stroke-opacity="0.12" stroke-width="6"/>
+  <g transform="translate(71 71) scale(0.7227)" fill="none" stroke="#3fe0ff" stroke-linecap="round">
+    <path d="M256 16L464 136V376L256 496L48 376V136L256 16Z" stroke-width="24"/>
+    <circle cx="256" cy="256" r="100" stroke-width="20"/>
+    <circle cx="256" cy="256" r="40" fill="#3fe0ff" stroke="none"/>
+    <path d="M256 156V96M256 356V416M156 256H96M356 256H416M186 186L146 146M326 186L366 146M186 326L146 366M326 326L366 366" stroke-width="8"/>
+  </g>
+</svg>
