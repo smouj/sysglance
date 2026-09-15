@@ -1,8 +1,5 @@
 name: CI
 
-# Releases are handled by .github/workflows/release.yml (triggered by a v* tag),
-# so this workflow deliberately does not run on tags — one owner per release.
-
 on:
   push:
     branches: [main, master]
@@ -13,65 +10,40 @@ permissions:
   contents: read
 
 jobs:
-  # ── gates: syntax, settings validation, shell harness, headless smoke test ──
   verify:
     name: Verify (Linux)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: npm
-
       - name: Install dependencies
         run: npm ci
-
-      - name: Syntax gate (node --check)
-        run: npm run verify:syntax
-
-      - name: Settings validation
-        run: npm run verify:config
-
-      # On a host without the Windows registry (as here) the harness self-skips
-      # its live checks instead of failing, so it is safe in CI.
-      - name: Shell harness
-        run: npm run verify:shell
-
+      - name: Syntax, config and UI contract
+        run: npm run verify
       - name: Refresh-cycle benchmark
         run: npm run bench -- --iterations=5
-
-      # Electron needs a display; Xvfb provides one. The app reads real metrics
-      # and asserts the preload bridge from inside the sandboxed renderer.
-      - name: Headless smoke test
+      - name: Headless Electron smoke test
         run: xvfb-run -a npx electron . --self-test --no-sandbox --disable-gpu
 
-  # ── the installer is built where it is actually installable ──
   build-windows:
     name: Build installer (Windows)
     needs: verify
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: npm
-
       - name: Install dependencies
         run: npm ci
-
-      - name: Syntax gate
-        run: npm run verify:syntax
-
-      - name: Settings validation
-        run: npm run verify:config
-
+      - name: Verify
+        run: npm run verify
       - name: Build NSIS installer
         run: npm run build:win
-
       - name: Upload installer artifact
         uses: actions/upload-artifact@v4
         with:
@@ -82,25 +54,22 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-  # ── linux artifacts, so the AppImage/deb config keeps being exercised ──
   build-linux:
     name: Build packages (Linux)
     needs: verify
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: npm
-
       - name: Install dependencies
         run: npm ci
-
+      - name: Verify
+        run: npm run verify
       - name: Build AppImage + deb
         run: npm run build:linux
-
       - name: Upload packages
         uses: actions/upload-artifact@v4
         with:
