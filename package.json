@@ -3,7 +3,7 @@
   "version": "1.3.0",
   "description": "Fast always-on-top system glance for CPU, memory, GPU, storage, network, processes and home folders.",
   "main": "src/main.js",
-  "author": { "name": "smouj", "url": "https://github.com/smouj" },
+  "author": { "name": "smouj", "email": "61901624+smouj@users.noreply.github.com", "url": "https://github.com/smouj" },
   "license": "MIT",
   "repository": { "type": "git", "url": "git+https://github.com/smouj/sysglance.git" },
   "homepage": "https://github.com/smouj/sysglance#readme",
