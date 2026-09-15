@@ -134,3 +134,104 @@
 body.compact .shell-group{margin-top:6px}
 body.compact .shell-actions{gap:3px}
 body.compact .shell-widget{margin-top:6px;padding:5px 6px}
+
+/* ═══════════════════════════════════════════════════════
+   SysGlance — Shell panel: NEW sections
+   Wallpaper gallery, folder customization, Start menu,
+   accent color picker, desktop preview
+   ═══════════════════════════════════════════════════════ */
+
+/* ── Section collapse (shared) ──────────────────────────── */
+.shell-collapse{display:none;margin-top:6px}
+.shell-section-toggle:checked~.shell-collapse{display:block}
+.shell-section-toggle{display:none}
+.shell-section-header{cursor:pointer;user-select:none;display:flex;align-items:center;justify-content:space-between}
+.shell-section-header .shell-chevron{transition:transform .18s ease;font-size:10px;color:var(--fg-4);margin-left:4px}
+.shell-section-toggle:checked~.shell-section-header .shell-chevron{transform:rotate(90deg)}
+
+/* ── Accent color picker ───────────────────────────────── */
+.shell-accent-picker{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:4px}
+.shell-color-input{
+  width:28px;height:28px;border:2px solid var(--line-2);border-radius:var(--r-sm);
+  cursor:pointer;background:none;padding:0;appearance:none;-webkit-appearance:none;
+}
+.shell-color-input::-webkit-color-swatch-wrapper{padding:0}
+.shell-color-input::-webkit-color-swatch{border:none;border-radius:2px}
+.shell-hex-input{
+  width:72px;padding:5px 6px;border-radius:var(--r-sm);
+  background:var(--bg-inset);border:1px solid var(--line-2);color:var(--fg);
+  font-family:inherit;font-size:9.5px;
+}
+.shell-hex-input:focus{outline:none;border-color:var(--accent-line)}
+.shell-color-presets{display:flex;gap:3px;flex-wrap:wrap}
+.shell-color-dot{
+  width:18px;height:18px;border-radius:50%;border:2px solid transparent;
+  cursor:pointer;transition:border-color .15s,transform .1s;
+}
+.shell-color-dot:hover{transform:scale(1.15)}
+.shell-color-dot.is-active{border-color:var(--fg);box-shadow:0 0 0 1px var(--accent-glow)}
+
+/* ── Desktop preview (mini) ────────────────────────────── */
+.shell-desktop-preview{
+  position:relative;height:60px;border-radius:var(--r-sm);overflow:hidden;
+  background:var(--bg-card-2);border:1px solid var(--line);
+  background-size:cover;background-position:center;
+}
+.shell-desktop-preview .tb-bar{
+  position:absolute;background:linear-gradient(90deg,var(--accent),var(--accent-2));
+  box-shadow:0 0 8px -1px var(--accent-glow);border-radius:2px;
+}
+.shell-desktop-preview[data-pos="bottom"] .tb-bar{left:18%;right:18%;bottom:3px;height:5px}
+.shell-desktop-preview[data-pos="top"] .tb-bar{left:18%;right:18%;top:3px;height:5px}
+.shell-desktop-preview[data-pos="left"] .tb-bar{top:18%;bottom:18%;left:3px;width:5px}
+.shell-desktop-preview[data-pos="right"] .tb-bar{top:18%;bottom:18%;right:3px;width:5px}
+.shell-desktop-preview .preview-label{
+  position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  font-size:8px;color:var(--fg-4);pointer-events:none;text-transform:uppercase;letter-spacing:.6px;
+}
+
+/* ── Wallpaper gallery ─────────────────────────────────── */
+.shell-gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:6px;margin-top:6px;max-height:200px;overflow-y:auto}
+.shell-gallery::-webkit-scrollbar{width:4px}
+.shell-gallery::-webkit-scrollbar-thumb{background:var(--line-2);border-radius:2px}
+.shell-gallery-item{
+  position:relative;aspect-ratio:16/10;border-radius:var(--r-sm);overflow:hidden;
+  border:2px solid transparent;cursor:pointer;
+  transition:border-color .15s,transform .1s;
+}
+.shell-gallery-item:hover{transform:scale(1.04);border-color:var(--line)}
+.shell-gallery-item.is-active{border-color:var(--accent)}
+.shell-gallery-item img{width:100%;height:100%;object-fit:cover;display:block}
+.shell-gallery-item .anim-badge{
+  position:absolute;bottom:2px;right:2px;font-size:7px;font-weight:700;
+  background:rgba(0,0,0,.65);color:#fff;padding:1px 4px;border-radius:2px;
+  letter-spacing:.3px;text-transform:uppercase;
+}
+.shell-gallery-empty{font-size:9px;color:var(--fg-4);text-align:center;padding:12px 0}
+
+/* ── Folder customization ──────────────────────────────── */
+.shell-folder-list{display:flex;flex-direction:column;gap:4px;margin-top:6px}
+.shell-folder-item{
+  display:flex;align-items:center;gap:6px;padding:4px 6px;
+  background:var(--bg-inset);border:1px solid var(--line-2);border-radius:var(--r-sm);
+  font-size:9.5px;color:var(--fg-2);cursor:default;transition:border-color .15s;
+}
+.shell-folder-item:hover{border-color:var(--line)}
+.shell-folder-item .folder-icon{font-size:12px;flex:0 0 auto;width:14px;text-align:center}
+.shell-folder-item .folder-name{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.shell-folder-item .folder-actions{display:flex;gap:3px;flex:0 0 auto}
+
+/* ── Start menu toggles ────────────────────────────────── */
+.shell-start-toggles{display:flex;flex-direction:column;gap:5px;margin-top:6px}
+.shell-start-action{margin-top:6px;display:flex;gap:4px;flex-wrap:wrap}
+
+/* ── Transitions ───────────────────────────────────────── */
+.shell-group{transition:opacity .18s ease}
+.shell-thumb{transition:border-color .18s ease}
+.shell-swatch{transition:background .18s ease,box-shadow .18s ease}
+.shell-seg-btn{transition:background .15s,color .15s,border-color .15s}
+.shell-btn{transition:background .15s,color .15s,border-color .15s}
+
+body.compact .shell-gallery{grid-template-columns:repeat(auto-fill,minmax(60px,1fr));gap:4px;max-height:160px}
+body.compact .shell-desktop-preview{height:46px}
+body.compact .shell-color-dot{width:15px;height:15px}

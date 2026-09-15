@@ -490,6 +490,7 @@ function extractAccentFromWallpaper(filePath) {
 
 // ── Wallpaper ────────────────────────────────────────────
 const DESKTOP_KEY = 'HKCU\\Control Panel\\Desktop';
+const EXPLORER_ADV_KEY = 'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced';
 
 async function getWallpaper() {
   const wp = await queryValue(DESKTOP_KEY, 'Wallpaper');
@@ -596,13 +597,21 @@ module.exports = {
   // theme
   getTheme, setDark,
   // accent
-  getAccent, setAccent, averageAccentRgb, extractAccentFromWallpaper,
+  getAccent, setAccent, setAccentHex, averageAccentRgb, extractAccentFromWallpaper,
   rgbToHex, decodeAbgr, decodeArgb, encodeAbgr, encodeArgb,
   validateImagePath, wallpaperPreview,
   // wallpaper
   getWallpaper, applyWallpaper, systemParametersInfoWallpaper, refreshThemeChange, helperPath,
+  // wallpaper gallery
+  listWallpapers, wallpaperGalleryPreview, openInExplorer,
+  // folder customization
+  readFolderCustomization, writeFolderCustomization, listSpecialFolders,
+  // start menu
+  getStartMenuState, setStartMenuToggle, openWindowsPersonalization,
+  // extended state
+  getExtendedState,
   // constants worth documenting
-  constants: { STUCK_KEY, STUCK_VALUE, POSITION_BYTE, AUTOHIDE_BYTE, AUTOHIDE_BIT, POSITION_NAMES, PERSONALIZE_KEY, DWM_KEY, DESKTOP_KEY, MAX_SAMPLE_DIM },
+  constants: { STUCK_KEY, STUCK_VALUE, POSITION_BYTE, AUTOHIDE_BYTE, AUTOHIDE_BIT, POSITION_NAMES, PERSONALIZE_KEY, DWM_KEY, DESKTOP_KEY, EXPLORER_ADV_KEY, MAX_SAMPLE_DIM },
   // used by the CLI below and by tests
   _internal: { queryValue, queryDword, writeDword, readBinary, writeBinary, parseQueryLine }
 };
@@ -620,9 +629,416 @@ if (require.main === module) {
       case 'wallpaper': print(await getWallpaper()); break;
       case 'accent-from-wallpaper': print(await accentFromWallpaper(process.argv[3])); break;
       case 'restart-explorer': print(await restartExplorer({ dryRun: true })); break;
+      case 'start-menu': print(await getStartMenuState()); break;
+      case 'folders': print(await listSpecialFolders()); break;
+      case 'wallpapers': print(await listWallpapers(process.argv[3])); break;
       default:
-        console.error('usage: node src/shell/taskbar.js [state|taskbar|theme|accent|wallpaper|accent-from-wallpaper <path>|restart-explorer]');
+        console.error('usage: node src/shell/taskbar.js [state|taskbar|theme|accent|wallpaper|start-menu|folders|wallpapers|accent-from-wallpaper <path>|restart-explorer]');
         process.exit(2);
     }
   })().catch((e) => { console.error(TAG, e && e.stack ? e.stack : e); process.exit(1); });
 }
+
+// ═══════════════════════════════════════════════════════
+// NEW: Wallpaper gallery, folder customization, Start menu, accent picker
+// ═══════════════════════════════════════════════════════
+
+// ── Wallpaper gallery ────────────────────────────────────
+const WALLPAPER_DIR_KEY = 'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Wallpapers';
+const WALLPAPER_EXT = /\.(jpe?g|png|bmp|webp|gif|tiff?|avif|webm|mp4)$/i;
+const ANIMATED_EXT = /\.(webm|mp4)$/i;
+
+/**
+ * List wallpaper files from a directory (default: user's Pictures\Wallpaper).
+ * Returns { ok, files: [{ name, path, isAnimated, size }] }.
+ * The renderer never receives raw file paths it can choose — it gets a
+ * gallery list and the main process validates the selection on apply.
+ */
+async function listWallpapers(dirPath) {
+  const homeDir = os.homedir();
+  const defaultDir = path.join(homeDir, 'Pictures', 'Wallpaper');
+  const target = dirPath || defaultDir;
+
+  async function scanDir(dir) {
+    return new Promise((resolve) => {
+      fs.readdir(dir, { withFileTypes: true }, (err, entries) => {
+        if (err) return resolve({ ok: false, error: err.message, files: [] });
+        const files = [];
+        for (const entry of entries) {
+          if (entry.isDirectory()) continue;
+          if (!WALLPAPER_EXT.test(entry.name)) continue;
+          const fullPath = path.join(dir, entry.name);
+          let stat;
+          try { stat = fs.statSync(fullPath); } catch (_) { continue; }
+          if (!stat.isFile()) continue;
+          files.push({
+            name: entry.name,
+            path: fullPath,
+            isAnimated: ANIMATED_EXT.test(entry.name),
+            size: stat.size
+          });
+        }
+        resolve({ ok: true, files, dir });
+      });
+    });
+  }
+
+  // Scan target + subfolders one level deep
+  const mainResult = await scanDir(target);
+  if (!mainResult.ok && !dirPath) {
+    // Default dir doesn't exist yet — that's fine, return empty
+    return { ok: true, files: [], dir: target, exists: false };
+  }
+  if (!mainResult.ok) return mainResult;
+
+  const allFiles = mainResult.files;
+  const subDirs = [];
+  try {
+    const entries = fs.readdirSync(target, { withFileTypes: true });
+    for (const e of entries) {
+      if (e.isDirectory() && !e.name.startsWith('.')) subDirs.push(path.join(target, e.name));
+    }
+  } catch (_) { /* no subdirs readable */ }
+
+  for (const sub of subDirs) {
+    const subResult = await scanDir(sub);
+    if (subResult.ok) allFiles.push(...subResult.files);
+  }
+
+  allFiles.sort((a, b) => a.name.localeCompare(b.name));
+  return { ok: true, files: allFiles, dir: target, exists: true };
+}
+
+/**
+ * Generate a thumbnail data-URL for a wallpaper file.
+ * Works for images via nativeImage; for animated files returns a placeholder.
+ */
+function wallpaperGalleryPreview(filePath) {
+  if (ANIMATED_EXT.test(filePath)) {
+    // Cannot render video thumbnails in Electron; return a placeholder indicator
+    return { ok: true, isAnimated: true, name: path.basename(filePath), size: 0 };
+  }
+  return wallpaperPreview(filePath, 128);
+}
+
+/**
+ * Open a directory in Windows Explorer.
+ */
+function openInExplorer(dirPath) {
+  return new Promise((resolve) => {
+    const exe = IS_WINDOWS ? 'explorer.exe' : '/mnt/c/Windows/explorer.exe';
+    execFile(exe, [dirPath], { windowsHide: true, timeout: 5000 }, (err) => {
+      resolve({ ok: !err, error: err ? err.message : null });
+    });
+  });
+}
+
+// ── Folder customization (desktop.ini) ──────────────────
+const FOLDER_ICO_KEY = 'IconResource';
+const FOLDER_ICON_KEY = 'IconFile';
+
+/**
+ * Read folder customization from desktop.ini.
+ * Returns { ok, path, iconResource, iconFile, iconIndex } or { ok: false, error }.
+ */
+async function readFolderCustomization(folderPath) {
+  if (!folderPath || typeof folderPath !== 'string' || !path.isAbsolute(folderPath)) {
+    return { ok: false, error: 'folder path must be absolute' };
+  }
+
+  // Verify folder exists
+  try {
+    const st = fs.statSync(folderPath);
+    if (!st.isDirectory()) return { ok: false, error: 'not a directory: ' + folderPath };
+  } catch (e) {
+    return { ok: false, error: 'folder not found: ' + folderPath };
+  }
+
+  const iniPath = path.join(folderPath, 'desktop.ini');
+  try {
+    if (!fs.existsSync(iniPath)) {
+      return { ok: true, path: folderPath, iconResource: null, iconFile: null, iconIndex: null, hasDesktopIni: false };
+    }
+    const content = fs.readFileSync(iniPath, 'utf8');
+    // Parse the .ini format (sections and key=value)
+    let iconResource = null;
+    let iconFile = null;
+    let iconIndex = null;
+    for (const line of content.split(/\r?\n/)) {
+      const trimmed = line.trim();
+      if (trimmed.startsWith(';') || trimmed.startsWith('#') || trimmed.startsWith('[')) continue;
+      const eqIdx = trimmed.indexOf('=');
+      if (eqIdx === -1) continue;
+      const key = trimmed.slice(0, eqIdx).trim();
+      const val = trimmed.slice(eqIdx + 1).trim();
+      if (key === FOLDER_ICO_KEY) iconResource = val;
+      if (key === FOLDER_ICON_KEY) iconFile = val;
+      if (key === 'IconIndex') {
+        const n = parseInt(val, 10);
+        if (Number.isFinite(n)) iconIndex = n;
+      }
+    }
+    return { ok: true, path: folderPath, iconResource, iconFile, iconIndex, hasDesktopIni: true };
+  } catch (e) {
+    return { ok: false, error: 'cannot read desktop.ini: ' + e.message };
+  }
+}
+
+/**
+ * Write folder customization to desktop.ini.
+ * Sets the icon and marks the folder as read-only so Windows picks up desktop.ini.
+ * `iconSpec` can be:
+ *   - 'IconResource=...' format: "path.dll,-123"
+ *   - 'IconFile=...' format: "path.ico" (with optional IconIndex)
+ * Passing null for iconSpec restores the folder to defaults (removes icon entries).
+ */
+async function writeFolderCustomization(folderPath, iconSpec) {
+  if (!folderPath || !path.isAbsolute(folderPath)) {
+    return { ok: false, error: 'folder path must be absolute' };
+  }
+  try {
+    const st = fs.statSync(folderPath);
+    if (!st.isDirectory()) return { ok: false, error: 'not a directory: ' + folderPath };
+  } catch (e) {
+    return { ok: false, error: 'folder not found: ' + folderPath };
+  }
+
+  const iniPath = path.join(folderPath, 'desktop.ini');
+
+  // Read existing content (or start fresh)
+  let lines = [];
+  let inShellSection = false;
+  if (fs.existsSync(iniPath)) {
+    lines = fs.readFileSync(iniPath, 'utf8').split(/\r?\n/);
+  }
+
+  // Remove existing icon lines from [.ShellClassInfo]
+  const filtered = [];
+  let foundShellSection = false;
+  let skipIcon = false;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const trimmed = line.trim().toLowerCase();
+    if (/^\[\.shellclassinfo\]/i.test(trimmed)) {
+      foundShellSection = true;
+      inShellSection = true;
+      filtered.push(line);
+      continue;
+    }
+    if (inShellSection) {
+      if (/^\[/.test(trimmed)) {
+        inShellSection = false;
+        // Insert new icon lines before the next section
+        if (iconSpec) {
+          filtered.push(...iconLines(iconSpec));
+        }
+        filtered.push(line);
+        skipIcon = true;
+        continue;
+      }
+      // Skip old icon lines
+      if (/^(iconresource|iconfile|iconindex)\s*=/i.test(trimmed)) continue;
+      filtered.push(line);
+      continue;
+    }
+    filtered.push(line);
+  }
+
+  // If we were still in the section at EOF, and haven't written icon lines yet
+  if (inShellSection && iconSpec && !skipIcon) {
+    filtered.push(...iconLines(iconSpec));
+  }
+
+  // If no [.ShellClassInfo] section existed, add one
+  if (!foundShellSection) {
+    filtered.unshift('[.ShellClassInfo]');
+    if (iconSpec) {
+      filtered.splice(1, 0, ...iconLines(iconSpec));
+    }
+  }
+
+  // Restore defaults: if iconSpec is null, we've already removed icon lines
+  // If no icon spec and section is empty (just the header), remove it
+  if (!iconSpec) {
+    const cleaned = [];
+    let inShell = false;
+    let shellHasContent = false;
+    for (const line of filtered) {
+      if (/^\[\.shellclassinfo\]/i.test(line.trim())) {
+        inShell = true;
+        continue;
+      }
+      if (inShell && /^\[/.test(line.trim())) {
+        inShell = false;
+      }
+      if (inShell) {
+        shellHasContent = true;
+      }
+      cleaned.push(line);
+    }
+    // If the section only had icon lines (now removed), skip the header too
+    if (!shellHasContent) {
+      // Remove the [.ShellClassInfo] header we skipped
+      const finalLines = cleaned.filter(l => !/^\[\.shellclassinfo\]/i.test(l.trim()));
+      return writeIniAndAttrib(iniPath, finalLines, folderPath);
+    }
+  }
+
+  return writeIniAndAttrib(iniPath, filtered, folderPath);
+}
+
+function iconLines(iconSpec) {
+  const lines = [];
+  // iconSpec format: "path.dll,-123" or "path.ico" or "path.dll,iconIndex"
+  if (/,-?\d+$/i.test(iconSpec)) {
+    const lastComma = iconSpec.lastIndexOf(',');
+    const resource = iconSpec.slice(0, lastComma);
+    const idx = iconSpec.slice(lastComma + 1);
+    lines.push('IconResource=' + resource + ',' + idx);
+  } else {
+    lines.push('IconResource=' + iconSpec);
+    lines.push('IconIndex=0');
+  }
+  return lines;
+}
+
+function writeIniAndAttrib(iniPath, lines, folderPath) {
+  // Remove trailing empty lines, add one final newline
+  while (lines.length > 0 && lines[lines.length - 1].trim() === '') lines.pop();
+  const content = lines.join('\r\n') + '\r\n';
+
+  try {
+    // Write as UTF-16LE with BOM (Windows expects this for desktop.ini)
+    const bom = Buffer.from([0xff, 0xfe]);
+    const utf16le = Buffer.from(content, 'utf16le');
+    fs.writeFileSync(iniPath, Buffer.concat([bom, utf16le]));
+
+    // Set file attributes: hidden + system so Windows respects it
+    const attrExe = IS_WINDOWS ? 'attrib.exe' : '/mnt/c/Windows/System32/attrib.exe';
+    try {
+      execFile.sync(attrExe, ['+H', '+S', iniPath], { windowsHide: true, timeout: 3000 });
+    } catch (_) { /* best effort */ }
+    try {
+      execFile.sync(attrExe, ['+R', folderPath], { windowsHide: true, timeout: 3000 });
+    } catch (_) { /* best effort */ }
+
+    return { ok: true, path: folderPath };
+  } catch (e) {
+    return { ok: false, error: 'write failed: ' + e.message };
+  }
+}
+
+/**
+ * List special user folders with their paths.
+ */
+function listSpecialFolders() {
+  const home = os.homedir();
+  const folders = [
+    { id: 'Desktop', name: 'Desktop', path: path.join(home, 'Desktop') },
+    { id: 'Documents', name: 'Documents', path: path.join(home, 'Documents') },
+    { id: 'Downloads', name: 'Downloads', path: path.join(home, 'Downloads') },
+    { id: 'Pictures', name: 'Pictures', path: path.join(home, 'Pictures') },
+    { id: 'Videos', name: 'Videos', path: path.join(home, 'Videos') },
+    { id: 'Music', name: 'Music', path: path.join(home, 'Music') }
+  ];
+  const result = [];
+  for (const f of folders) {
+    try {
+      fs.accessSync(f.path);
+      result.push({ ...f, exists: true });
+    } catch (_) {
+      result.push({ ...f, exists: false });
+    }
+  }
+  return { ok: true, folders: result };
+}
+
+// ── Start menu personalization ───────────────────────────
+
+async function getStartMenuState() {
+  const results = {};
+  const keys = [
+    { name: 'Start_TrackDocs', key: 'showRecentApps', default: 1 },
+    { name: 'Start_TrackProgs', key: 'showSuggestions', default: 1 },
+    { name: 'StartMenuSettings', key: 'compactMode', default: null },
+    { name: 'Start_Layout', key: 'fullScreenStart', default: 0 }
+  ];
+
+  for (const entry of keys) {
+    const v = await queryDword(EXPLORER_ADV_KEY, entry.name);
+    if (v.ok) {
+      results[entry.key] = v.value;
+    } else {
+      results[entry.key] = entry.default;
+    }
+  }
+
+  // Start_TrackDocs: 1 = show recent apps, 0 = hide
+  results.showRecentApps = results.showRecentApps === 1;
+  // Start_TrackProgs: 1 = show suggestions, 0 = hide
+  results.showSuggestions = results.showSuggestions === 1;
+  // fullScreenStart: 1 = full screen, 0 = classic
+  results.fullScreenStart = results.fullScreenStart === 1;
+
+  return { ok: true, ...results };
+}
+
+async function setStartMenuToggle(name, enabled) {
+  const on = !!enabled;
+  const map = {
+    showRecentApps: 'Start_TrackDocs',
+    showSuggestions: 'Start_TrackProgs',
+    fullScreenStart: 'Start_Layout'
+  };
+  const regName = map[name];
+  if (!regName) return { ok: false, error: 'unknown start menu toggle: ' + name };
+  const value = on ? 1 : 0;
+  const res = await writeDword(EXPLORER_ADV_KEY, regName, value);
+  if (!res.ok) return res;
+  return { ok: true, name, enabled: on };
+}
+
+function openWindowsPersonalization() {
+  return new Promise((resolve) => {
+    const exe = IS_WINDOWS ? 'cmd.exe' : '/mnt/c/Windows/System32/cmd.exe';
+    const args = IS_WINDOWS
+      ? ['/c', 'start', 'ms-settings:personalization']
+      : ['/c', '/mnt/c/Windows/System32/cmd.exe', '/c', 'start', 'ms-settings:personalization'];
+    execFile(exe, args, { windowsHide: true, timeout: 5000 }, (err) => {
+      resolve({ ok: !err, error: err ? err.message : null });
+    });
+  });
+}
+
+// ── Accent color picker (custom hex) ────────────────────
+async function setAccentHex(hex) {
+  // Parse #RRGGBB or RRGGBB
+  const clean = String(hex).replace(/^#/, '');
+  if (!/^[0-9a-fA-F]{6}$/.test(clean)) {
+    return { ok: false, error: 'invalid hex colour: ' + hex };
+  }
+  const r = parseInt(clean.slice(0, 2), 16);
+  const g = parseInt(clean.slice(2, 4), 16);
+  const b = parseInt(clean.slice(4, 6), 16);
+  return setAccent({ r, g, b }, { auto: false });
+}
+
+// ── Extended getState (includes new data) ────────────────
+// Patch: getState above is already defined; we augment via module exports.
+// The getState function above already reads taskbar+theme+accent+wallpaper.
+// We add a new function for extended state.
+async function getExtendedState() {
+  const base = await getState();
+  if (!base.ok) return base;
+
+  const [startMenu, specialFolders] = await Promise.all([
+    getStartMenuState(),
+    listSpecialFolders()
+  ]);
+
+  return Object.assign(base, {
+    startMenu: startMenu.ok ? startMenu : { ok: false, error: startMenu.error },
+    specialFolders
+  });
+}
+
