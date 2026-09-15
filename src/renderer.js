@@ -1,560 +1,300 @@
-// ═══════════════════════════════════════════════════════
-// SysGlance — renderer
-//
-// Runs sandboxed with contextIsolation: the only contact with the system is
-// `window.sysglance` (see src/preload.js). No Node, no ipcRenderer, no
-// filesystem access from here.
-//
-// Updates are batched in requestAnimationFrame; the fast metrics tier arrives
-// every ~1.5 s (in-process, `os` module) and the hardware tier every 5–10 s.
-// ═══════════════════════════════════════════════════════
-
 (function () {
   'use strict';
 
   var api = window.sysglance;
-  if (!api) {
-    document.body.innerHTML = '<div style="padding:12px;font:12px monospace;color:#ff6b6b">' +
-      'SysGlance preload bridge unavailable — run through Electron (npm start).</div>';
-    return;
-  }
+  if (!api) return;
 
-  // ── DOM cache ──────────────────────────────────────────
   var $ = function (id) { return document.getElementById(id); };
-  var dom = {
-    cpuLoad: $('cpu-load'), cpuBar: $('cpu-bar'), cpuModel: $('cpu-model'), cpuTemp: $('cpu-temp'),
-    cpuSpeed: $('cpu-speed'), cpuCores: $('cpu-cores'), cpuPercore: $('cpu-percore'),
-    memPct: $('mem-pct'), memBar: $('mem-bar'), memUsed: $('mem-used'), memSwap: $('mem-swap'),
-    gpuLoad: $('gpu-load'), gpuName: $('gpu-name'), gpuBars: $('gpu-bars'),
-    fsHome: $('fs-home'), fsFolders: $('fs-folders'), secFs: $('sec-filesystem'),
-    secGpu: $('sec-gpu'),
-    diskList: $('disk-list'),
-    netIface: $('net-iface'), netRx: $('net-rx'), netTx: $('net-tx'),
-    procList: $('proc-list'),
-    batPct: $('bat-pct'), batBar: $('bat-bar'), batStatus: $('bat-status'), secBattery: $('sec-battery'),
-    osDistro: $('os-distro'), osUptime: $('os-uptime'),
-    btnLock: $('btn-lock'), btnSettings: $('btn-settings'), btnMinimize: $('btn-minimize'),
-    statusClock: $('status-clock'), perfReadout: $('perf-readout'), appVersion: $('app-version'),
-    content: $('content'),
-    suiteVersion: $('suite-version'),
-    settingsPanel: $('settings-panel'), btnCloseSettings: $('btn-close-settings'),
-    settingsOpacity: $('settings-opacity'), settingsRefresh: $('settings-refresh'), settingsSlow: $('settings-slow'),
-    opacityVal: $('opacity-val'), refreshVal: $('refresh-val'), slowVal: $('slow-val'),
-    btnLockSettings: $('btn-lock-settings'), btnCompactSettings: $('btn-compact-settings'),
-    layoutOptions: $('layout-options'), anchorOptions: $('anchor-options'),
-    themeOptions: $('theme-options'), sectionToggles: $('section-toggles'),
-    appInfo: $('app-info'), metricInfo: $('metric-info')
-  };
+  var state = { config: {}, locked: false, diskSig: '', procSig: '', folderSig: '' };
+  var sections = ['cpu','memory','gpu','network','disks','processes','filesystem','battery'];
 
-  // ── state ─────────────────────────────────────────────
-  var positionLocked = true;
-  var currentConfig = {};
+  function setText(el, value) {
+    if (!el) return;
+    var next = value == null ? '' : String(value);
+    if (el.textContent !== next) el.textContent = next;
+  }
 
-  var SECTION_IDS = ['cpu', 'memory', 'gpu', 'filesystem', 'disks', 'network', 'processes', 'battery'];
+  function setWidth(el, pct) {
+    if (!el) return;
+    var n = Math.max(0, Math.min(100, Number(pct) || 0));
+    var v = n.toFixed(1) + '%';
+    if (el.style.width !== v) el.style.width = v;
+  }
 
-  // ── formatting ────────────────────────────────────────
-  function fmtBytes(b) {
-    if (b < 1024) return b + ' B';
-    if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
-    if (b < 1073741824) return (b / 1048576).toFixed(1) + ' MB';
-    return (b / 1073741824).toFixed(1) + ' GB';
-  }
-  function fmtSpeed(b) {
-    if (b < 1024) return b.toFixed(0) + ' B/s';
-    if (b < 1048576) return (b / 1024).toFixed(1) + ' KB/s';
-    return (b / 1048576).toFixed(1) + ' MB/s';
-  }
-  function fmtUptime(s) {
-    var d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60);
-    if (d > 0) return d + 'd ' + h + 'h';
-    if (h > 0) return h + 'h ' + m + 'm';
-    return m + 'm';
-  }
-  function loadClass(p) { return p >= 90 ? 'danger' : p >= 70 ? 'warn' : ''; }
-  // Assigning textContent unconditionally invalidates style and layout even when
-  // the value is identical. Every value that updates on a timer goes through
-  // these, so a steady reading costs no repaint at all.
-  function setText(el, v) { if (el && el.textContent !== v) el.textContent = v; }
-  function setWidth(el, pct) { var w = pct + '%'; if (el && el.style.width !== w) el.style.width = w; }
-  function esc(s) {
-    return String(s).replace(/[&<>"']/g, function (c) {
-      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  function esc(value) {
+    return String(value == null ? '' : value).replace(/[&<>"']/g, function (c) {
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
     });
   }
-  // Sliders paint their filled track from --fill, so the control reads at a
-  // glance instead of being a bare line with a floating knob.
-  function setSliderFill(input) {
+
+  function loadClass(value) {
+    var n = Number(value) || 0;
+    return n >= 90 ? 'danger' : n >= 72 ? 'warn' : '';
+  }
+
+  function paintMeter(el, value, invert) {
+    if (!el) return;
+    setWidth(el, value);
+    var severity = invert ? 100 - Number(value || 0) : Number(value || 0);
+    el.className = 'meter-fill ' + loadClass(severity);
+  }
+
+  function fmtBytes(bytes) {
+    var n = Number(bytes) || 0;
+    if (n < 1024) return Math.round(n) + ' B';
+    if (n < 1048576) return (n / 1024).toFixed(1) + ' KB';
+    if (n < 1073741824) return (n / 1048576).toFixed(1) + ' MB';
+    if (n < 1099511627776) return (n / 1073741824).toFixed(1) + ' GB';
+    return (n / 1099511627776).toFixed(1) + ' TB';
+  }
+
+  function fmtSpeed(bytes) {
+    var n = Number(bytes) || 0;
+    if (n < 1024) return Math.round(n) + ' B/s';
+    if (n < 1048576) return (n / 1024).toFixed(1) + ' KB/s';
+    if (n < 1073741824) return (n / 1048576).toFixed(1) + ' MB/s';
+    return (n / 1073741824).toFixed(1) + ' GB/s';
+  }
+
+  function fmtUptime(seconds) {
+    var s = Math.max(0, Number(seconds) || 0);
+    var d = Math.floor(s / 86400);
+    var h = Math.floor((s % 86400) / 3600);
+    var m = Math.floor((s % 3600) / 60);
+    return d ? d + 'd ' + h + 'h' : h ? h + 'h ' + m + 'm' : m + 'm';
+  }
+
+  function sliderFill(input) {
     if (!input) return;
-    var min = Number(input.min) || 0, max = Number(input.max) || 100, v = Number(input.value) || 0;
-    var pct = max > min ? ((v - min) / (max - min)) * 100 : 0;
-    input.style.setProperty('--fill', Math.max(0, Math.min(100, pct)).toFixed(1) + '%');
+    var min = Number(input.min) || 0;
+    var max = Number(input.max) || 100;
+    var value = Number(input.value) || 0;
+    var pct = max > min ? ((value - min) / (max - min)) * 100 : 0;
+    input.style.setProperty('--fill', pct.toFixed(1) + '%');
   }
-  var FOLDER_ICON = '<svg class="ic" viewBox="0 0 24 24"><use href="#i-files"/></svg>';
 
-  // ── clock ─────────────────────────────────────────────
-  // Minute precision is all a clock needs: schedule the next repaint for the
-  // top of the next minute instead of firing once a second for nothing.
   function updateClock() {
-    setText(dom.statusClock, new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }));
+    setText($('status-clock'), new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }));
   }
-  function startClock() {
-    updateClock();
-    var now = new Date();
-    var delay = (60 - now.getSeconds()) * 1000 - now.getMilliseconds() + 40;
-    setTimeout(startClock, delay);
-  }
-  startClock();
-  document.addEventListener('visibilitychange', function () { if (!document.hidden) updateClock(); });
-  window.addEventListener('focus', updateClock);
+  updateClock();
+  setInterval(updateClock, 30000);
 
-  // ── collapsible cards ─────────────────────────────────
-  // One delegated listener covers every card, including the Shell panel that
-  // shell/panel.js injects after this file has already run. Collapsing keeps the
-  // card's headline value visible, so a folded card still tells you the number.
-  var COLLAPSIBLE = ['cpu', 'memory', 'gpu', 'filesystem', 'disks', 'network', 'processes', 'battery', 'shell'];
+  function applyConfig(cfg) {
+    if (!cfg) return;
+    state.config = cfg;
+    document.body.setAttribute('data-theme', cfg.theme || 'dark');
+    document.body.setAttribute('data-layout', cfg.layout || 'sidebar');
 
-  function sectionKey(sec) {
-    if (!sec || !sec.id) return null;
-    var key = sec.id.replace(/^sec-/, '');
-    return COLLAPSIBLE.indexOf(key) === -1 ? null : key;
-  }
-
-  function applyCollapsed(cfg) {
-    var list = (cfg && cfg.collapsedSections) || [];
-    document.querySelectorAll('.section').forEach(function (sec) {
-      var key = sectionKey(sec);
-      var header = sec.querySelector('.section-header');
-      if (!key || !header) return;
-      var collapsed = list.indexOf(key) !== -1;
-      sec.classList.toggle('is-collapsed', collapsed);
-      header.setAttribute('role', 'button');
-      header.setAttribute('tabindex', '0');
-      header.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
-      header.title = collapsed ? 'Expand' : 'Collapse';
+    var visible = cfg.showSections || {};
+    sections.forEach(function (key) {
+      var el = $('sec-' + key);
+      if (el) el.classList.toggle('hidden-section', visible[key] === false);
     });
+
+    document.querySelectorAll('#layout-options button').forEach(function (b) { b.classList.toggle('active', b.dataset.layout === cfg.layout); });
+    document.querySelectorAll('#theme-options button').forEach(function (b) { b.classList.toggle('active', b.dataset.theme === cfg.theme); });
+    document.querySelectorAll('#anchor-options button').forEach(function (b) { b.classList.toggle('active', b.dataset.anchor === cfg.anchor); });
+    document.querySelectorAll('#section-toggles input').forEach(function (cb) { cb.checked = visible[cb.dataset.section] !== false; });
+
+    var opacity = Math.round((cfg.opacity || .94) * 100);
+    $('settings-opacity').value = opacity;
+    setText($('opacity-val'), opacity + '%');
+    $('settings-refresh').value = cfg.refreshInterval || 1500;
+    setText($('refresh-val'), ((cfg.refreshInterval || 1500) / 1000).toFixed(2).replace(/0+$/,'').replace(/\.$/,'') + 's');
+    $('settings-slow').value = cfg.slowInterval || 7000;
+    setText($('slow-val'), ((cfg.slowInterval || 7000) / 1000).toFixed(0) + 's');
+    sliderFill($('settings-opacity'));
+    sliderFill($('settings-refresh'));
+    sliderFill($('settings-slow'));
   }
 
-  function toggleSection(sec) {
-    var key = sectionKey(sec);
-    if (!key) return;
-    var list = ((currentConfig && currentConfig.collapsedSections) || []).slice();
-    var i = list.indexOf(key);
-    if (i === -1) list.push(key); else list.splice(i, 1);
-    currentConfig.collapsedSections = list;
-    applyCollapsed(currentConfig);
-    api.setConfig('collapsedSections', list);
-  }
-
-  function sectionFromEvent(ev) {
-    if (!ev.target || !ev.target.closest) return null;
-    var header = ev.target.closest('.section-header');
-    if (!header) return null;
-    if (ev.target.closest('button')) return null;   // the Shell card has one
-    return header.parentElement;
-  }
-
-  dom.content.addEventListener('click', function (ev) {
-    var sec = sectionFromEvent(ev);
-    if (sec) toggleSection(sec);
-  });
-  dom.content.addEventListener('keydown', function (ev) {
-    if (ev.key !== 'Enter' && ev.key !== ' ') return;
-    var sec = sectionFromEvent(ev);
-    if (sec) { ev.preventDefault(); toggleSection(sec); }
-  });
-
-  // ── settings panel ────────────────────────────────────
   function toggleSettings(show) {
-    if (show === undefined) show = dom.settingsPanel.classList.contains('hidden');
-    dom.settingsPanel.classList.toggle('hidden', !show);
+    var panel = $('settings-panel');
+    var next = show == null ? panel.classList.contains('hidden') : show;
+    panel.classList.toggle('hidden', !next);
   }
 
-  function updateSettingsUI(cfg) {
-    dom.layoutOptions.querySelectorAll('.settings-opt').forEach(function (btn) {
-      btn.classList.toggle('active', btn.dataset.layout === cfg.layout);
-    });
-    dom.anchorOptions.querySelectorAll('.settings-opt').forEach(function (btn) {
-      btn.classList.toggle('active', btn.dataset.anchor === cfg.anchor);
-    });
-    dom.themeOptions.querySelectorAll('.settings-opt').forEach(function (btn) {
-      btn.classList.toggle('active', btn.dataset.theme === cfg.theme);
-    });
-    dom.settingsOpacity.value = Math.round((cfg.opacity || 0.9) * 100);
-    dom.opacityVal.textContent = Math.round((cfg.opacity || 0.9) * 100) + '%';
-    dom.settingsRefresh.value = cfg.refreshInterval || 1500;
-    dom.refreshVal.textContent = ((cfg.refreshInterval || 1500) / 1000).toFixed(1) + 's';
-    dom.settingsSlow.value = cfg.slowInterval || 7000;
-    dom.slowVal.textContent = ((cfg.slowInterval || 7000) / 1000).toFixed(1) + 's';
-    setSliderFill(dom.settingsOpacity);
-    setSliderFill(dom.settingsRefresh);
-    setSliderFill(dom.settingsSlow);
-    var sections = cfg.showSections || {};
-    dom.sectionToggles.querySelectorAll('input[type="checkbox"]').forEach(function (cb) {
-      cb.checked = sections[cb.dataset.section] !== false;
-    });
-    dom.btnCompactSettings.textContent = cfg.compactMode ? 'Compact: on' : 'Compact mode';
-    dom.btnLockSettings.textContent = positionLocked ? 'Unlock position' : 'Lock position';
+  function renderCpu(cpu) {
+    if (!cpu) return;
+    var load = Number(cpu.load) || 0;
+    setText($('cpu-load'), load.toFixed(1));
+    paintMeter($('cpu-bar'), load, false);
+    setText($('cpu-model'), cpu.model || 'CPU');
+    var speed = cpu.speed ? (Number(cpu.speed) / 1000).toFixed(2) + ' GHz' : '';
+    setText($('cpu-speed'), [speed, cpu.cores ? cpu.cores + ' cores' : ''].filter(Boolean).join(' · '));
+    var temp = $('cpu-temp');
+    if (cpu.temp != null) {
+      setText(temp, Math.round(cpu.temp) + '°C');
+      temp.classList.remove('hidden');
+    } else temp.classList.add('hidden');
+
+    var per = cpu.perCore || [];
+    var html = '';
+    for (var i = 0; i < Math.min(per.length, 24); i++) {
+      html += '<span class="core" title="Core ' + i + ': ' + Number(per[i]).toFixed(0) + '%"><i style="height:' + Math.max(8, Math.min(100, Number(per[i]) || 0)) + '%"></i></span>';
+    }
+    if ($('cpu-percore').innerHTML !== html) $('cpu-percore').innerHTML = html;
   }
 
-  function applySectionVisibility(cfg) {
-    var sections = cfg.showSections || {};
-    SECTION_IDS.forEach(function (sec) {
-      var el = $('sec-' + sec);
-      if (!el) return;
-      var on = sections[sec] !== false;
-      if (sec === 'filesystem') on = on && cfg.showFilesystem !== false;
-      el.classList.toggle('hidden-section', !on);
-    });
-    // Shell controls only exist on hosts with a Windows registry (see panel.js).
-    var shell = $('sec-shell');
-    if (shell && shell.dataset.supported === 'false') shell.classList.add('hidden-section');
+  function renderMemory(memory) {
+    if (!memory || !memory.total) return;
+    var pct = Number(memory.percentage) || 0;
+    setText($('mem-pct'), pct.toFixed(1));
+    paintMeter($('mem-bar'), pct, false);
+    setText($('mem-used'), fmtBytes(memory.used) + ' / ' + fmtBytes(memory.total));
+    setText($('mem-swap'), memory.swapTotal > 0 ? 'swap ' + fmtBytes(memory.swapUsed) : '');
   }
 
-  // ── settings events ───────────────────────────────────
-  dom.btnSettings.addEventListener('click', function () { toggleSettings(); });
-  dom.btnCloseSettings.addEventListener('click', function () { toggleSettings(false); });
+  function renderGpu(gpus) {
+    var gpu = gpus && gpus.length ? gpus[0] : null;
+    if (!gpu) {
+      setText($('gpu-load'), '—');
+      setText($('gpu-name'), 'Not reported');
+      setText($('gpu-vram'), '');
+      setWidth($('gpu-bar'), 0);
+      $('gpu-temp').classList.add('hidden');
+      return;
+    }
+    var load = gpu.utilization == null ? 0 : Number(gpu.utilization);
+    setText($('gpu-load'), gpu.utilization == null ? '—' : load.toFixed(0));
+    paintMeter($('gpu-bar'), load, false);
+    setText($('gpu-name'), gpu.name || 'GPU');
+    if (gpu.vram && gpu.vramUsed != null) setText($('gpu-vram'), fmtBytes(gpu.vramUsed) + ' / ' + fmtBytes(gpu.vram));
+    else setText($('gpu-vram'), '');
+    if (gpu.temp != null) {
+      setText($('gpu-temp'), Math.round(gpu.temp) + '°C');
+      $('gpu-temp').classList.remove('hidden');
+    } else $('gpu-temp').classList.add('hidden');
+  }
 
-  dom.layoutOptions.addEventListener('click', function (e) {
-    var btn = e.target.closest('.settings-opt');
-    if (btn && btn.dataset.layout) api.setConfig('layout', btn.dataset.layout);
-  });
-  dom.anchorOptions.addEventListener('click', function (e) {
-    var btn = e.target.closest('.settings-opt');
-    if (btn && btn.dataset.anchor) api.setConfig('anchor', btn.dataset.anchor);
-  });
-  dom.themeOptions.addEventListener('click', function (e) {
-    var btn = e.target.closest('.settings-opt');
-    if (btn && btn.dataset.theme) api.setConfig('theme', btn.dataset.theme);
-  });
-  dom.settingsOpacity.addEventListener('input', function (e) {
-    setSliderFill(e.target);
-    dom.opacityVal.textContent = e.target.value + '%';
-    api.setOpacity(parseInt(e.target.value, 10) / 100);
-  });
-  dom.settingsRefresh.addEventListener('input', function (e) {
-    setSliderFill(e.target);
-    var val = parseInt(e.target.value, 10);
-    dom.refreshVal.textContent = (val / 1000).toFixed(1) + 's';
-    api.setConfig('refreshInterval', val);
-  });
-  dom.settingsSlow.addEventListener('input', function (e) {
-    setSliderFill(e.target);
-    var val = parseInt(e.target.value, 10);
-    dom.slowVal.textContent = (val / 1000).toFixed(1) + 's';
-    api.setConfig('slowInterval', val);
-  });
-  dom.sectionToggles.addEventListener('change', function (e) {
-    var cb = e.target;
-    if (!cb.dataset.section) return;
-    var sections = Object.assign({}, currentConfig.showSections || {});
-    sections[cb.dataset.section] = cb.checked;
-    currentConfig.showSections = sections;
-    api.setConfig('showSections', sections);
-    var sec = $('sec-' + cb.dataset.section);
-    if (sec) sec.classList.toggle('hidden-section', !cb.checked);
-  });
-  dom.btnLockSettings.addEventListener('click', function () { api.togglePositionLock(); });
-  dom.btnCompactSettings.addEventListener('click', function () { api.toggleCompact(); });
-  dom.btnLock.addEventListener('click', function () { api.togglePositionLock(); });
-  dom.btnMinimize.addEventListener('click', function () { api.toggleVisibility(); });
+  function renderNetwork(net) {
+    if (!net) return;
+    setText($('net-iface'), net.iface || 'network');
+    setText($('net-rx'), fmtSpeed(net.rx_sec));
+    setText($('net-tx'), fmtSpeed(net.tx_sec));
+  }
 
-  var fsSignature = '';   // avoids rebuilding the folder grid (and losing focus)
-  var fsStatusTimer = null;
+  function renderDisks(disks) {
+    var list = disks || [];
+    if (!list.length) {
+      setText($('disk-summary'), 'No storage data');
+      $('disk-list').innerHTML = '';
+      state.diskSig = '';
+      return;
+    }
+    setText($('disk-summary'), list.length + (list.length === 1 ? ' volume' : ' volumes'));
+    var sig = list.map(function (d) { return [d.mount,d.fs,d.use,d.used,d.size].join(':'); }).join('|');
+    if (sig === state.diskSig) return;
+    state.diskSig = sig;
+    $('disk-list').innerHTML = list.slice(0, 4).map(function (d) {
+      var use = Math.max(0, Math.min(100, Number(d.use) || 0));
+      return '<div class="disk-item"><span class="disk-name">' + esc(d.mount || d.fs || 'Disk') + '</span>' +
+        '<span class="disk-pct">' + use.toFixed(0) + '%</span>' +
+        '<div class="meter"><div class="meter-fill ' + loadClass(use) + '" style="width:' + use + '%"></div></div>' +
+        '<span class="disk-size">' + esc(fmtBytes(d.used) + ' / ' + fmtBytes(d.size)) + '</span></div>';
+    }).join('');
+  }
 
-  /** Brief message in the section header, then back to the home path. */
-  function fsStatus(text) {
-    if (!dom.fsHome) return;
-    var home = (currentConfig && currentConfig.fsHomeLabel) || dom.fsHome.dataset.home || '';
-    dom.fsHome.textContent = text;
-    dom.fsHome.classList.add('is-alert');
-    if (fsStatusTimer) clearTimeout(fsStatusTimer);
-    fsStatusTimer = setTimeout(function () {
-      dom.fsHome.textContent = home;
-      dom.fsHome.classList.remove('is-alert');
-    }, 2600);
+  function renderProcesses(processes) {
+    var list = processes || [];
+    var sig = list.map(function (p) { return [p.name,p.cpu,p.mem].join(':'); }).join('|');
+    if (sig === state.procSig) return;
+    state.procSig = sig;
+    $('proc-list').innerHTML = list.slice(0, 5).map(function (p, i) {
+      return '<div class="proc-row"><span class="proc-rank">' + (i + 1) + '</span><span class="proc-name">' + esc(p.name) + '</span>' +
+        '<span class="proc-cpu">' + Number(p.cpu || 0).toFixed(1) + '%</span><span class="proc-mem">' + Number(p.mem || 0).toFixed(1) + '%</span></div>';
+    }).join('');
   }
 
   function renderFolders(fs) {
-    var folders = (fs && fs.folders) || [];
-    var signature = fs ? fs.home + '|' + folders.map(function (f) { return f.name + ':' + f.count; }).join(',') : '';
-
-    if (!folders.length) {
-      dom.fsHome.dataset.home = '';
-      dom.fsHome.textContent = '';
-      if (fsSignature !== 'empty') {
-        fsSignature = 'empty';
-        dom.fsFolders.innerHTML = '<div class="fs-empty">No Desktop, Documents, Downloads, Pictures, Videos or Music folder found in the home directory.</div>';
-      }
-      return;
-    }
-
-    var label = String(fs.home).replace(/^\/home\/[^/]+/, '~');
-    dom.fsHome.dataset.home = label;
-    if (!dom.fsHome.classList.contains('is-alert')) dom.fsHome.textContent = label;
-
-    if (signature === fsSignature) return;   // nothing to repaint
-    fsSignature = signature;
-
-    var html = '';
-    for (var i = 0; i < folders.length; i++) {
-      var folder = folders[i];
-      var items = folder.count === 1 ? '1 item' : folder.count + ' items';
-      html += '<div class="fs-item" role="button" tabindex="0" data-path="' + esc(folder.path) + '"' +
-        ' title="' + esc(folder.path) + '" aria-label="Open ' + esc(folder.name) + ', ' + items + '">' +
-        '<span class="fs-item-icon">' + FOLDER_ICON + '</span>' +
-        '<span class="fs-item-info"><span class="fs-item-name">' + esc(folder.name) + '</span>' +
-        '<span class="fs-item-count">' + items + '</span></span>' +
-        '<span class="fs-item-go"><svg class="ic" viewBox="0 0 24 24"><use href="#i-open"/></svg></span>' +
-        '</div>';
-    }
-    dom.fsFolders.innerHTML = html;
-
-    dom.fsFolders.querySelectorAll('.fs-item').forEach(function (node) {
-      var open = function () {
-        api.openFolder(node.dataset.path).then(function (res) {
-          if (!res || res.ok === false) fsStatus('Could not open ' + (node.dataset.path || '').split(/[\\/]/).pop());
-        }).catch(function () { fsStatus('Could not open folder'); });
-      };
-      node.addEventListener('click', open);
-      node.addEventListener('keydown', function (ev) {
-        if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); open(); }
-      });
+    var folders = fs && fs.folders ? fs.folders : [];
+    setText($('fs-home'), fs && fs.home ? String(fs.home).replace(/^\/home\/[^/]+/, '~') : '');
+    var sig = folders.map(function (f) { return [f.name,f.path,f.count].join(':'); }).join('|');
+    if (sig === state.folderSig) return;
+    state.folderSig = sig;
+    $('fs-folders').innerHTML = folders.slice(0, 6).map(function (f) {
+      return '<button class="folder-chip" data-path="' + esc(f.path) + '" title="' + esc(f.path) + '"><svg class="ic" viewBox="0 0 24 24"><use href="#i-files"/></svg><span>' + esc(f.name) + '</span><small>' + Number(f.count || 0) + '</small></button>';
+    }).join('');
+    document.querySelectorAll('.folder-chip').forEach(function (button) {
+      button.addEventListener('click', function () { api.openFolder(button.dataset.path); });
     });
   }
 
-  // ── rAF-batched rendering ─────────────────────────────
-  var pendingData = null, rafScheduled = false;
-
-  // ── Incremental render caches (avoid innerHTML every 1.5s) ──
-  var cpuCoreCount = 0;
-  var gpuSignature = '';
-  var diskSignature = '';
-  var procSignature = '';
-
-  function scheduleUpdate(data) {
-    pendingData = data;
-    if (!rafScheduled) { rafScheduled = true; requestAnimationFrame(applyUpdate); }
+  function renderBattery(battery) {
+    var card = $('sec-battery');
+    var allowed = !state.config.showSections || state.config.showSections.battery !== false;
+    if (!battery || !allowed) {
+      card.classList.add('hidden-section');
+      return;
+    }
+    card.classList.remove('hidden-section');
+    setText($('bat-pct'), Math.round(battery.percent) + '%');
+    setText($('bat-status'), battery.charging ? 'Charging' : battery.acConnected ? 'On AC' : 'On battery');
+    paintMeter($('bat-bar'), battery.percent, true);
   }
 
-  function applyUpdate() {
-    rafScheduled = false;
-    var data = pendingData;
-    if (!data || data.error) return;
-
-    if (data.layout) document.body.setAttribute('data-layout', data.layout);
-
-    // CPU
-    if (data.cpu) {
-      var load = data.cpu.load || 0;
-      setText(dom.cpuLoad, load.toFixed(1) + '%');
-      dom.cpuBar.className = 'progress-fill ' + loadClass(load);
-      setWidth(dom.cpuBar, Math.min(load, 100));
-      setText(dom.cpuModel, data.cpu.model);
-      setText(dom.cpuCores, data.cpu.cores + ' cores');
-      setText(dom.cpuSpeed, data.cpu.speed ? (data.cpu.speed / 1000).toFixed(2) + ' GHz' : '');
-      if (data.cpu.temp != null) {
-        var hot = data.cpu.temp >= 80;
-        setText(dom.cpuTemp, data.cpu.temp.toFixed(0) + '\u00b0C');
-        dom.cpuTemp.style.display = '';
-        dom.cpuTemp.className = 'info-badge' + (hot ? ' danger' : data.cpu.temp >= 65 ? ' warn' : '');
-      } else dom.cpuTemp.style.display = 'none';
-      if (data.cpu.perCore && data.cpu.perCore.length) {
-        var html = '';
-        for (var i = 0; i < data.cpu.perCore.length; i++) {
-          var coreVal = Math.max(2, Math.min(data.cpu.perCore[i], 100));
-          html += '<div class="core-bar" title="Core ' + i + ' \u2014 ' + data.cpu.perCore[i] + '%"><div class="core-fill ' +
-            loadClass(data.cpu.perCore[i]) + '" style="height:' + coreVal + '%"></div></div>';
-        }
-        dom.cpuPercore.innerHTML = html;
-      }
-    }
-
-    // Memory
-    if (data.memory) {
-      var pct = data.memory.percentage || 0;
-      setText(dom.memPct, pct.toFixed(1) + '%');
-      dom.memBar.className = 'progress-fill ' + loadClass(pct);
-      setWidth(dom.memBar, Math.min(pct, 100));
-      setText(dom.memUsed, fmtBytes(data.memory.used) + ' / ' + fmtBytes(data.memory.total));
-      setText(dom.memSwap, data.memory.swapTotal > 0
-        ? 'Swap: ' + fmtBytes(data.memory.swapUsed) + '/' + fmtBytes(data.memory.swapTotal) : '');
-    }
-
-    // GPU
-    if (data.gpu && data.gpu.length > 0) {
-      var gpu = data.gpu[0];
-      dom.gpuName.textContent = gpu.name;
-      dom.gpuLoad.textContent = gpu.utilization != null ? gpu.utilization + '%' : '—';
-      var bars = '';
-      if (gpu.utilization != null) {
-        bars += '<div class="disk-item"><div class="disk-label"><span class="disk-fs">GPU Load</span><span class="disk-pct">' + gpu.utilization +
-          '%</span></div><div class="progress-bar"><div class="progress-fill ' + loadClass(gpu.utilization) + '" style="width:' + Math.min(gpu.utilization, 100) + '%"></div></div></div>';
-      }
-      if (gpu.vram != null && gpu.vramUsed != null) {
-        var vr = gpu.vram > 0 ? ((gpu.vramUsed / gpu.vram) * 100) : 0;
-        bars += '<div class="disk-item"><div class="disk-label"><span class="disk-fs">VRAM</span><span class="disk-pct">' + fmtBytes(gpu.vramUsed) + ' / ' + fmtBytes(gpu.vram) +
-          '</span></div><div class="progress-bar"><div class="progress-fill ' + loadClass(vr) + '" style="width:' + Math.min(vr, 100) + '%"></div></div></div>';
-      }
-      if (gpu.temp != null) bars += '<div class="info-row info-row-secondary"><span class="info-small">' + gpu.temp + ' \u00b0C</span></div>';
-      dom.gpuBars.innerHTML = bars;
-      dom.secGpu.classList.remove('is-empty');
-    } else {
-      dom.gpuLoad.textContent = '';
-      dom.gpuName.textContent = 'No GPU reported on this system';
-      dom.gpuName.classList.add('is-empty');
-      dom.gpuBars.innerHTML = '';
-      dom.secGpu.classList.add('is-empty');
-    }
-
-    // Filesystem folders
+  function render(data) {
+    if (!data) return;
+    if (data.config) applyConfig(data.config);
+    renderCpu(data.cpu);
+    renderMemory(data.memory);
+    renderGpu(data.gpu);
+    renderNetwork(data.network);
+    renderDisks(data.disks);
+    renderProcesses(data.processes);
     renderFolders(data.filesystem);
+    renderBattery(data.battery);
 
-    // Disks
-    if (data.disks && data.disks.length) {
-      var dSig = data.disks.map(function(d) { return (d.mount || d.fs) + ':' + d.use; }).join('|');
-      if (dSig !== diskSignature) {
-        diskSignature = dSig;
-        var dhtml = '';
-        for (var d = 0; d < data.disks.length; d++) {
-          var disk = data.disks[d];
-          dhtml += '<div class="disk-item"><div class="disk-label"><span class="disk-fs">' + esc(disk.mount || disk.fs) +
-            '</span><span class="disk-pct">' + disk.use + '%</span></div><div class="disk-size">' + fmtBytes(disk.used) + ' / ' + fmtBytes(disk.size) +
-            '</div><div class="progress-bar"><div class="progress-fill ' + loadClass(disk.use) + '" style="width:' + Math.min(disk.use, 100) + '%"></div></div></div>';
-        }
-        dom.diskList.innerHTML = dhtml;
-      }
-    }
-
-    // Network
-    if (data.network) {
-      setText(dom.netIface, data.network.iface);
-      setText(dom.netRx, fmtSpeed(data.network.rx_sec));
-      setText(dom.netTx, fmtSpeed(data.network.tx_sec));
-    }
-
-    // Processes
-    if (data.processes && data.processes.length) {
-      var pSig = data.processes.map(function(p) { return p.name + ':' + p.cpu; }).join('|');
-      if (pSig !== procSignature) {
-        procSignature = pSig;
-        var phtml = '<div class="proc-row proc-header"><span>Process</span><span style="text-align:right">CPU</span><span style="text-align:right">MEM</span></div>';
-        for (var p = 0; p < data.processes.length; p++) {
-          var proc = data.processes[p];
-          var colour = proc.cpu >= 10 ? 'var(--bad)' : proc.cpu >= 5 ? 'var(--warn)' : 'var(--fg-3)';
-          phtml += '<div class="proc-row"><span class="proc-rank">' + (p + 1) + '</span>' +
-            '<span class="proc-name">' + esc(proc.name) + '</span>' +
-            '<span class="proc-cpu" style="color:' + colour + '">' + proc.cpu + '%</span>' +
-            '<span class="proc-mem">' + proc.mem + '%</span></div>';
-        }
-        dom.procList.innerHTML = phtml;
-      }
-    }
-
-    // Battery
-    if (data.battery) {
-      dom.secBattery.style.display = '';
-      setText(dom.batPct, data.battery.percent + '%');
-      dom.batBar.className = 'progress-fill ' + loadClass(100 - data.battery.percent);
-      setWidth(dom.batBar, data.battery.percent);
-      setText(dom.batStatus, data.battery.charging ? 'Charging' : data.battery.acConnected ? 'On AC' : 'On battery');
-    } else dom.secBattery.style.display = 'none';
-
-    // OS
     if (data.os) {
-      setText(dom.osDistro, data.os.distro + ' ' + data.os.release);
-      if (data.os.uptime) setText(dom.osUptime, 'up ' + fmtUptime(data.os.uptime));
+      setText($('os-distro'), [data.os.distro, data.os.release].filter(Boolean).join(' '));
+      setText($('os-uptime'), data.os.uptime ? 'up ' + fmtUptime(data.os.uptime) : '');
     }
-
-    // Measured cost of the last cycle — the performance claim, on screen.
     if (data.metrics) {
-      var m = data.metrics;
-      if (m.fastMs != null) {
-        setText(dom.perfReadout, m.fastMs.toFixed(1) + ' ms');
-        dom.perfReadout.title = 'Fast metrics cycle: ' + m.fastMs.toFixed(1) + ' ms (node:os, every ' + m.refreshInterval +
-          ' ms)\nHardware cycle: ' + (m.slowMs != null ? m.slowMs.toFixed(1) + ' ms' : '—') + ' (systeminformation, every ' + m.slowInterval +
-          ' ms)\nHardware calls: ' + (m.slowCalls || []).join(', ');
-      }
-      if (dom.metricInfo) {
-        dom.metricInfo.textContent = 'fast ' + (m.fastMs != null ? m.fastMs.toFixed(1) : '—') + ' ms every ' + m.refreshInterval +
-          ' ms · hardware ' + (m.slowMs != null ? m.slowMs.toFixed(1) : '—') + ' ms every ' + m.slowInterval + ' ms';
-      }
+      var f = data.metrics.fastMs;
+      var s = data.metrics.slowMs;
+      setText($('perf-readout'), f == null ? '— ms' : Number(f).toFixed(1) + ' ms');
+      setText($('metric-info'), 'live ' + (f == null ? '—' : Number(f).toFixed(1) + 'ms') + ' · hardware ' + (s == null ? '—' : Number(s).toFixed(1) + 'ms'));
     }
   }
 
-  // ── main-process events ───────────────────────────────
-  api.on('system-data', function (data) { scheduleUpdate(data); });
-  api.on('visibility-changed', function (v) { document.body.style.opacity = v ? '1' : '0'; });
-  api.on('position-lock-changed', function (locked) {
-    positionLocked = locked;
-    // The padlock icon follows from the body class (see styles.css), so the
-    // button's markup is never rewritten here.
-    document.body.classList.toggle('locked', locked);
-    document.body.classList.toggle('unlocked', !locked);
-    updateSettingsUI(currentConfig);
-  });
-  api.on('compact-mode-changed', function (compact) {
-    document.body.classList.toggle('compact', compact);
-    currentConfig.compactMode = compact;
-    updateSettingsUI(currentConfig);
-  });
-  api.on('theme-changed', function (theme) {
-    applyTheme(theme);
-    currentConfig.theme = theme;
-    updateSettingsUI(currentConfig);
+  $('btn-settings').addEventListener('click', function () { toggleSettings(); });
+  $('btn-close-settings').addEventListener('click', function () { toggleSettings(false); });
+  $('btn-lock').addEventListener('click', function () { api.togglePositionLock(); });
+  $('btn-minimize').addEventListener('click', function () { api.toggleVisibility(); });
+
+  $('layout-options').addEventListener('click', function (e) { var b=e.target.closest('button[data-layout]'); if(b) api.setConfig('layout', b.dataset.layout); });
+  $('theme-options').addEventListener('click', function (e) { var b=e.target.closest('button[data-theme]'); if(b) api.setConfig('theme', b.dataset.theme); });
+  $('anchor-options').addEventListener('click', function (e) { var b=e.target.closest('button[data-anchor]'); if(b) api.setConfig('anchor', b.dataset.anchor); });
+  $('section-toggles').addEventListener('change', function (e) {
+    if (!e.target.dataset.section) return;
+    var next = Object.assign({}, state.config.showSections || {});
+    next[e.target.dataset.section] = e.target.checked;
+    api.setConfig('showSections', next);
   });
 
-  // LCD theme uses a separate stylesheet; enable/disable it based on the theme.
-  function applyTheme(theme) {
-    document.body.setAttribute('data-theme', theme);
-    var lcdLink = document.getElementById('lcd-theme-link');
-    if (lcdLink) lcdLink.disabled = (theme !== 'lcd');
-  }
-  // Apply on load
-  applyTheme(document.body.getAttribute('data-theme') || 'dark');
-  api.on('layout-changed', function (layout) {
-    document.body.setAttribute('data-layout', layout);
-    currentConfig.layout = layout;
-    updateSettingsUI(currentConfig);
+  $('settings-opacity').addEventListener('input', function (e) {
+    sliderFill(e.target); setText($('opacity-val'), e.target.value + '%'); api.setOpacity(Number(e.target.value) / 100);
   });
-  api.on('config-changed', function (cfg) {
-    currentConfig = cfg;
-    document.body.classList.toggle('compact', cfg.compactMode);
-    applyTheme(cfg.theme);
-    document.body.setAttribute('data-layout', cfg.layout || 'sidebar');
-    applySectionVisibility(cfg);
-    applyCollapsed(cfg);
-    updateSettingsUI(cfg);
+  $('settings-refresh').addEventListener('change', function (e) { api.setConfig('refreshInterval', Number(e.target.value)); });
+  $('settings-slow').addEventListener('change', function (e) { api.setConfig('slowInterval', Number(e.target.value)); });
+  $('settings-refresh').addEventListener('input', function (e) { sliderFill(e.target); setText($('refresh-val'), (Number(e.target.value)/1000).toFixed(2).replace(/0+$/,'').replace(/\.$/,'') + 's'); });
+  $('settings-slow').addEventListener('input', function (e) { sliderFill(e.target); setText($('slow-val'), (Number(e.target.value)/1000).toFixed(0) + 's'); });
+
+  api.on('system-data', render);
+  api.on('config-changed', applyConfig);
+  api.on('theme-changed', function (theme) { document.body.setAttribute('data-theme', theme); });
+  api.on('layout-changed', function (layout) { document.body.setAttribute('data-layout', layout); });
+  api.on('position-lock-changed', function (locked) {
+    state.locked = !!locked;
+    document.body.classList.toggle('locked', state.locked);
+    document.body.classList.toggle('unlocked', !state.locked);
   });
   api.on('toggle-settings', function () { toggleSettings(); });
-  api.on('app-version', function (info) {
-    if (info && info.version) {
-      dom.appVersion.textContent = 'v' + info.version;
-      if (dom.suiteVersion) dom.suiteVersion.textContent = 'v' + info.version;
-    }
-  });
+  api.on('app-version', function (info) { if (info && info.version) setText($('app-version'), 'v' + info.version); });
 
-  // ── initial load ──────────────────────────────────────
   api.getAppInfo().then(function (info) {
-    dom.appVersion.textContent = 'v' + info.version;
-    if (dom.suiteVersion) dom.suiteVersion.textContent = 'v' + info.version;
-    dom.appVersion.title = 'SysGlance ' + info.version + '\nElectron ' + info.electron + ' · Chromium ' + info.chrome +
-      ' · Node ' + info.node + '\nShell host: ' + info.shellHost;
-    if (dom.appInfo) {
-      dom.appInfo.textContent = 'SysGlance ' + info.version + ' · Electron ' + info.electron + ' · shell host: ' + info.shellHost;
-    }
-  }).catch(function () { /* version is cosmetic */ });
-
-  api.getSystemData().then(function (data) {
-    if (data.config) {
-      currentConfig = data.config;
-      applySectionVisibility(data.config);
-      applyCollapsed(data.config);
-      updateSettingsUI(data.config);
-    }
-    scheduleUpdate(data);
-  }).catch(function () { /* the interval will retry */ });
-
-  // The Shell card is injected by shell/panel.js, so decorate again once it is
-  // in the DOM.
-  setTimeout(function () { applyCollapsed(currentConfig); }, 0);
+    setText($('app-version'), 'v' + info.version);
+    setText($('app-info'), 'SysGlance ' + info.version + ' · Electron ' + info.electron);
+  });
+  api.getSystemData().then(render);
 })();
