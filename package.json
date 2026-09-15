@@ -1,50 +1,23 @@
 {
   "name": "sysglance",
   "version": "1.3.0",
-  "description": "On-demand desktop control center for Windows and Linux: CPU, memory, GPU, disks, network, filesystem and the Windows shell (taskbar position, dark mode, accent, wallpaper) in a semi-transparent always-on-top overlay.",
+  "description": "Fast always-on-top system glance for CPU, memory, GPU, storage, network, processes and home folders.",
   "main": "src/main.js",
-  "author": {
-    "name": "smouj",
-    "url": "https://github.com/smouj"
-  },
+  "author": { "name": "smouj", "url": "https://github.com/smouj" },
   "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/smouj/sysglance.git"
-  },
+  "repository": { "type": "git", "url": "git+https://github.com/smouj/sysglance.git" },
   "homepage": "https://github.com/smouj/sysglance#readme",
-  "bugs": {
-    "url": "https://github.com/smouj/sysglance/issues"
-  },
-  "keywords": [
-    "system-monitor",
-    "desktop-overlay",
-    "hud",
-    "cpu",
-    "ram",
-    "gpu",
-    "hardware",
-    "monitoring",
-    "electron",
-    "transparent",
-    "always-on-top",
-    "taskbar",
-    "windows-shell",
-    "systeminformation"
-  ],
-  "engines": {
-    "node": ">=20"
-  },
+  "bugs": { "url": "https://github.com/smouj/sysglance/issues" },
+  "keywords": ["system-monitor","desktop-overlay","hud","cpu","ram","gpu","hardware","monitoring","electron","always-on-top"],
+  "engines": { "node": ">=20" },
   "scripts": {
     "start": "electron .",
     "dev": "electron . --dev",
     "self-test": "electron . --self-test",
-    "screenshot": "electron . --screenshot",
-    "icons": "electron . --icons",
-    "verify": "node scripts/verify-syntax.js && node scripts/verify-config.js && node scripts/verify-shell.js && node scripts/verify-shell-extended.js",
+    "verify": "npm run verify:syntax && npm run verify:config && npm run verify:ui",
     "verify:config": "node scripts/verify-config.js",
-    "verify:shell": "node scripts/verify-shell.js",
     "verify:syntax": "node scripts/verify-syntax.js",
+    "verify:ui": "node scripts/verify-ui.js",
     "bench": "node scripts/bench-metrics.js",
     "build": "electron-builder",
     "build:win": "electron-builder --win",
@@ -54,28 +27,13 @@
   "build": {
     "appId": "com.sysglance.app",
     "productName": "SysGlance",
-    "copyright": "Copyright \u00a9 2026 smouj",
-    "directories": {
-      "output": "dist"
-    },
+    "copyright": "Copyright © 2026 smouj",
+    "directories": { "output": "dist" },
     "compression": "maximum",
-    "files": [
-      "src/**/*",
-      "assets/**/*",
-      "!**/*.map",
-      "!**/.openclaw/**",
-      "!src/native/shell/*.exe"
-    ],
+    "files": ["src/**/*","assets/**/*","!**/*.map","!**/.openclaw/**"],
     "publish": null,
     "win": {
-      "target": [
-        {
-          "target": "nsis",
-          "arch": [
-            "x64"
-          ]
-        }
-      ],
+      "target": [{ "target": "nsis", "arch": ["x64"] }],
       "icon": "assets/icon.png",
       "requestedExecutionLevel": "asInvoker",
       "artifactName": "SysGlance-Setup-${version}.${ext}"
@@ -93,21 +51,12 @@
       "uninstallDisplayName": "SysGlance ${version}"
     },
     "linux": {
-      "target": [
-        "AppImage",
-        "deb"
-      ],
+      "target": ["AppImage","deb"],
       "icon": "assets/icon.png",
       "category": "System",
-      "synopsis": "On-demand desktop control center",
-      "description": "Real-time CPU, memory, GPU, disk, network, filesystem and process monitoring, plus Windows shell configuration, in a semi-transparent always-on-top overlay.",
-      "desktop": {
-        "entry": {
-          "Name": "SysGlance",
-          "Comment": "On-demand desktop control center",
-          "Categories": "System;Monitor;Utility;"
-        }
-      },
+      "synopsis": "Always-on-top system glance",
+      "description": "Real-time CPU, memory, GPU, storage, network, filesystem and process monitoring in a compact always-on-top overlay.",
+      "desktop": { "entry": { "Name": "SysGlance", "Comment": "Always-on-top system glance", "Categories": "System;Monitor;Utility;" } },
       "artifactName": "SysGlance-${version}-${arch}.${ext}"
     },
     "mac": {
@@ -115,19 +64,8 @@
       "icon": "assets/icon.png",
       "category": "public.app-category.utilities",
       "artifactName": "SysGlance-${version}-${arch}.${ext}"
-    },
-    "extraResources": [
-      {
-        "from": "src/native/shell/SysGlanceShellHelper.exe",
-        "to": "."
-      }
-    ]
+    }
   },
-  "devDependencies": {
-    "electron": "^33.0.0",
-    "electron-builder": "^25.0.0"
-  },
-  "dependencies": {
-    "systeminformation": "^5.23.0"
-  }
+  "devDependencies": { "electron": "^33.0.0", "electron-builder": "^25.0.0" },
+  "dependencies": { "systeminformation": "^5.23.0" }
 }
