@@ -238,7 +238,8 @@ function createWindow() {
       ] },
       { label: 'Theme', submenu: [
         { label: '🌙 Dark', type: 'radio', checked: config.theme === 'dark', click: () => setTheme('dark') },
-        { label: '☀️ Light', type: 'radio', checked: config.theme === 'light', click: () => setTheme('light') }
+        { label: '☀️ Light', type: 'radio', checked: config.theme === 'light', click: () => setTheme('light') },
+        { label: '📺 LCD', type: 'radio', checked: config.theme === 'lcd', click: () => setTheme('lcd') }
       ] },
       { label: '🪟 Shell', submenu: buildShellSubmenu() },
       { type: 'separator' },
@@ -305,7 +306,8 @@ function rebuildTray() {
     ] },
     { label: 'Theme', submenu: [
       { label: '🌙 Dark', type: 'radio', checked: config.theme === 'dark', click: () => setTheme('dark') },
-      { label: '☀️ Light', type: 'radio', checked: config.theme === 'light', click: () => setTheme('light') }
+      { label: '☀️ Light', type: 'radio', checked: config.theme === 'light', click: () => setTheme('light') },
+      { label: '📺 LCD', type: 'radio', checked: config.theme === 'lcd', click: () => setTheme('lcd') }
     ] },
     { label: '🪟 Shell', submenu: buildShellSubmenu() },
     { type: 'separator' },

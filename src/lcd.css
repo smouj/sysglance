@@ -1,0 +1,309 @@
+/* ═══════════════════════════════════════════════════════
+   SysGlance — LCD theme
+   
+   Monochrome retro LCD display aesthetic: sharp borders,
+   block bars, monospace font, phosphor glow. No blur, no
+   gradients, no rounded corners. Like the real G510 display
+   but scaled to a full overlay.
+   
+   Activated by data-theme="lcd" on <html> or <body>.
+   All overrides use [data-theme="lcd"] selectors so they
+   stack cleanly on top of styles.css + panel.css.
+   ═══════════════════════════════════════════════════════ */
+
+/* ── LCD palette ──────────────────────────────────────── */
+[data-theme="lcd"] {
+  --bg-app:        #0a0a0a;
+  --bg-overlay:    #080808;
+  --bg-card:       #0e0e0e;
+  --bg-card-2:     #111111;
+  --bg-inset:      #060606;
+  --bg-control:    #141414;
+  --bg-control-hi: #1a1a1a;
+
+  --line:          #1a1a1a;
+  --line-2:        #222222;
+
+  --fg:            #00e5a0;
+  --fg-2:          rgba(0,229,160,0.72);
+  --fg-3:          rgba(0,229,160,0.46);
+  --fg-4:          rgba(0,229,160,0.26);
+
+  --accent:        #00ffa3;
+  --accent-2:      #33ffba;
+  --accent-soft:   rgba(0,255,163,0.10);
+  --accent-line:   rgba(0,255,163,0.30);
+  --accent-glow:   rgba(0,255,163,0.25);
+
+  --ok:   #00e5a0;
+  --warn: #ffc740;
+  --bad:  #ff3b5c;
+  --ok-soft:   rgba(0,229,160,0.12);
+  --warn-soft: rgba(255,199,64,0.12);
+  --bad-soft:  rgba(255,59,92,0.12);
+
+  --r-sm: 0px;
+  --r-md: 0px;
+  --r-lg: 0px;
+  --sp-1: 3px;
+  --sp-2: 5px;
+  --sp-3: 7px;
+  --sp-4: 10px;
+
+  --glass-blur: 0px;
+  --font: 'Cascadia Mono','Consolas','Courier New',monospace;
+}
+
+/* ── Body: sharp, no blur, phosphor border ─────────────── */
+[data-theme="lcd"] body {
+  border-radius: 0 !important;
+  border: 1px solid var(--accent-line) !important;
+  box-shadow: 0 0 24px rgba(0,255,163,0.06), 0 0 1px var(--accent-line) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  font-size: 11px;
+  letter-spacing: 0.3px;
+}
+
+/* ── Status bar ────────────────────────────────────────── */
+[data-theme="lcd"] .status-bar {
+  border-bottom: 1px solid var(--accent-line);
+  background: var(--bg-card);
+  height: 28px;
+}
+[data-theme="lcd"] .status-title { font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
+[data-theme="lcd"] .status-version {
+  font-size: 8px; font-weight: 700; letter-spacing: 0.5px;
+  background: var(--accent-soft); border: 1px solid var(--accent-line);
+  border-radius: 0; padding: 1px 5px;
+}
+[data-theme="lcd"] .status-clock { font-size: 9px; font-variant-numeric: tabular-nums; }
+[data-theme="lcd"] .status-btn { border-radius: 0; border: 1px solid var(--line); }
+[data-theme="lcd"] .status-btn:hover { border-color: var(--accent-line); background: var(--accent-soft); color: var(--accent); }
+
+/* ── Content & cards ──────────────────────────────────── */
+[data-theme="lcd"] .content { padding: 6px 7px 7px; gap: 5px; }
+[data-theme="lcd"] .section {
+  background: var(--bg-card); border: 1px solid var(--line-2); border-radius: 0;
+  padding: 7px 8px 8px; box-shadow: none; transition: border-color .15s;
+}
+[data-theme="lcd"] .section:hover { border-color: var(--accent-line); box-shadow: none; }
+[data-theme="lcd"] .section.is-collapsed { background: var(--bg-card); border-style: solid; }
+[data-theme="lcd"] .section.is-empty { border-style: dashed; }
+
+/* ── Section headers: block labels ─────────────────────── */
+[data-theme="lcd"] .section-title {
+  font-size: 8.5px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: var(--fg-3);
+}
+[data-theme="lcd"] .section-value {
+  font-size: 15px; font-weight: 700; letter-spacing: 0; color: var(--accent);
+  text-shadow: 0 0 8px var(--accent-glow), 0 0 2px var(--accent-glow);
+}
+[data-theme="lcd"] .section-note { font-size: 8.5px; }
+
+/* ── Progress bars: solid blocks, stepped animation ────── */
+[data-theme="lcd"] .progress-bar {
+  height: 6px; border-radius: 0; background: var(--bg-inset);
+  border: 1px solid var(--line); box-shadow: none; overflow: hidden;
+}
+[data-theme="lcd"] .progress-fill {
+  height: 100%; border-radius: 0; min-width: 2px;
+  background: var(--accent); box-shadow: none;
+  transition: width .4s steps(4);
+}
+[data-theme="lcd"] .progress-fill.warn { background: var(--warn); box-shadow: none; }
+[data-theme="lcd"] .progress-fill.danger { background: var(--bad); box-shadow: none; }
+
+/* ── Per-core bars: taller, blocky ────────────────────── */
+[data-theme="lcd"] .core-bar {
+  height: 28px; border-radius: 0; border: 1px solid var(--line); background: var(--bg-inset);
+}
+[data-theme="lcd"] .core-fill {
+  border-radius: 0; background: var(--accent); transition: height .4s steps(4);
+}
+[data-theme="lcd"] .core-fill.warn { background: var(--warn); }
+[data-theme="lcd"] .core-fill.danger { background: var(--bad); }
+
+/* ── Badges ───────────────────────────────────────────── */
+[data-theme="lcd"] .info-badge {
+  border-radius: 0; font-size: 8px; font-weight: 700; letter-spacing: 0.5px;
+}
+
+/* ── Network cells ────────────────────────────────────── */
+[data-theme="lcd"] .net-cell {
+  border-radius: 0; border: 1px solid var(--line); background: var(--bg-inset);
+}
+[data-theme="lcd"] .net-arrow { font-weight: 700; }
+
+/* ── Process list ──────────────────────────────────────── */
+[data-theme="lcd"] .proc-row:hover { background: var(--accent-soft); }
+
+/* ── Filesystem items ──────────────────────────────────── */
+[data-theme="lcd"] .fs-item {
+  border-radius: 0; border: 1px solid var(--line); background: var(--bg-inset);
+}
+[data-theme="lcd"] .fs-item:hover { border-color: var(--accent-line); background: var(--accent-soft); }
+
+/* ── Shell panel LCD overrides ────────────────────────── */
+[data-theme="lcd"] .shell-group {
+  border-radius: 0; border: 1px solid var(--line-2); background: var(--bg-card); box-shadow: none;
+}
+[data-theme="lcd"] .shell-group:hover { border-color: var(--accent-line); box-shadow: none; }
+[data-theme="lcd"] .shell-label {
+  font-size: 8px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase;
+}
+[data-theme="lcd"] .shell-btn {
+  border-radius: 0; font-size: 9px; font-weight: 700; letter-spacing: 0.3px;
+}
+[data-theme="lcd"] .shell-btn:hover:not(:disabled) {
+  box-shadow: 0 0 8px -2px var(--accent-glow);
+}
+[data-theme="lcd"] .shell-seg {
+  border-radius: 0; border: 1px solid var(--line-2); background: var(--bg-inset);
+}
+[data-theme="lcd"] .shell-seg-btn {
+  border-radius: 0; font-size: 8.5px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase;
+}
+[data-theme="lcd"] .shell-seg-btn.active {
+  background: var(--accent); color: #000; border-color: var(--accent);
+}
+[data-theme="lcd"] .shell-toggle {
+  border-radius: 0; background: var(--bg-inset); border: 1px solid var(--line);
+}
+[data-theme="lcd"] .shell-toggle input[type="checkbox"] {
+  border-radius: 0; width: 28px; height: 16px;
+}
+[data-theme="lcd"] .shell-toggle input[type="checkbox"]:checked {
+  background: var(--accent); border-color: var(--accent);
+}
+[data-theme="lcd"] .shell-toggle input[type="checkbox"]:checked::after {
+  background: #000; width: 12px; height: 12px; transform: translateX(12px);
+}
+[data-theme="lcd"] .shell-input {
+  border-radius: 0; font-family: var(--font); font-size: 9px; letter-spacing: 0.3px;
+}
+
+/* ── Taskbar preview ──────────────────────────────────── */
+[data-theme="lcd"] .tb-preview {
+  border-radius: 0; border: 1px solid var(--line-2); background: var(--bg-card); box-shadow: none;
+}
+[data-theme="lcd"] .tb-preview::before {
+  border-radius: 0; box-shadow: 0 0 6px 0 var(--accent-glow);
+}
+
+/* ── Desktop preview ──────────────────────────────────── */
+[data-theme="lcd"] .shell-desktop-preview {
+  border-radius: 0; border: 1px solid var(--line-2); box-shadow: none; height: 64px;
+}
+[data-theme="lcd"] .shell-desktop-preview .tb-bar {
+  border-radius: 0; box-shadow: 0 0 6px 0 var(--accent-glow);
+}
+/* Scanning line effect */
+[data-theme="lcd"] .shell-desktop-preview::after {
+  content: '';
+  position: absolute; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  opacity: 0.25;
+  animation: lcd-scan 3s linear infinite;
+  pointer-events: none;
+}
+@keyframes lcd-scan {
+  0% { top: 0; }
+  100% { top: 100%; }
+}
+[data-theme="lcd"] .shell-desktop-preview .preview-label {
+  text-shadow: 0 0 4px var(--accent-glow); font-size: 7px; letter-spacing: 1px;
+}
+
+/* ── Accent color picker ──────────────────────────────── */
+[data-theme="lcd"] .shell-color-dot {
+  border-radius: 0; border: 2px solid transparent; width: 16px; height: 16px; box-shadow: none;
+}
+[data-theme="lcd"] .shell-color-dot:hover { transform: scale(1.1); box-shadow: 0 0 4px var(--accent-glow); }
+[data-theme="lcd"] .shell-color-dot.is-active { border-color: var(--fg); box-shadow: 0 0 6px var(--accent-glow); }
+[data-theme="lcd"] .shell-color-input { border-radius: 0; border: 1px solid var(--line-2); }
+[data-theme="lcd"] .shell-hex-input { border-radius: 0; font-family: var(--font); letter-spacing: 0.5px; }
+
+/* ── Gallery items ─────────────────────────────────────── */
+[data-theme="lcd"] .shell-gallery-item {
+  border-radius: 0; border: 2px solid var(--line); box-shadow: none;
+}
+[data-theme="lcd"] .shell-gallery-item:hover { transform: scale(1.02); border-color: var(--accent-line); box-shadow: none; }
+[data-theme="lcd"] .shell-gallery-item.is-active { border-color: var(--accent); box-shadow: 0 0 6px var(--accent-glow); }
+
+/* ── Folder items ─────────────────────────────────────── */
+[data-theme="lcd"] .shell-folder-item { border-radius: 0; border: 1px solid var(--line); }
+
+/* ── Notes ─────────────────────────────────────────────── */
+[data-theme="lcd"] .shell-note {
+  border-radius: 0; border: 1px solid var(--line); background: var(--bg-inset);
+}
+[data-theme="lcd"] .shell-note.ok { border-color: var(--accent-line); background: var(--accent-soft); color: var(--accent); }
+[data-theme="lcd"] .shell-note.warn { border-color: rgba(255,199,64,0.3); background: rgba(255,199,64,0.08); color: var(--warn); }
+[data-theme="lcd"] .shell-note.err { border-color: rgba(255,59,92,0.3); background: rgba(255,59,92,0.08); color: var(--bad); }
+
+/* ── Settings panel ───────────────────────────────────── */
+[data-theme="lcd"] .settings-panel { border-radius: 0; }
+[data-theme="lcd"] .settings-options {
+  border-radius: 0; border: 1px solid var(--line-2); background: var(--bg-inset);
+}
+[data-theme="lcd"] .settings-opt {
+  border-radius: 0; font-size: 9px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase;
+}
+[data-theme="lcd"] .settings-opt.active {
+  background: var(--accent); color: #000; border-color: var(--accent); box-shadow: none;
+}
+[data-theme="lcd"] .settings-slider::-webkit-slider-runnable-track {
+  border-radius: 0; height: 4px; background: var(--bg-inset); border: 1px solid var(--line);
+}
+[data-theme="lcd"] .settings-slider::-webkit-slider-thumb {
+  border-radius: 0; width: 14px; height: 14px; border: 2px solid var(--accent); background: var(--fg);
+}
+[data-theme="lcd"] .toggle-row input[type="checkbox"] { border-radius: 0; width: 28px; height: 16px; }
+[data-theme="lcd"] .toggle-row input[type="checkbox"]:checked { background: var(--accent); border-color: var(--accent); }
+[data-theme="lcd"] .toggle-row input[type="checkbox"]:checked::after { background: #000; transform: translateX(12px); }
+[data-theme="lcd"] .settings-action { border-radius: 0; border: 1px solid var(--line-2); }
+[data-theme="lcd"] .settings-action:hover { background: var(--accent); border-color: var(--accent); color: #000; }
+
+/* ── Widget note ───────────────────────────────────────── */
+[data-theme="lcd"] .shell-widget {
+  border-radius: 0; border: 1px solid var(--accent-line); background: var(--accent-soft); box-shadow: none;
+}
+[data-theme="lcd"] .shell-widget-text strong { color: var(--accent); text-shadow: 0 0 4px var(--accent-glow); }
+
+/* ── Footer ────────────────────────────────────────────── */
+[data-theme="lcd"] .suite-footer {
+  border-top: 1px solid var(--line-2); font-size: 7px; letter-spacing: 0.5px;
+}
+
+/* ── Scrollbars: sharp ─────────────────────────────────── */
+[data-theme="lcd"] *::-webkit-scrollbar { width: 4px; height: 4px; }
+[data-theme="lcd"] *::-webkit-scrollbar-track { background: var(--bg-app); }
+[data-theme="lcd"] *::-webkit-scrollbar-thumb { background: var(--accent-line); border-radius: 0; }
+[data-theme="lcd"] *::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+/* ── Collapsed chevron ─────────────────────────────────── */
+[data-theme="lcd"] .section-header::after {
+  border-width: 1.6px;
+}
+
+/* ── Phosphor glow on key values ───────────────────────── */
+[data-theme="lcd"] .section-value,
+[data-theme="lcd"] .net-arrow,
+[data-theme="lcd"] .shell-mini-btn {
+  text-shadow: 0 0 6px var(--accent-glow);
+}
+
+/* ── Compact mode LCD ──────────────────────────────────── */
+[data-theme="lcd"].compact .content { gap: 3px; padding: 4px 5px 5px; }
+[data-theme="lcd"].compact .section { padding: 5px 6px; }
+[data-theme="lcd"].compact .section-value { font-size: 13px; }
+[data-theme="lcd"].compact .progress-bar { height: 5px; }
+[data-theme="lcd"].compact .core-bar { height: 18px; }
+
+/* ── Narrow window ─────────────────────────────────────── */
+[data-theme="lcd"] @media (max-width: 340px) {
+  .status-metric, .status-clock { display: none; }
+  .status-title { font-size: 9.5px; }
+}

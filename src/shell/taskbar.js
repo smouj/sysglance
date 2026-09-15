@@ -60,7 +60,9 @@
 // ═══════════════════════════════════════════════════════
 
 const { execFile } = require('child_process');
+const { execFileSync } = require('child_process');
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const helper = require('../native/shellHelper');
 
@@ -916,10 +918,10 @@ function writeIniAndAttrib(iniPath, lines, folderPath) {
     // Set file attributes: hidden + system so Windows respects it
     const attrExe = IS_WINDOWS ? 'attrib.exe' : '/mnt/c/Windows/System32/attrib.exe';
     try {
-      execFile.sync(attrExe, ['+H', '+S', iniPath], { windowsHide: true, timeout: 3000 });
+      execFileSync(attrExe, ['+H', '+S', iniPath], { windowsHide: true, timeout: 3000 });
     } catch (_) { /* best effort */ }
     try {
-      execFile.sync(attrExe, ['+R', folderPath], { windowsHide: true, timeout: 3000 });
+      execFileSync(attrExe, ['+R', folderPath], { windowsHide: true, timeout: 3000 });
     } catch (_) { /* best effort */ }
 
     return { ok: true, path: folderPath };

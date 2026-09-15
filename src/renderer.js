@@ -325,6 +325,12 @@
   // ── rAF-batched rendering ─────────────────────────────
   var pendingData = null, rafScheduled = false;
 
+  // ── Incremental render caches (avoid innerHTML every 1.5s) ──
+  var cpuCoreCount = 0;
+  var gpuSignature = '';
+  var diskSignature = '';
+  var procSignature = '';
+
   function scheduleUpdate(data) {
     pendingData = data;
     if (!rafScheduled) { rafScheduled = true; requestAnimationFrame(applyUpdate); }
@@ -340,15 +346,15 @@
     // CPU
     if (data.cpu) {
       var load = data.cpu.load || 0;
-      dom.cpuLoad.textContent = load.toFixed(1) + '%';
+      setText(dom.cpuLoad, load.toFixed(1) + '%');
       dom.cpuBar.className = 'progress-fill ' + loadClass(load);
-      dom.cpuBar.style.width = Math.min(load, 100) + '%';
-      dom.cpuModel.textContent = data.cpu.model;
-      dom.cpuCores.textContent = data.cpu.cores + ' cores';
-      dom.cpuSpeed.textContent = data.cpu.speed ? (data.cpu.speed / 1000).toFixed(2) + ' GHz' : '';
+      setWidth(dom.cpuBar, Math.min(load, 100));
+      setText(dom.cpuModel, data.cpu.model);
+      setText(dom.cpuCores, data.cpu.cores + ' cores');
+      setText(dom.cpuSpeed, data.cpu.speed ? (data.cpu.speed / 1000).toFixed(2) + ' GHz' : '');
       if (data.cpu.temp != null) {
         var hot = data.cpu.temp >= 80;
-        dom.cpuTemp.textContent = data.cpu.temp.toFixed(0) + '\u00b0C';
+        setText(dom.cpuTemp, data.cpu.temp.toFixed(0) + '\u00b0C');
         dom.cpuTemp.style.display = '';
         dom.cpuTemp.className = 'info-badge' + (hot ? ' danger' : data.cpu.temp >= 65 ? ' warn' : '');
       } else dom.cpuTemp.style.display = 'none';
@@ -366,12 +372,12 @@
     // Memory
     if (data.memory) {
       var pct = data.memory.percentage || 0;
-      dom.memPct.textContent = pct.toFixed(1) + '%';
+      setText(dom.memPct, pct.toFixed(1) + '%');
       dom.memBar.className = 'progress-fill ' + loadClass(pct);
-      dom.memBar.style.width = Math.min(pct, 100) + '%';
-      dom.memUsed.textContent = fmtBytes(data.memory.used) + ' / ' + fmtBytes(data.memory.total);
-      dom.memSwap.textContent = data.memory.swapTotal > 0
-        ? 'Swap: ' + fmtBytes(data.memory.swapUsed) + '/' + fmtBytes(data.memory.swapTotal) : '';
+      setWidth(dom.memBar, Math.min(pct, 100));
+      setText(dom.memUsed, fmtBytes(data.memory.used) + ' / ' + fmtBytes(data.memory.total));
+      setText(dom.memSwap, data.memory.swapTotal > 0
+        ? 'Swap: ' + fmtBytes(data.memory.swapUsed) + '/' + fmtBytes(data.memory.swapTotal) : '');
     }
 
     // GPU
@@ -405,57 +411,65 @@
 
     // Disks
     if (data.disks && data.disks.length) {
-      var dhtml = '';
-      for (var d = 0; d < data.disks.length; d++) {
-        var disk = data.disks[d];
-        dhtml += '<div class="disk-item"><div class="disk-label"><span class="disk-fs">' + esc(disk.mount || disk.fs) +
-          '</span><span class="disk-pct">' + disk.use + '%</span></div><div class="disk-size">' + fmtBytes(disk.used) + ' / ' + fmtBytes(disk.size) +
-          '</div><div class="progress-bar"><div class="progress-fill ' + loadClass(disk.use) + '" style="width:' + Math.min(disk.use, 100) + '%"></div></div></div>';
+      var dSig = data.disks.map(function(d) { return (d.mount || d.fs) + ':' + d.use; }).join('|');
+      if (dSig !== diskSignature) {
+        diskSignature = dSig;
+        var dhtml = '';
+        for (var d = 0; d < data.disks.length; d++) {
+          var disk = data.disks[d];
+          dhtml += '<div class="disk-item"><div class="disk-label"><span class="disk-fs">' + esc(disk.mount || disk.fs) +
+            '</span><span class="disk-pct">' + disk.use + '%</span></div><div class="disk-size">' + fmtBytes(disk.used) + ' / ' + fmtBytes(disk.size) +
+            '</div><div class="progress-bar"><div class="progress-fill ' + loadClass(disk.use) + '" style="width:' + Math.min(disk.use, 100) + '%"></div></div></div>';
+        }
+        dom.diskList.innerHTML = dhtml;
       }
-      dom.diskList.innerHTML = dhtml;
     }
 
     // Network
     if (data.network) {
-      dom.netIface.textContent = data.network.iface;
-      dom.netRx.textContent = fmtSpeed(data.network.rx_sec);
-      dom.netTx.textContent = fmtSpeed(data.network.tx_sec);
+      setText(dom.netIface, data.network.iface);
+      setText(dom.netRx, fmtSpeed(data.network.rx_sec));
+      setText(dom.netTx, fmtSpeed(data.network.tx_sec));
     }
 
     // Processes
     if (data.processes && data.processes.length) {
-      var phtml = '<div class="proc-row proc-header"><span>Process</span><span style="text-align:right">CPU</span><span style="text-align:right">MEM</span></div>';
-      for (var p = 0; p < data.processes.length; p++) {
-        var proc = data.processes[p];
-        var colour = proc.cpu >= 10 ? 'var(--bad)' : proc.cpu >= 5 ? 'var(--warn)' : 'var(--fg-3)';
-        phtml += '<div class="proc-row"><span class="proc-rank">' + (p + 1) + '</span>' +
-          '<span class="proc-name">' + esc(proc.name) + '</span>' +
-          '<span class="proc-cpu" style="color:' + colour + '">' + proc.cpu + '%</span>' +
-          '<span class="proc-mem">' + proc.mem + '%</span></div>';
+      var pSig = data.processes.map(function(p) { return p.name + ':' + p.cpu; }).join('|');
+      if (pSig !== procSignature) {
+        procSignature = pSig;
+        var phtml = '<div class="proc-row proc-header"><span>Process</span><span style="text-align:right">CPU</span><span style="text-align:right">MEM</span></div>';
+        for (var p = 0; p < data.processes.length; p++) {
+          var proc = data.processes[p];
+          var colour = proc.cpu >= 10 ? 'var(--bad)' : proc.cpu >= 5 ? 'var(--warn)' : 'var(--fg-3)';
+          phtml += '<div class="proc-row"><span class="proc-rank">' + (p + 1) + '</span>' +
+            '<span class="proc-name">' + esc(proc.name) + '</span>' +
+            '<span class="proc-cpu" style="color:' + colour + '">' + proc.cpu + '%</span>' +
+            '<span class="proc-mem">' + proc.mem + '%</span></div>';
+        }
+        dom.procList.innerHTML = phtml;
       }
-      dom.procList.innerHTML = phtml;
     }
 
     // Battery
     if (data.battery) {
       dom.secBattery.style.display = '';
-      dom.batPct.textContent = data.battery.percent + '%';
+      setText(dom.batPct, data.battery.percent + '%');
       dom.batBar.className = 'progress-fill ' + loadClass(100 - data.battery.percent);
-      dom.batBar.style.width = data.battery.percent + '%';
-      dom.batStatus.textContent = data.battery.charging ? 'Charging' : data.battery.acConnected ? 'On AC' : 'On battery';
+      setWidth(dom.batBar, data.battery.percent);
+      setText(dom.batStatus, data.battery.charging ? 'Charging' : data.battery.acConnected ? 'On AC' : 'On battery');
     } else dom.secBattery.style.display = 'none';
 
     // OS
     if (data.os) {
-      dom.osDistro.textContent = data.os.distro + ' ' + data.os.release;
-      if (data.os.uptime) dom.osUptime.textContent = 'up ' + fmtUptime(data.os.uptime);
+      setText(dom.osDistro, data.os.distro + ' ' + data.os.release);
+      if (data.os.uptime) setText(dom.osUptime, 'up ' + fmtUptime(data.os.uptime));
     }
 
     // Measured cost of the last cycle — the performance claim, on screen.
     if (data.metrics) {
       var m = data.metrics;
       if (m.fastMs != null) {
-        dom.perfReadout.textContent = m.fastMs.toFixed(1) + ' ms';
+        setText(dom.perfReadout, m.fastMs.toFixed(1) + ' ms');
         dom.perfReadout.title = 'Fast metrics cycle: ' + m.fastMs.toFixed(1) + ' ms (node:os, every ' + m.refreshInterval +
           ' ms)\nHardware cycle: ' + (m.slowMs != null ? m.slowMs.toFixed(1) + ' ms' : '—') + ' (systeminformation, every ' + m.slowInterval +
           ' ms)\nHardware calls: ' + (m.slowCalls || []).join(', ');
@@ -484,10 +498,19 @@
     updateSettingsUI(currentConfig);
   });
   api.on('theme-changed', function (theme) {
-    document.body.setAttribute('data-theme', theme);
+    applyTheme(theme);
     currentConfig.theme = theme;
     updateSettingsUI(currentConfig);
   });
+
+  // LCD theme uses a separate stylesheet; enable/disable it based on the theme.
+  function applyTheme(theme) {
+    document.body.setAttribute('data-theme', theme);
+    var lcdLink = document.getElementById('lcd-theme-link');
+    if (lcdLink) lcdLink.disabled = (theme !== 'lcd');
+  }
+  // Apply on load
+  applyTheme(document.body.getAttribute('data-theme') || 'dark');
   api.on('layout-changed', function (layout) {
     document.body.setAttribute('data-layout', layout);
     currentConfig.layout = layout;
@@ -496,7 +519,7 @@
   api.on('config-changed', function (cfg) {
     currentConfig = cfg;
     document.body.classList.toggle('compact', cfg.compactMode);
-    document.body.setAttribute('data-theme', cfg.theme);
+    applyTheme(cfg.theme);
     document.body.setAttribute('data-layout', cfg.layout || 'sidebar');
     applySectionVisibility(cfg);
     applyCollapsed(cfg);

@@ -1,6 +1,6 @@
 {
   "name": "sysglance",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "On-demand desktop control center for Windows and Linux: CPU, memory, GPU, disks, network, filesystem and the Windows shell (taskbar position, dark mode, accent, wallpaper) in a semi-transparent always-on-top overlay.",
   "main": "src/main.js",
   "author": {
@@ -41,7 +41,7 @@
     "self-test": "electron . --self-test",
     "screenshot": "electron . --screenshot",
     "icons": "electron . --icons",
-    "verify": "node scripts/verify-syntax.js && node scripts/verify-config.js && node scripts/verify-shell.js",
+    "verify": "node scripts/verify-syntax.js && node scripts/verify-config.js && node scripts/verify-shell.js && node scripts/verify-shell-extended.js",
     "verify:config": "node scripts/verify-config.js",
     "verify:shell": "node scripts/verify-shell.js",
     "verify:syntax": "node scripts/verify-syntax.js",
@@ -54,7 +54,7 @@
   "build": {
     "appId": "com.sysglance.app",
     "productName": "SysGlance",
-    "copyright": "Copyright © 2026 smouj",
+    "copyright": "Copyright \u00a9 2026 smouj",
     "directories": {
       "output": "dist"
     },
@@ -62,16 +62,18 @@
     "files": [
       "src/**/*",
       "assets/**/*",
-      "!src/native/shell/*.exe",
       "!**/*.map",
-      "!**/.openclaw/**"
+      "!**/.openclaw/**",
+      "!src/native/shell/*.exe"
     ],
     "publish": null,
     "win": {
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "icon": "assets/icon.png",
@@ -91,7 +93,10 @@
       "uninstallDisplayName": "SysGlance ${version}"
     },
     "linux": {
-      "target": ["AppImage", "deb"],
+      "target": [
+        "AppImage",
+        "deb"
+      ],
       "icon": "assets/icon.png",
       "category": "System",
       "synopsis": "On-demand desktop control center",
@@ -110,7 +115,13 @@
       "icon": "assets/icon.png",
       "category": "public.app-category.utilities",
       "artifactName": "SysGlance-${version}-${arch}.${ext}"
-    }
+    },
+    "extraResources": [
+      {
+        "from": "src/native/shell/SysGlanceShellHelper.exe",
+        "to": "."
+      }
+    ]
   },
   "devDependencies": {
     "electron": "^33.0.0",

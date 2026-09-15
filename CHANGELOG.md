@@ -6,6 +6,18 @@ the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **Wallpaper gallery.** List images from `Pictures\Wallpaper` and subfolders, with thumbnail previews. Animated wallpapers (.webm/.mp4) are detected and flagged; SysGlance offers to open the folder for the user's preferred tool (Lively Wallpaper etc.) since Windows has no native animated wallpaper API.
+- **Folder customization.** Read/write folder icons via `desktop.ini` (`IconResource` / `IconFile`). Lists the six standard user folders (Desktop, Documents, Downloads, Pictures, Videos, Music) and lets the user customize or restore each. Folder attributes are set correctly for Windows to pick up the change.
+- **Start menu personalization.** Read and toggle Start menu settings: show recent apps, show suggestions, full-screen Start mode. Registry keys under `Explorer\Advanced` are written via `reg.exe` (the project's existing pattern). A button opens `ms-settings:personalization`.
+- **Custom accent colour picker.** A native `<input type="color">` plus hex input and 16 preset colour dots, all wired to `shell:accent:setHex`. The swatch updates in real time.
+- **Desktop preview.** A miniature desktop preview at the top of the Shell panel showing the current wallpaper as background and the taskbar bar on the selected edge, giving immediate visual feedback for position and wallpaper changes.
+- **`shell:wallpaper:list`, `shell:wallpaper:galleryPreview`, `shell:wallpaper:openFolder`, `shell:accent:setHex`, `shell:folder:*`, `shell:startMenu:*` IPC channels** (23 total, up from 12).
+- `scripts/verify-shell-extended.js` harness covering new module exports, validation, and live Start menu state.
+- Collapsible Start menu and Folder icons sections (click the header to expand/collapse).
+- Smooth CSS transitions on accent swatch, gallery items, and section groups.
+
 ### Fixed
 
 - **SysGlance is not retired.** A concurrent session had added a retirement
@@ -243,3 +255,29 @@ a  accent, semantic colours, radius and spacing). Dark and light themes are now 
 
 - Initial overlay: CPU, memory, GPU, disks, network, filesystem folders,
   processes, battery, tray icon, global shortcuts, NSIS installer config.
+
+## [1.3.0] - 2026-09-15
+
+### Added
+- **LCD theme** — retro monochrome LCD display aesthetic with phosphor green glow, sharp borders, monospace font, block-style progress bars, and scanning line effect on desktop preview. Toggle in Settings → Appearance → LCD, or via tray/context menu.
+- **Wallpaper gallery** — scan `Pictures\Wallpaper` for thumbnails, click-to-apply, animated file detection (.webm/.mp4), open folder in Explorer.
+- **Folder customization** — read/write `desktop.ini` for 6 standard folders (Desktop, Documents, Downloads, Pictures, Videos, Music), restore defaults.
+- **Start menu toggles** — show/hide recent apps, suggestions, full-screen Start via `HKCU\...\Explorer\Advanced`.
+- **Accent colour picker** — native `<input type="color">`, hex input, 16 preset dots, all wired to `setAccentHex`.
+- **Desktop preview** — mini desktop with wallpaper background and taskbar bar on the selected edge.
+
+### Changed
+- **Performance: incremental rendering** — CPU per-core bars, GPU section, disk list, and process table now use signature-based caching to avoid `innerHTML` rebuilds when data hasn't changed. Steady-state CPU usage drops significantly.
+- **Performance: shell panel caching** — Start menu state and special folder list are cached after first fetch; only re-read from registry on explicit refresh or toggle change.
+- **Performance: setText/setWidth guards** — all metric text updates use `setText()`/`setWidth()` with equality checks to avoid unnecessary layout invalidation.
+- **Shell panel glass styling** — every section now has gradient backgrounds, hover glow, smooth transitions, and depth shadows. Color dots have hover scale. Gallery items have hover zoom. Folder items have hover state. Desktop preview is 72px with shadow depth.
+- **Native helper path** — `shellHelper.js` now resolves the helper from `extraResources` alongside the asar, matching electron-builder's packaging convention.
+
+### IPC
+- 23 channels (up from 12): `shell:accent:setHex`, `shell:wallpaper:list`, `shell:wallpaper:galleryPreview`, `shell:wallpaper:openFolder`, `shell:folder:readCustomization`, `shell:folder:writeCustomization`, `shell:folder:listSpecial`, `shell:folder:restoreDefault`, `shell:startMenu:getState`, `shell:startMenu:setToggle`, `shell:startMenu:openPersonalization`
+
+### Verification
+- 108 checks pass (`npm run verify` — 15 syntax + 33 config + 28 shell + 32 extended)
+- Zero new npm dependencies
+- All new sections are collapsible
+- Dark, light, and LCD themes supported

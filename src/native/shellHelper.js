@@ -21,7 +21,11 @@ const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 
-const HELPER = path.join(__dirname, 'shell', 'SysGlanceShellHelper.exe');
+// The helper is placed by electron-builder's extraResources next to the asar
+// (resources/SysGlanceShellHelper.exe). Inside the asar, __dirname points to a
+// virtual path, so we resolve relative to the app root instead.
+const APP_ROOT = path.join(__dirname, '..', '..');
+const HELPER = path.join(APP_ROOT, 'SysGlanceShellHelper.exe');
 
 function helperPath() {
   return process.env.SYSGLANCE_HELPER || HELPER;

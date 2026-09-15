@@ -65,7 +65,18 @@ to tray. `Ctrl+Shift+S` toggles it. Everything is configurable from the built-in
   **miniature desktop with the bar drawn on the selected edge**
 - **Auto-hide** — one bit of one byte; the other sticky-rect flags are preserved
 - **Dark / light mode**, **accent derived from the wallpaper** (hex and swatch
-  shown), **wallpaper application** with a **thumbnail of the current wallpaper**
+  shown), **custom accent colour picker** (native colour input, hex field, 16
+  presets), **wallpaper application** with a **thumbnail of the current wallpaper**
+- **Wallpaper gallery** — browse images from `Pictures\Wallpaper`, preview
+  thumbnails, apply with one click. Animated wallpapers (.webm/.mp4) are
+  detected; SysGlance opens the folder since Windows has no native animated
+  wallpaper API
+- **Start menu** — toggle recent apps, suggestions, and full-screen Start;
+  button to open `ms-settings:personalization`
+- **Folder icons** — customize icons for Desktop, Documents, Downloads,
+  Pictures, Videos, Music via `desktop.ini`; restore defaults
+- **Desktop preview** — the current wallpaper as a miniature background with
+  the taskbar bar on the selected edge
 - Taskbar *vibrancy* is deliberately **not** here — that resident effect belongs
   to OpenClaw Widget. The panel says so and links to it.
 - Nothing is applied behind your back: changing position or auto-hide asks for an
@@ -226,12 +237,13 @@ sysglance/
 │       ├── shellHelper.js          # controller for the one native binary
 │       └── shell/SysGlanceShellHelper.cs   # wallpaper + theme broadcast (one-shot)
 ├── scripts/
-│   ├── verify-syntax.js   # node --check gate
-│   ├── verify-config.js   # settings validation harness
-│   ├── verify-shell.js    # registry/accent harness (read-only)
-│   ├── bench-metrics.js   # before/after refresh-cycle benchmark
-│   ├── build-native.ps1   # compiles the C# helper with in-box csc.exe
-│   └── verify-accent-pixels.ps1  # independent accent-sampler cross-check
+│   ├── verify-syntax.js         # node --check gate
+│   ├── verify-config.js         # settings validation harness
+│   ├── verify-shell.js          # registry/accent harness (read-only)
+│   ├── verify-shell-extended.js # wallpaper gallery, folders, start menu, accent hex
+│   ├── bench-metrics.js         # before/after refresh-cycle benchmark
+│   ├── build-native.ps1         # compiles the C# helper with in-box csc.exe
+│   └── verify-accent-pixels.ps1      # independent accent-sampler cross-check
 ├── assets/                # logo, icons
 ├── docs/                  # screenshot, SHELL.md, IPC-SECURITY.md
 ├── CONTRIBUTING.md
@@ -259,8 +271,9 @@ sysglance/
 | **Node `os` / `/proc`** | Fast metrics tier — in-process, zero spawns |
 | **systeminformation** | Hardware tier only (GPU, temps, disks, network, processes, battery) |
 | **Vanilla JS + CSS** | Zero framework overhead; `backdrop-filter` for the glass |
-| **reg.exe via `execFile`** | Windows shell configuration, argument-array invocation only |
+| **reg.exe via `execFile`** | Windows shell configuration (taskbar, theme, accent, Start menu), argument-array invocation only |
 | **In-box `csc.exe`** | The one native helper (wallpaper / theme broadcast) |
+| **`desktop.ini` + `attrib`** | Folder icon customization (IconResource) |
 
 ## 🤝 Contributing
 
@@ -285,3 +298,20 @@ MIT License · Made by [smouj](https://github.com/smouj)
 <sub>No server · No telemetry · No subscriptions</sub>
 
 </div>
+
+## Themes
+
+SysGlance ships with three built-in themes:
+
+| Theme | Description |
+|-------|-------------|
+| **Dark** | Semi-transparent glass overlay with blur, accent cyan, and depth shadows. The default. |
+| **Light** | Opaque light surface with blue accents, designed for light desktop backgrounds. |
+| **LCD** | Retro monochrome LCD display aesthetic — sharp borders, monospace font, phosphor green (#00ffa3) text with glow, block-style progress bars with stepped animation, and a scanning line effect on the desktop preview. Inspired by the Logitech G510 LCD. |
+
+Switch themes from:
+- Settings panel → Appearance
+- Tray icon → Theme submenu
+- Context menu → Theme submenu
+
+The LCD theme disables blur, removes all border-radius, uses `steps(4)` animation for progress bars, and adds a subtle phosphor `text-shadow` glow on key values.

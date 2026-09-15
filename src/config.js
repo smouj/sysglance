@@ -19,7 +19,7 @@ const CONFIG_VERSION = 2;
 
 const LAYOUTS = ['sidebar', 'dock', 'corner'];
 const ANCHORS = ['top-right', 'top-left', 'bottom-right', 'bottom-left'];
-const THEMES = ['dark', 'light'];
+const THEMES = ['dark', 'light', 'lcd'];
 const SECTION_KEYS = ['cpu', 'memory', 'gpu', 'filesystem', 'disks', 'network', 'processes', 'battery'];
 // Cards the user may fold away. `shell` is injected by src/shell/panel.js, so it
 // is a collapsible view too even though it is not a metrics section.

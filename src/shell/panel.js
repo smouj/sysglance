@@ -511,20 +511,28 @@
     }
   }
 
+  // Cache start menu + folder data: only fetch once or on explicit refresh
+  var startMenuCache = null;
+  var folderCache = null;
+
   async function refresh() {
     try {
       var st = await api.shell.getState();
-      // Also load start menu + folder data
-      var extResults = await Promise.allSettled([
-        api.shell.getStartMenuState(),
-        api.shell.listSpecialFolders()
-      ]);
-      if (extResults[0].status === 'fulfilled' && extResults[0].value) {
-        st.startMenu = extResults[0].value;
+      // Only fetch start menu + folders on first load or explicit refresh
+      if (!startMenuCache || !folderCache) {
+        var extResults = await Promise.allSettled([
+          api.shell.getStartMenuState(),
+          api.shell.listSpecialFolders()
+        ]);
+        if (extResults[0].status === 'fulfilled' && extResults[0].value) {
+          startMenuCache = extResults[0].value;
+        }
+        if (extResults[1].status === 'fulfilled' && extResults[1].value) {
+          folderCache = extResults[1].value;
+        }
       }
-      if (extResults[1].status === 'fulfilled' && extResults[1].value) {
-        st.specialFolders = extResults[1].value;
-      }
+      st.startMenu = startMenuCache;
+      st.specialFolders = folderCache;
       render(st);
     } catch (err) {
       el.section.style.display = 'none';
@@ -533,7 +541,11 @@
   }
 
   // ── Wiring ─────────────────────────────────────────────
-  el.refresh.addEventListener('click', refresh);
+  el.refresh.addEventListener('click', function () {
+    startMenuCache = null;
+    folderCache = null;
+    refresh();
+  });
 
   // Taskbar position
   el.position.addEventListener('click', async function (ev) {
@@ -628,6 +640,7 @@
 
   // Start menu
   el.startRecent.addEventListener('change', async function () {
+    startMenuCache = null;
     var r = await call('setStartMenuToggle', 'showRecentApps', el.startRecent.checked);
     if (!r) return;
     if (r.ok === false) return say('\u2716 ' + r.error, 'err');
@@ -635,6 +648,7 @@
   });
 
   el.startSuggestions.addEventListener('change', async function () {
+    startMenuCache = null;
     var r = await call('setStartMenuToggle', 'showSuggestions', el.startSuggestions.checked);
     if (!r) return;
     if (r.ok === false) return say('\u2716 ' + r.error, 'err');
@@ -642,6 +656,7 @@
   });
 
   el.startFullscreen.addEventListener('change', async function () {
+    startMenuCache = null;
     var r = await call('setStartMenuToggle', 'fullScreenStart', el.startFullscreen.checked);
     if (!r) return;
     if (r.ok === false) return say('\u2716 ' + r.error, 'err');
