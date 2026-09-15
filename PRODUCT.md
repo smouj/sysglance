@@ -1,21 +1,62 @@
-# Product positioning — OpenClaw desktop suite
+# SysGlance — product contract
 
-Two desktop apps, one suite. Complementary, never competitors.
+SysGlance is a **small, on-demand system glance**. Its job is to show useful machine state quickly without becoming another system-tweaking suite.
 
-| | **SysGlance** (this repo) | **OpenClaw Widget** (https://github.com/smouj/openclaw-desktop-widget) |
-|---|---|---|
-| Role | On-demand control center | Always-on glance |
-| Stack | Electron 33 + systeminformation | C# / WPF, .NET Framework 4.x (in-box compiler), 0 dependencies |
-| Runs | Only while the user has it open | Always resident, lightweight |
-| Owns | Deep dashboards (files, processes, GPU, project info) and **Shell configuration** (taskbar position, auto-hide, dark mode, accent, wallpaper, wallpaper gallery, folder icons, Start menu) | System health readout, OpenClaw/Codex status and **the resident taskbar vibrancy effect** |
-| Does not own | Resident taskbar effects | Shell configuration UI |
+## Owns
 
-## Rules
+- CPU load, temperature and per-core activity.
+- Memory and swap usage.
+- GPU load, temperature and VRAM when available.
+- Network throughput.
+- Storage usage.
+- Top processes.
+- Standard home-folder shortcuts.
+- Battery state when present.
+- Three presentation modes: **Sidebar**, **Dock** and **Mini**.
+- Dark, light and LCD presentation themes.
 
-1. **Only the Widget runs a resident taskbar effect.** Two processes applying window policy to the same taskbar would fight; last writer wins and both burn CPU.
-2. **SysGlance configures, the Widget keeps it alive.** SysGlance must not hold a resident effect.
-3. **Same brand, same visual language, different jobs.** Never ship the same screen twice.
-4. **Before adding a feature, check the sibling repo.** If it belongs there, link to it instead of duplicating it.
-5. **SysGlance configures the shell via registry (reg.exe) and SystemParametersInfo (C# helper).** Animated wallpapers (.webm/.mp4) cannot be applied natively — document the limitation and offer to open the folder.
+## Does not own
 
-This file is the tie-breaker for future sessions working on either repo.
+SysGlance must **not** change or persist Windows shell personalization. In particular it must not manage:
+
+- taskbar position, auto-hide, transparency or vibrancy;
+- Start menu settings;
+- Windows accent or dark-mode registry values;
+- wallpaper application;
+- folder icons or `desktop.ini` customization;
+- Explorer restarts;
+- any resident desktop effect.
+
+If a future feature requires registry writes, Explorer manipulation or a native helper unrelated to metrics, it belongs outside this repository.
+
+## UI contract
+
+1. The main dashboard does not use page-level scrolling.
+2. Layouts are purpose-built, not one oversized screen squeezed into three sizes.
+3. **Sidebar** prioritizes CPU, memory, GPU and network, with compact detail cards below.
+4. **Dock** is a horizontal glance strip.
+5. **Mini** shows only the four live primary signals.
+6. Missing hardware degrades cleanly instead of leaving broken space.
+7. The overlay is interactive by default; position lock is explicit.
+8. No external fonts, web views, telemetry or network calls are required at runtime.
+
+## Performance contract
+
+Metrics stay split into tiers:
+
+- **Fast tier:** Node `os`, approximately every 1.5 s by default.
+- **Hardware tier:** `systeminformation`, approximately every 7 s by default.
+- Hidden sections are not queried by the hardware tier where possible.
+- Renderer updates avoid unnecessary DOM rewrites.
+
+## Architecture
+
+```text
+Electron main
+  ├─ config.js       validated local settings
+  ├─ metrics.js      static / fast / hardware collection
+  ├─ preload.js      narrow contextBridge API
+  └─ renderer.js     presentation only
+```
+
+The repository intentionally contains no Windows Shell configuration subsystem.
