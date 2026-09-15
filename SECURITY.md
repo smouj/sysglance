@@ -6,23 +6,22 @@ Only the latest release on `main` receives security fixes.
 
 ## Reporting a vulnerability
 
-Please **do not** open a public issue for security problems.
+Do not open a public issue for a security vulnerability. Use GitHub's private **Security → Report a vulnerability** flow for this repository.
 
-Use GitHub's private reporting: **Security → Report a vulnerability** in this repository.
-You will get an answer within 72 hours, and credit in the release notes if you want it.
+## Security-sensitive areas
 
-## Scope
+SysGlance is a local desktop application with no server, telemetry or runtime web connection. The main security boundaries are:
 
-SysGlance is a local desktop application: no server, no telemetry, no network services.
-The parts that matter most for security are:
+- Electron renderer isolation (`contextIsolation`, sandbox, disabled Node integration);
+- the explicit `contextBridge` allow-list in `src/preload.js`;
+- main-process validation of settings and file actions;
+- the folder-opening allow-list;
+- Content Security Policy with `connect-src 'none'`.
 
-- the Electron renderer isolation model (`contextIsolation`, `sandbox`, `preload` allow-list),
-- the native helper used for wallpaper/theme calls,
-- anything that reads or writes Windows registry values.
-
-Reports about those areas are especially welcome.
+SysGlance does not expose Windows registry, Explorer, taskbar or arbitrary command-execution APIs.
 
 ## Out of scope
 
-- Issues that require an already-compromised machine.
-- Cosmetic problems in third-party skins or wallpapers you load yourself.
+- Attacks requiring an already-compromised local machine.
+- Cosmetic/theme defects without a security consequence.
+- Vulnerabilities solely in unsupported third-party modifications.
