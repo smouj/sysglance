@@ -449,7 +449,8 @@ async function collectSlow(opts) {
     .map((d) => ({
       fs: d.fs || '?', mount: d.mount || '?', used: d.used || 0, size: d.size || 0,
       use: typeof d.use === 'number' ? +d.use.toFixed(1) : 0, available: d.available || 0,
-      type: d.type || null
+      type: d.type || null,
+      temperature: Number.isFinite(d.temperature) ? d.temperature : null
     }))
     // Largest first: the filesystem the user cares about is almost always the
     // biggest one. Root is pinned ahead of equal-footing mounts.

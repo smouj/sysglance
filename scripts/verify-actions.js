@@ -37,6 +37,7 @@ check('profiles carry exact folder snapshots through transactional shell apply',
 check('folder analysis is explicit and bounded', main.includes("ipcMain.handle('storage:analyzeHome'") && html.includes('id="storage-analyze"') && metricsSource.includes('maxEntries') && metricsSource.includes('isSymbolicLink'));
 check('network identity is an explicit on-demand bridge', main.includes("ipcMain.handle('network:inspect'") && preload.includes('network: {') && metricsSource.includes('getNetworkDetails'));
 check('active local alerts are visible in System status', html.includes('id="health-alerts"') && renderer.includes('renderHealth(data.health, data.alerts)') && renderer.includes('Active alerts'));
+check('storage exposes free space and filesystem metadata', renderer.includes('disk.available') && renderer.includes('disk.fs') && renderer.includes('disk.type'));
 
 console.log('\n' + passed + ' passed, ' + failed + ' failed');
 process.exit(failed ? 1 : 0);

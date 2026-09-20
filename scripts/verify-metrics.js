@@ -22,6 +22,7 @@ function check(label, condition, detail) {
   check('fast tier returns bounded CPU and memory values', fast.cpu.load >= 0 && fast.cpu.load <= 100 && fast.memory.percentage >= 0 && fast.memory.percentage <= 100);
   const slow = await metrics.collectSlow({ sections: { gpu: false, battery: false, cpu: false, filesystem: false, processes: false, network: true, disks: true } });
   check('slow tier exposes network session fields', slow.network && Number.isFinite(slow.network.sessionDownloaded) && Number.isFinite(slow.network.peakRx));
+  check('storage rows retain free space, filesystem and optional temperature', Array.isArray(slow.disks) && (!slow.disks.length || ('available' in slow.disks[0] && 'fs' in slow.disks[0] && 'temperature' in slow.disks[0])));
   const originalGraphics = si.graphics;
   const originalDiskIo = si.disksIO;
   try {

@@ -133,11 +133,11 @@ Measured with `npm run bench` on the same Windows host; the fast-cycle figure is
 
 | | before | after |
 |---|---|---|
-| cost of one fast cycle | ~47 ms | **0.82 ms** |
+| cost of one fast cycle | ~47 ms | **0.69 ms** |
 | child processes per fast cycle | ~12.5 | **0** |
 | steady state, per second of uptime | 31.1 ms / 8.3 spawns | **11.8 ms / 2.9 spawns** |
 
-The status bar shows the measured cost of the last cycle (`⏱ 0.8 ms`), so the
+The status bar shows the measured cost of the last cycle (`⏱ 0.7 ms`), so the
 number above is verifiable in the app rather than taken on faith.
 
 ## 📦 Install

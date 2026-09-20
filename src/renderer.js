@@ -778,6 +778,8 @@
           var disk = data.disks[d];
           dhtml += '<div class="disk-item"><div class="disk-label"><span class="disk-fs">' + esc(disk.mount || disk.fs) +
             '</span><span class="disk-pct">' + disk.use + '%</span></div><div class="disk-size">' + fmtBytes(disk.used) + ' / ' + fmtBytes(disk.size) +
+            ' · ' + fmtBytes(disk.available) + ' free' + (disk.fs ? ' · ' + esc(disk.fs) : '') + (disk.type ? ' · ' + esc(disk.type) : '') +
+            (disk.temperature != null ? ' · ' + esc(String(disk.temperature)) + ' °C' : '') +
             '</div><div class="progress-bar"><div class="progress-fill ' + loadClass(disk.use) + '" style="width:' + Math.min(disk.use, 100) + '%"></div></div></div>';
         }
         dom.diskList.innerHTML = dhtml;
