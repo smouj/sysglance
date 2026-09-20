@@ -98,6 +98,7 @@ async function getInspector(force) {
     inspectorPromise = null;
   }
   if (inspectorCache && !force) return inspectorCache;
+  const staticData = await getStatic();
   if (!inspectorPromise) {
     inspectorPromise = Promise.all([
       safe(() => si.system(), {}),
@@ -106,8 +107,20 @@ async function getInspector(force) {
       safe(() => si.memLayout(), []),
       safe(() => si.diskLayout(), []),
       safe(() => si.graphics(), { controllers: [], displays: [] }),
-      safe(() => si.networkInterfaces(), [])
-    ]).then(([system, bios, baseboard, memory, disks, graphics, network]) => ({
+      safe(() => si.networkInterfaces(), []),
+      safe(() => si.battery(), {}),
+      safe(() => si.osInfo(), {})
+    ]).then(([system, bios, baseboard, memory, disks, graphics, network, battery, osInfo]) => ({
+      cpu: {
+        model: staticData.cpuModel || null, cores: staticData.cpuCores || null,
+        physicalCores: staticData.cpuPhysicalCores || null
+      },
+      os: {
+        platform: staticData.os && staticData.os.platform || osInfo.platform || null,
+        distro: staticData.os && staticData.os.distro || osInfo.distro || null,
+        release: staticData.os && staticData.os.release || osInfo.release || null,
+        codename: osInfo.codename || null, build: osInfo.build || null
+      },
       system: {
         manufacturer: system.manufacturer || null, model: system.model || null,
         version: system.version || null, sku: system.sku || null, virtual: !!system.virtual
@@ -149,7 +162,12 @@ async function getInspector(force) {
         iface: item.iface || null, ifaceName: item.ifaceName || null, default: !!item.default,
         type: item.type || null,
         operstate: item.operstate || null, speed: item.speed || null
-      }))
+      })),
+      battery: battery && battery.hasBattery ? {
+        percent: Number.isFinite(battery.percent) ? battery.percent : null,
+        charging: !!battery.charging, acConnected: !!battery.acConnected,
+        cycleCount: Number.isFinite(battery.cycleCount) ? battery.cycleCount : null
+      } : null
     }));
   }
   try {

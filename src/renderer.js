@@ -277,6 +277,8 @@
     if (!dom.inspectorSummary || !result || !result.hardware) return;
     var h = result.hardware;
     var lines = [];
+    if (h.cpu && h.cpu.model) lines.push('<strong>CPU</strong> ' + esc(h.cpu.model) + (h.cpu.cores ? ' · ' + h.cpu.cores + ' cores' : ''));
+    if (h.os && (h.os.distro || h.os.release)) lines.push('<strong>Windows</strong> ' + esc([h.os.distro, h.os.release, h.os.build].filter(Boolean).join(' ')));
     if (h.system && (h.system.manufacturer || h.system.model)) lines.push('<strong>System</strong> ' + esc([h.system.manufacturer, h.system.model].filter(Boolean).join(' ')));
     if (h.baseboard && (h.baseboard.manufacturer || h.baseboard.model)) lines.push('<strong>Board</strong> ' + esc([h.baseboard.manufacturer, h.baseboard.model].filter(Boolean).join(' ')));
     if (h.bios && (h.bios.vendor || h.bios.version)) lines.push('<strong>BIOS</strong> ' + esc([h.bios.vendor, h.bios.version].filter(Boolean).join(' ')));
@@ -284,6 +286,7 @@
     if (h.storage && h.storage.length) lines.push('<strong>Storage</strong> ' + esc(h.storage.map(function (item) { return item.name; }).filter(Boolean).join(', ')));
     if (h.memory && h.memory.length) lines.push('<strong>Memory</strong> ' + h.memory.length + ' module' + (h.memory.length === 1 ? '' : 's'));
     if (h.network && h.network.length) lines.push('<strong>Network</strong> ' + esc(h.network.map(function (item) { return item.ifaceName || item.iface; }).filter(Boolean).join(', ')));
+    if (h.battery) lines.push('<strong>Battery</strong> ' + (h.battery.percent == null ? 'present' : h.battery.percent + '%') + (h.battery.charging ? ' · charging' : ''));
     if (result.displays && result.displays.length) lines.push('<strong>Displays</strong> ' + result.displays.length + ' · ' + esc(result.displays.map(function (item) { return item.label; }).join(', ')));
     dom.inspectorSummary.innerHTML = lines.length ? lines.join('<br>') : 'No hardware identity data reported.';
   }

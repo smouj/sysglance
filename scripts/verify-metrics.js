@@ -21,7 +21,7 @@ function check(label, condition, detail) {
   check('disk I/O is nullable rather than fabricated', slow.diskIO === null || (typeof slow.diskIO === 'object' && Object.prototype.hasOwnProperty.call(slow.diskIO, 'readBytesSec')));
   const inspector = await metrics.getInspector();
   const serialized = JSON.stringify(inspector).toLowerCase();
-  check('inspector includes hardware families', inspector.system && inspector.bios && inspector.baseboard && inspector.graphics && Array.isArray(inspector.storage));
+  check('inspector includes hardware families', inspector.cpu && inspector.os && inspector.system && inspector.bios && inspector.baseboard && inspector.graphics && Array.isArray(inspector.storage) && Object.prototype.hasOwnProperty.call(inspector, 'battery'));
   check('inspector excludes MAC addresses, IPs and serial numbers', !serialized.includes('"mac"') && !serialized.includes('"ip4"') && !serialized.includes('serial'));
   console.log('\n' + passed + ' passed, ' + failed + ' failed');
   process.exit(failed ? 1 : 0);

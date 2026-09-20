@@ -22,7 +22,24 @@ The benchmark's systeminformation calls are intentionally measured in isolation 
 - New: 836.061 ms/s compute, 2.54 child processes/s.
 - Measured improvement: 2.21× lower compute estimate and 2.14× fewer child processes in this run.
 
-Follow-up after the profile/process/display integration (`npm run bench -- --iterations=5`) measured a 0.79 ms median fast cycle, 3,204.02 ms median slow cycle, 3.01× lower compute estimate and 2.21× fewer child processes versus the legacy path in that run. These are host-specific measurements, not release guarantees. The benchmark does not yet measure cold/warm window startup, renderer/main RSS, GPU-process RSS, frame pacing, installer size or idle CPU over a 10-minute window. Those are release-gate measurements still required.
+Follow-up after the profile/process/display integration (`npm run bench -- --iterations=5`) measured a 0.79 ms median fast cycle, 3,204.02 ms median slow cycle, 3.01× lower compute estimate and 2.21× fewer child processes versus the legacy path in that run. These are host-specific measurements, not release guarantees.
+
+## Runtime smoke measurement
+
+One normal launch on the same Windows 10 host (20 September 2026, current
+working tree, no `--self-test`) reached a visible window in **1,474 ms**. After
+three seconds of warm-up, a 30.3-second sample observed four processes in the
+SysGlance tree and **393.3 MB combined RSS**: main 96.1 MB, renderer 144.2 MB,
+GPU process 108.8 MB and utility 44.2 MB. Aggregate CPU time was 2,203 ms,
+equivalent to **7.27% of one core** across the sample. The hardware cadence is
+7 seconds, so this includes real provider bursts rather than pretending that
+the app is idle between polls. A second shorter sample measured 1,512 ms to
+window and 396.9 MB RSS; the spread shows why these are baselines, not release
+guarantees. The process tree was closed after each run.
+
+The final Windows installer from this audit is **111,911,140 bytes**. It was
+built in `dist-verify` with electron-builder 26.15.3 and includes the packaged
+native helper.
 
 ## Current performance controls
 
@@ -35,7 +52,7 @@ Follow-up after the profile/process/display integration (`npm run bench -- --ite
 ## NOT VERIFIED
 
 - 60 Hz visual smoothness on a 100/125/150/175/200% DPI matrix.
-- RAM split between main, renderer and GPU processes.
-- Cold/warm startup time to first useful metric.
-- Windows installer size and installed footprint.
+- Repeated cold/warm startup distributions and time to first useful metric.
+- Idle CPU/RAM distributions over a longer representative workload.
+- Installed footprint, uninstall residue and frame pacing at 60 Hz.
 - Sleep/resume, display hot-plug and GPU driver reset behavior.
