@@ -49,7 +49,7 @@
     profileApply: $('profile-apply'), profileDelete: $('profile-delete'), profileDuplicate: $('profile-duplicate'),
     profileExport: $('profile-export'), profileImport: $('profile-import'), profileUndo: $('profile-undo'), profileStatus: $('profile-status'),
     inspectorSummary: $('inspector-summary'), inspectorRefresh: $('inspector-refresh'),
-    diagnosticsCopy: $('diagnostics-copy'), diagnosticsExport: $('diagnostics-export'), diagnosticsStatus: $('diagnostics-status'),
+    diagnosticsCopy: $('diagnostics-copy'), diagnosticsExport: $('diagnostics-export'), diagnosticsOpenLogs: $('diagnostics-open-logs'), diagnosticsStatus: $('diagnostics-status'),
     commandPalette: $('command-palette'), palettePrefix: $('palette-prefix'), paletteInput: $('palette-input'), paletteList: $('palette-list'), paletteClose: $('palette-close'),
     appInfo: $('app-info'), metricInfo: $('metric-info')
   };
@@ -347,6 +347,13 @@
       if (!res || !res.ok) { if (!res || !res.canceled) diagnosticsStatus((res && res.error) || 'Could not export diagnostics', true); }
       else diagnosticsStatus('Diagnostics exported.');
     }).catch(function (err) { diagnosticsStatus(err.message || 'Could not export diagnostics', true); });
+  });
+  if (dom.diagnosticsOpenLogs) dom.diagnosticsOpenLogs.addEventListener('click', function () {
+    if (!api.diagnostics.openLogs) return;
+    api.diagnostics.openLogs().then(function (res) {
+      if (!res || !res.ok) diagnosticsStatus((res && res.error) || 'Could not open logs', true);
+      else diagnosticsStatus('Logs opened.');
+    }).catch(function (err) { diagnosticsStatus(err.message || 'Could not open logs', true); });
   });
   if (dom.inspectorRefresh) dom.inspectorRefresh.addEventListener('click', refreshInspector);
 

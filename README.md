@@ -113,11 +113,12 @@ metrics, processes and profiles, and can open the allow-listed Windows Settings,
 network, display, apps and Task Manager surfaces or lock the PC. It is
 intentionally not a general launcher.
 
-The settings panel also provides a sanitized system summary for clipboard copy
-or JSON export. It excludes document contents, serials, network addresses and
-redacts the saved wallpaper path. Direct shell changes have a bounded local
-undo journal; profile application continues to keep shell changes pending until
-an explicit transactional profile path is available.
+The settings panel also provides a sanitized system summary for clipboard copy,
+JSON export and an explicit Open logs action. It excludes document contents,
+serials and network addresses, redacts the saved wallpaper path and includes
+only a bounded recent-log tail. Direct shell changes have a bounded local undo
+journal; profile application continues to keep shell changes pending until an
+explicit transactional profile path is available.
 
 ### Performance, measured
 The hot path uses **Node's own `os` module in process** — no `wmic`, no

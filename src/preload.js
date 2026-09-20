@@ -108,7 +108,8 @@ contextBridge.exposeInMainWorld('sysglance', {
   diagnostics: {
     inspect: (force) => ipcRenderer.invoke('diagnostics:inspect', force === true),
     copy: () => ipcRenderer.invoke('diagnostics:copy'),
-    export: () => ipcRenderer.invoke('diagnostics:export')
+    export: () => ipcRenderer.invoke('diagnostics:export'),
+    openLogs: () => ipcRenderer.invoke('diagnostics:openLogs')
   },
 
   // Windows shell configuration (position/theme/accent/wallpaper only —

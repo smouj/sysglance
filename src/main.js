@@ -742,7 +742,8 @@ async function diagnosticsSnapshot() {
     },
     hardware: await metrics.getInspector(),
     config: diagnosticsConfig(),
-    rendererErrors: rendererErrors.slice(-20)
+    rendererErrors: rendererErrors.slice(-20),
+    recentLogs: log.tail(40)
   };
 }
 
@@ -843,6 +844,14 @@ ipcMain.handle('diagnostics:export', async () => {
     if (target.canceled || !target.filePath) return { ok: false, canceled: true };
     fs.writeFileSync(path.resolve(target.filePath), JSON.stringify(await diagnosticsSnapshot(), null, 2) + '\n', 'utf8');
     return { ok: true, filePath: path.resolve(target.filePath) };
+  } catch (err) { return { ok: false, error: err.message }; }
+});
+ipcMain.handle('diagnostics:openLogs', async () => {
+  const target = log.file();
+  if (!target) return { ok: false, error: 'log file is unavailable' };
+  try {
+    const error = await shell.openPath(target);
+    return error ? { ok: false, error } : { ok: true };
   } catch (err) { return { ok: false, error: err.message }; }
 });
 ipcMain.handle('copy-text', (_e, value) => {

@@ -17,6 +17,7 @@ the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Added network session totals/peak rates, nullable disk-I/O reporting, process filtering and PID/path clipboard actions.
 - Added configurable toggle/lock/palette shortcuts, reduced-motion/forced-colour CSS fallbacks and a bounded journal-backed undo action for direct shell mutations.
 - Expanded the internal command palette with allow-listed Windows control actions for Settings, network, display, apps, Task Manager and PC lock.
+- Added an explicit Open logs action and included a bounded recent-log tail in exported diagnostics.
 
 - **System Status** with objective health rows, bounded local history for key metrics and CPU/RAM sparklines.
 - **Local Alert Engine** with threshold, duration, cooldown and recovery state transitions.

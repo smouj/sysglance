@@ -41,7 +41,7 @@ This is an evidence-based baseline. A feature is listed as implemented only when
 ## Incomplete or not yet evidenced
 
 - Profiles now support local save/apply/duplicate/rename/delete/import/export. Shell settings are captured but require a separate explicit confirmation path; transactional shell application from profiles is still pending.
-- The inspector and sanitized export are implemented, but user-triggered folder-size analysis, gateway/DNS details and a full support bundle/open-logs action are not.
+- The inspector, sanitized export and local Open logs action are implemented, but user-triggered folder-size analysis, gateway/DNS details and a full support bundle are not.
 - Disk-I/O/temperature fields remain provider-dependent and may be unavailable; the UI preserves null rather than fabricating values.
 - Direct shell changes have a bounded undo journal, but folder customization rollback is best-effort and a multi-setting transaction journal for profile application is not yet implemented.
 - Windows 10/11, DPI matrix, sleep/resume, Explorer restart, GPU reset and monitor disconnect/reconnect remain NOT VERIFIED on a hardware test matrix; the runtime now has display topology and hot-plug handling.
@@ -59,5 +59,5 @@ This is an evidence-based baseline. A feature is listed as implemented only when
 
 1. Verify the Windows 10/11, DPI, sleep/resume, Explorer restart, GPU reset and monitor hot-plug matrix.
 2. Add transactional shell application/rollback for profiles, including complete folder-customization restoration.
-3. Add a full support bundle/open-logs action plus gateway/DNS and storage diagnostics.
+3. Add a full support bundle plus gateway/DNS and storage diagnostics.
 4. Close code-signing and secure-update gaps before release-candidate distribution.
