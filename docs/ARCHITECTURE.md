@@ -12,6 +12,7 @@ main process ── config + logs + lifecycle + tray
         ├── AlertEngine (threshold / duration / cooldown / recovery)
         ├── Health evaluator (objective status rows)
         ├── Display topology / work-area placement
+        ├── Diagnostics snapshot / profile undo
         └── shell IPC ── taskbar.js ── reg.exe / one-shot C# helper
 ```
 
@@ -38,4 +39,5 @@ validated SysGlance configuration. Process actions re-query the PID in the
 main process before opening a location or showing the destructive confirmation.
 Display selection is validated and resolved against Electron's live display
 topology; disconnects fall back to the primary display and reflow the overlay.
-Diagnostics and shell rollback still require their own schemas and tests.
+The diagnostics export is intentionally a sanitized snapshot; a full support
+bundle and shell rollback still require their own schemas and tests.

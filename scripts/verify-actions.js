@@ -1,0 +1,29 @@
+#!/usr/bin/env node
+'use strict';
+
+const fs = require('fs');
+const path = require('path');
+
+let passed = 0, failed = 0;
+function check(label, condition, detail) {
+  if (condition) { passed++; console.log('  PASS  ' + label + (detail ? '  —  ' + detail : '')); }
+  else { failed++; console.log('  FAIL  ' + label + (detail ? '  —  ' + detail : '')); }
+}
+
+console.log('SysGlance — desktop action verification');
+const root = path.join(__dirname, '..');
+const main = fs.readFileSync(path.join(root, 'src', 'main.js'), 'utf8');
+const preload = fs.readFileSync(path.join(root, 'src', 'preload.js'), 'utf8');
+const html = fs.readFileSync(path.join(root, 'src', 'index.html'), 'utf8');
+const renderer = fs.readFileSync(path.join(root, 'src', 'renderer.js'), 'utf8');
+
+check('profile apply has an explicit undo path', main.includes("ipcMain.handle('profiles:undo'") && main.includes('profileUndo = null'));
+check('diagnostics copy/export are explicit IPC handlers', main.includes("ipcMain.handle('diagnostics:copy'") && main.includes("ipcMain.handle('diagnostics:export'"));
+check('diagnostics redact the saved wallpaper path', main.includes("copy.shell.wallpaperPath = copy.shell.wallpaperPath ? '[redacted]' : null"));
+check('diagnostics bridge is narrow', preload.includes('diagnostics: {') && !preload.includes('diagnostics: (channel'));
+check('command palette is present in the UI', html.includes('id="command-palette"') && html.includes('id="palette-input"'));
+check('command palette has a global shortcut', main.includes("CommandOrControl+K") && preload.includes("'toggle-palette'"));
+check('palette commands are navigation-only or explicit UI actions', renderer.includes('PALETTE_COMMANDS') && renderer.includes('Show system status'));
+
+console.log('\n' + passed + ' passed, ' + failed + ' failed');
+process.exit(failed ? 1 : 0);

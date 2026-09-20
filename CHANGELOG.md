@@ -12,6 +12,7 @@ the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Added local desktop profiles with validation, atomic persistence, save/apply/duplicate/rename/delete/import/export and explicit shell-pending behavior.
 - Process rows now show PID and expose revalidated open-location and confirmed end-task actions through the main process.
 - Added validated multi-monitor placement with display topology metadata, work-area-aware geometry, a settings selector and hot-plug fallback.
+- Added a Ctrl+K in-app navigation palette, sanitized diagnostics copy/export and undo for the last profile apply.
 
 - **System Status** with objective health rows, bounded local history for key metrics and CPU/RAM sparklines.
 - **Local Alert Engine** with threshold, duration, cooldown and recovery state transitions.

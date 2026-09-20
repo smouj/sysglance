@@ -25,6 +25,7 @@ const EVENTS = [
   'compact-mode-changed',
   'display-topology-changed',
   'toggle-settings',
+  'toggle-palette',
   'shell-config-changed'
 ];
 
@@ -86,6 +87,7 @@ contextBridge.exposeInMainWorld('sysglance', {
     list: () => ipcRenderer.invoke('profiles:list'),
     save: (name) => ipcRenderer.invoke('profiles:save', name),
     apply: (name) => ipcRenderer.invoke('profiles:apply', name),
+    undo: () => ipcRenderer.invoke('profiles:undo'),
     remove: (name) => ipcRenderer.invoke('profiles:delete', name),
     rename: (oldName, newName) => ipcRenderer.invoke('profiles:rename', oldName, newName),
     duplicate: (sourceName, targetName) => ipcRenderer.invoke('profiles:duplicate', sourceName, targetName),
@@ -96,6 +98,11 @@ contextBridge.exposeInMainWorld('sysglance', {
   processes: {
     openLocation: (pid) => ipcRenderer.invoke('process:openLocation', pid),
     endTask: (pid) => ipcRenderer.invoke('process:endTask', pid)
+  },
+
+  diagnostics: {
+    copy: () => ipcRenderer.invoke('diagnostics:copy'),
+    export: () => ipcRenderer.invoke('diagnostics:export')
   },
 
   // Windows shell configuration (position/theme/accent/wallpaper only —

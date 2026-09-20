@@ -11,7 +11,7 @@ This is an evidence-based baseline. A feature is listed as implemented only when
 | Command | Result |
 |---|---|
 | `npm ci` | PASS; 285 packages installed. `npm audit` and production-only audit report 0 vulnerabilities. The initial Electron 33/electron-builder 25 audit found 14 findings; the toolchain was upgraded and retested. |
-| `npm run verify` | PASS; 24 syntax, 33 config, 28 shell, 32 extended shell, 14 history/health/alert, 12 profile, 7 process, 9 display and unique IPC checks. |
+| `npm run verify` | PASS; 25 syntax, 33 config, 28 shell, 32 extended shell, 14 history/health/alert, 12 profile, 7 process, 9 display, 7 desktop-action and unique IPC checks. |
 | `npm run self-test` | PASS on Electron 44.4.3 after fixing duplicate Shell IPC registration. Real Electron window, preload bridge, fast/slow collection, product layer and hostile path refusal exercised. |
 | `npm run bench` | PASS as a measurement; see `PERFORMANCE_BASELINE.md`. |
 | `npm run build:win` | PASS on electron-builder 26.15.3; NSIS installer, blockmap, unpacked app and native helper were produced. |
@@ -29,6 +29,8 @@ This is an evidence-based baseline. A feature is listed as implemented only when
 - Bounded session-local history (24-hour ring-buffer ceiling), one-hour CPU/RAM sparklines and objective System Status rows.
 - Local alert state machine with duration, cooldown and recovery transitions.
 - Local desktop profiles with atomic versioned persistence, import/export and explicit shell-pending behavior.
+- Last-profile-apply undo for SysGlance-owned settings, plus a narrow Ctrl+K navigation palette.
+- Sanitized diagnostics summary copy/export with private wallpaper paths redacted.
 - Multi-monitor placement: validated display selection, work-area-aware geometry, topology metadata and display hot-plug fallback.
 - NSIS configuration, per-user install scripts, Linux/macOS targets and a Windows CI job are declared.
 
@@ -38,7 +40,7 @@ This is an evidence-based baseline. A feature is listed as implemented only when
 - Process rows now expose PID, executable path when available, open-location and confirmed end-task actions. Copy PID/path and richer inspector details remain.
 - No complete hardware inspector/export view or user-triggered folder-size analysis.
 - Network view exposes current interface rates only; session totals, peaks, gateway/DNS/link speed are not exposed.
-- No command palette, configurable hotkey editor, diagnostics package or explicit undo journal for shell changes.
+- No configurable hotkey editor, log bundle/open-logs action or explicit undo journal for shell changes; diagnostics currently exports a sanitized snapshot rather than a full support bundle.
 - Windows 10/11, DPI matrix, sleep/resume, Explorer restart, GPU reset and monitor disconnect/reconnect remain NOT VERIFIED on a hardware test matrix; the runtime now has display topology and hot-plug handling.
 - The native C# helper is built by the Windows package workflow and was present in the packaged app at `resources/SysGlanceShellHelper.exe`.
 - Code signing uses electron-builder's current local signing path but no publisher certificate is configured; production certificate handling remains NOT IMPLEMENTED.

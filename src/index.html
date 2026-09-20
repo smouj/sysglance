@@ -133,8 +133,20 @@
             <button id="profile-export" class="settings-action">Export</button>
             <button id="profile-import" class="settings-action">Import</button>
           </div>
+          <div class="settings-actions profile-actions">
+            <button id="profile-undo" class="settings-action">Undo last apply</button>
+          </div>
           <div id="profile-status" class="settings-hint" aria-live="polite">Profiles stay local to this PC.</div>
         </div>
+      </div>
+
+      <div class="settings-group">
+        <div class="settings-label">System inspector</div>
+        <div class="settings-actions">
+          <button id="diagnostics-copy" class="settings-action">Copy summary</button>
+          <button id="diagnostics-export" class="settings-action">Export JSON</button>
+        </div>
+        <div id="diagnostics-status" class="settings-hint" aria-live="polite">No personal files or document contents are included.</div>
       </div>
 
       <div class="settings-group">
@@ -148,6 +160,20 @@
         <div id="metric-info" class="meta-line">fast — · hardware —</div>
         <div id="app-info" class="meta-line">SysGlance</div>
       </div>
+    </div>
+  </div>
+
+  <div id="command-palette" class="command-palette hidden" role="dialog" aria-label="Command palette">
+    <div class="palette-card">
+      <div class="palette-search-row">
+        <span class="palette-prefix">⌘K</span>
+        <input id="palette-input" type="search" autocomplete="off" spellcheck="false" placeholder="Search SysGlance" aria-label="Search SysGlance commands">
+        <button id="palette-close" class="settings-close" title="Close command palette" aria-label="Close command palette">
+          <svg class="ic" viewBox="0 0 24 24"><use href="#i-close"/></svg>
+        </button>
+      </div>
+      <div id="palette-list" class="palette-list" role="listbox"></div>
+      <div class="palette-hint">Enter to run · Esc to close · Ctrl+K to open</div>
     </div>
   </div>
 

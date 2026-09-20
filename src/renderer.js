@@ -47,7 +47,9 @@
     themeOptions: $('theme-options'), displayOptions: $('display-options'), sectionToggles: $('section-toggles'),
     profileSelect: $('profile-select'), profileName: $('profile-name'), profileSave: $('profile-save'),
     profileApply: $('profile-apply'), profileDelete: $('profile-delete'), profileDuplicate: $('profile-duplicate'),
-    profileExport: $('profile-export'), profileImport: $('profile-import'), profileStatus: $('profile-status'),
+    profileExport: $('profile-export'), profileImport: $('profile-import'), profileUndo: $('profile-undo'), profileStatus: $('profile-status'),
+    diagnosticsCopy: $('diagnostics-copy'), diagnosticsExport: $('diagnostics-export'), diagnosticsStatus: $('diagnostics-status'),
+    commandPalette: $('command-palette'), paletteInput: $('palette-input'), paletteList: $('palette-list'), paletteClose: $('palette-close'),
     appInfo: $('app-info'), metricInfo: $('metric-info')
   };
 
@@ -182,6 +184,7 @@
       var label = display.label || ('Display ' + display.id);
       var suffix = display.primary ? ' · primary' : '';
       if (display.scaleFactor && display.scaleFactor !== 1) suffix += ' · ' + Math.round(display.scaleFactor * 100) + '%';
+      if (display.refreshRate) suffix += ' · ' + Math.round(display.refreshRate) + ' Hz';
       html += '<option value="' + esc(display.id) + '">' + esc(label + suffix) + '</option>';
     });
     dom.displayOptions.innerHTML = html;
@@ -255,6 +258,12 @@
     }).catch(function (err) { profileStatus(err.message || 'Profile action failed', true); });
   }
 
+  function diagnosticsStatus(text, bad) {
+    if (!dom.diagnosticsStatus) return;
+    dom.diagnosticsStatus.textContent = text;
+    dom.diagnosticsStatus.classList.toggle('is-alert', !!bad);
+  }
+
   if (dom.profileSelect) dom.profileSelect.addEventListener('change', function () {
     if (dom.profileName) dom.profileName.value = dom.profileSelect.value;
   });
@@ -284,6 +293,82 @@
       if (!res || !res.ok) { if (!res || !res.canceled) profileStatus((res && res.error) || 'Could not import profile', true); return; }
       profileStatus('Profile imported.'); refreshProfiles();
     });
+  });
+  if (dom.profileUndo) dom.profileUndo.addEventListener('click', function () {
+    api.profiles.undo().then(function (res) {
+      if (!res || !res.ok) { profileStatus((res && res.error) || 'Nothing to undo', true); return; }
+      profileStatus('Last profile apply undone.');
+    }).catch(function (err) { profileStatus(err.message || 'Could not undo profile', true); });
+  });
+  if (dom.diagnosticsCopy) dom.diagnosticsCopy.addEventListener('click', function () {
+    api.diagnostics.copy().then(function (res) {
+      if (!res || !res.ok) diagnosticsStatus((res && res.error) || 'Could not copy diagnostics', true);
+      else diagnosticsStatus('Summary copied to clipboard.');
+    }).catch(function (err) { diagnosticsStatus(err.message || 'Could not copy diagnostics', true); });
+  });
+  if (dom.diagnosticsExport) dom.diagnosticsExport.addEventListener('click', function () {
+    api.diagnostics.export().then(function (res) {
+      if (!res || !res.ok) { if (!res || !res.canceled) diagnosticsStatus((res && res.error) || 'Could not export diagnostics', true); }
+      else diagnosticsStatus('Diagnostics exported.');
+    }).catch(function (err) { diagnosticsStatus(err.message || 'Could not export diagnostics', true); });
+  });
+
+  // ── command palette ──────────────────────────────────
+  var PALETTE_COMMANDS = [
+    { label: 'Open settings', terms: 'settings preferences', run: function () { toggleSettings(true); } },
+    { label: 'Show system status', terms: 'status health', section: 'health' },
+    { label: 'Show CPU', terms: 'cpu processor', section: 'cpu' },
+    { label: 'Show memory', terms: 'memory ram', section: 'memory' },
+    { label: 'Show storage', terms: 'storage disks drive', section: 'disks' },
+    { label: 'Show network', terms: 'network internet adapter', section: 'network' },
+    { label: 'Show processes', terms: 'process task pid', section: 'processes' },
+    { label: 'Open desktop profiles', terms: 'profiles workspace layout', run: function () { toggleSettings(true); if (dom.profileSelect) dom.profileSelect.focus(); } },
+    { label: 'Hide SysGlance', terms: 'hide tray minimize', run: function () { api.toggleVisibility(); } }
+  ];
+  var paletteMatches = [];
+  function renderPalette(query) {
+    if (!dom.paletteList) return;
+    var q = String(query || '').toLowerCase().trim();
+    paletteMatches = PALETTE_COMMANDS.filter(function (item) { return !q || (item.label + ' ' + item.terms).toLowerCase().indexOf(q) !== -1; });
+    dom.paletteList.innerHTML = paletteMatches.length ? paletteMatches.map(function (item, i) {
+      return '<button class="palette-item" data-index="' + i + '" role="option"><span>' + esc(item.label) + '</span><span class="palette-arrow">↵</span></button>';
+    }).join('') : '<div class="palette-empty">No matching SysGlance command</div>';
+  }
+  function closePalette() {
+    if (dom.commandPalette) dom.commandPalette.classList.add('hidden');
+  }
+  function openPalette() {
+    if (!dom.commandPalette) return;
+    dom.commandPalette.classList.remove('hidden');
+    dom.paletteInput.value = '';
+    renderPalette('');
+    setTimeout(function () { dom.paletteInput.focus(); }, 0);
+  }
+  function runPalette(index) {
+    var item = paletteMatches[index];
+    if (!item) return;
+    closePalette();
+    if (item.section) {
+      toggleSettings(false);
+      var target = $('sec-' + item.section);
+      if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    if (item.run) item.run();
+  }
+  if (dom.paletteInput) dom.paletteInput.addEventListener('input', function (event) { renderPalette(event.target.value); });
+  if (dom.paletteInput) dom.paletteInput.addEventListener('keydown', function (event) {
+    if (event.key === 'Enter') { event.preventDefault(); runPalette(0); }
+    if (event.key === 'Escape') { event.preventDefault(); closePalette(); }
+  });
+  if (dom.paletteList) dom.paletteList.addEventListener('click', function (event) {
+    var item = event.target.closest('.palette-item');
+    if (item) runPalette(Number(item.dataset.index));
+  });
+  if (dom.paletteClose) dom.paletteClose.addEventListener('click', closePalette);
+  if (dom.commandPalette) dom.commandPalette.addEventListener('click', function (event) { if (event.target === dom.commandPalette) closePalette(); });
+  document.addEventListener('keydown', function (event) {
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') { event.preventDefault(); openPalette(); }
+    if (event.key === 'Escape' && dom.commandPalette && !dom.commandPalette.classList.contains('hidden')) closePalette();
   });
 
   function applySectionVisibility(cfg) {
@@ -683,6 +768,7 @@
     updateSettingsUI(cfg);
   });
   api.on('toggle-settings', function () { toggleSettings(); });
+  api.on('toggle-palette', openPalette);
   api.on('app-version', function (info) {
     if (info && info.version) {
       dom.appVersion.textContent = 'v' + info.version;

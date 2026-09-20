@@ -15,7 +15,7 @@
 //   src/shell/*     Windows shell configuration (position, theme, accent, wallpaper)
 // ═══════════════════════════════════════════════════════
 
-const { app, BrowserWindow, ipcMain, screen, globalShortcut, Tray, Menu, nativeImage, shell, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, screen, globalShortcut, Tray, Menu, nativeImage, shell, dialog, clipboard } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
@@ -68,6 +68,7 @@ let shuttingDown = false;
 let config = configModule.defaults();
 let configPath = null;
 let profilesPath = null;
+let profileUndo = null;
 
 // Shell state cache for the tray menus (menus are built synchronously).
 let shellApi = null;
@@ -124,6 +125,7 @@ function applySavedProfile(name) {
   // per-setting confirmation and Explorer restart. Keep it pending instead of
   // silently changing the registry from a profile click.
   const shellPending = JSON.stringify(config.shell) !== JSON.stringify(next.shell);
+  profileUndo = configModule.normalize(config).config;
   for (const key of configModule.WRITABLE_KEYS) config[key] = next[key];
   saveConfig();
   sendConfig();
@@ -134,6 +136,28 @@ function applySavedProfile(name) {
   if (config.refreshInterval !== beforeFast || config.slowInterval !== beforeSlow) restartDataCollection();
   rebuildTray();
   return { ok: true, name: found.profile.name, shellPending, applied: configModule.WRITABLE_KEYS.slice() };
+}
+
+function undoSavedProfile() {
+  if (!profileUndo) return { ok: false, error: 'no profile change to undo' };
+  const previous = profileUndo;
+  profileUndo = null;
+  const beforeFast = config.refreshInterval;
+  const beforeSlow = config.slowInterval;
+  const beforeLayout = config.layout;
+  const beforeAnchor = config.anchor;
+  const beforeDisplay = config.displayId;
+  const beforeTheme = config.theme;
+  for (const key of configModule.WRITABLE_KEYS) config[key] = previous[key];
+  saveConfig();
+  sendConfig();
+  if (config.layout !== beforeLayout || config.displayId !== beforeDisplay) applyLayoutGeometry(config.layout);
+  if (config.layout !== beforeLayout) send('layout-changed', config.layout);
+  if (config.anchor !== beforeAnchor) applyAnchorPosition(config.anchor);
+  if (config.theme !== beforeTheme) send('theme-changed', config.theme);
+  if (config.refreshInterval !== beforeFast || config.slowInterval !== beforeSlow) restartDataCollection();
+  rebuildTray();
+  return { ok: true, undone: true };
 }
 
 function saveConfig() {
@@ -174,6 +198,7 @@ function displayTopology() {
     bounds: { x: display.bounds.x, y: display.bounds.y, width: display.bounds.width, height: display.bounds.height },
     workArea: { x: display.workArea.x, y: display.workArea.y, width: display.workArea.width, height: display.workArea.height },
     scaleFactor: display.scaleFactor,
+    refreshRate: Number.isFinite(display.refreshRate) ? display.refreshRate : null,
     rotation: display.rotation,
     size: { width: display.size.width, height: display.size.height },
     primary: display.id === screen.getPrimaryDisplay().id
@@ -658,6 +683,37 @@ function broadcastSystemData() {
   send('system-data', composePayload());
 }
 
+function diagnosticsConfig() {
+  const copy = JSON.parse(JSON.stringify(config));
+  if (copy.shell) copy.shell.wallpaperPath = copy.shell.wallpaperPath ? '[redacted]' : null;
+  return copy;
+}
+
+async function diagnosticsSnapshot() {
+  const payload = composePayload();
+  const identity = await metrics.getStatic();
+  return {
+    schemaVersion: 1,
+    generatedAt: new Date().toISOString(),
+    app: { name: 'SysGlance', version: APP_VERSION, electron: process.versions.electron, chrome: process.versions.chrome, node: process.versions.node },
+    platform: { type: process.platform, arch: process.arch, release: os.release() },
+    identity: { cpuModel: identity.cpuModel, cpuCores: identity.cpuCores, cpuSpeedMhz: identity.cpuSpeedMhz, os: identity.os },
+    display: payload.displays,
+    metrics: {
+      cpu: payload.cpu ? { load: payload.cpu.load, cores: payload.cpu.cores, speed: payload.cpu.speed } : null,
+      memory: payload.memory ? { total: payload.memory.total, used: payload.memory.used, percentage: payload.memory.percentage } : null,
+      gpu: (payload.gpu || []).map((item) => ({ name: item.name, utilization: item.utilization, vram: item.vram, vramUsed: item.vramUsed, temp: item.temp })),
+      disks: (payload.disks || []).map((item) => ({ fs: item.fs, mount: item.mount, size: item.size, used: item.used, available: item.available, use: item.use, type: item.type })),
+      network: payload.network ? { iface: payload.network.iface, rx_sec: payload.network.rx_sec, tx_sec: payload.network.tx_sec } : null,
+      health: payload.health,
+      alerts: payload.alerts,
+      performance: { fastMs: payload.metrics.fastMs, slowMs: payload.metrics.slowMs, backpressure: payload.metrics.backpressure, sources: payload.metrics.sources }
+    },
+    config: diagnosticsConfig(),
+    rendererErrors: rendererErrors.slice(-20)
+  };
+}
+
 function startDataCollection() {
   stopDataCollection();
   staticData = null;
@@ -706,6 +762,7 @@ ipcMain.handle('get-app-info', () => ({
 ipcMain.handle('profiles:list', () => ({ ok: true, profiles: profiles.list(profileStorePath()) }));
 ipcMain.handle('profiles:save', (_e, name) => profiles.upsert(profileStorePath(), name, config));
 ipcMain.handle('profiles:apply', (_e, name) => applySavedProfile(name));
+ipcMain.handle('profiles:undo', () => undoSavedProfile());
 ipcMain.handle('profiles:delete', (_e, name) => profiles.remove(profileStorePath(), name));
 ipcMain.handle('profiles:rename', (_e, oldName, newName) => profiles.rename(profileStorePath(), oldName, newName));
 ipcMain.handle('profiles:duplicate', (_e, sourceName, targetName) => profiles.duplicate(profileStorePath(), sourceName, targetName));
@@ -731,6 +788,25 @@ ipcMain.handle('profiles:import', async () => {
     });
     if (picked.canceled || !picked.filePaths || !picked.filePaths.length) return { ok: false, canceled: true };
     return profiles.importProfile(profileStorePath(), path.resolve(picked.filePaths[0]));
+  } catch (err) { return { ok: false, error: err.message }; }
+});
+
+ipcMain.handle('diagnostics:copy', async () => {
+  try {
+    clipboard.writeText(JSON.stringify(await diagnosticsSnapshot(), null, 2));
+    return { ok: true };
+  } catch (err) { return { ok: false, error: err.message }; }
+});
+ipcMain.handle('diagnostics:export', async () => {
+  try {
+    const target = await dialog.showSaveDialog(mainWindow, {
+      title: 'Export SysGlance diagnostics', defaultPath: 'SysGlance-diagnostics.json',
+      filters: [{ name: 'JSON diagnostics', extensions: ['json'] }],
+      properties: ['createDirectory', 'showOverwriteConfirmation']
+    });
+    if (target.canceled || !target.filePath) return { ok: false, canceled: true };
+    fs.writeFileSync(path.resolve(target.filePath), JSON.stringify(await diagnosticsSnapshot(), null, 2) + '\n', 'utf8');
+    return { ok: true, filePath: path.resolve(target.filePath) };
   } catch (err) { return { ok: false, error: err.message }; }
 });
 
@@ -877,6 +953,7 @@ app.whenReady().then(() => {
   refreshShellState();
   globalShortcut.register('CommandOrControl+Shift+S', toggleVisibility);
   globalShortcut.register('CommandOrControl+Shift+L', togglePositionLock);
+  globalShortcut.register('CommandOrControl+K', () => send('toggle-palette'));
   send('app-version', { version: APP_VERSION, electron: process.versions.electron });
   if (SELF_TEST) runSelfTest();
   if (SCREENSHOT) runScreenshot();
@@ -1067,7 +1144,7 @@ async function runSelfTest() {
     if (!Array.isArray(composed.displays) || !composed.displays.length) fail.push('display topology did not produce a display');
 
     const probe = await mainWindow.webContents.executeJavaScript(
-      'JSON.stringify({ api: !!window.sysglance, apiKeys: window.sysglance ? Object.keys(window.sysglance).length : 0, profilesApi: !!(window.sysglance && window.sysglance.profiles), processesApi: !!(window.sysglance && window.sysglance.processes), displayOptions: !!document.getElementById("display-options"), versionText: (document.getElementById("app-version") || {}).textContent || null, suiteFooter: ((document.getElementById("suite-footer") || {}).textContent || "").replace(/\\s+/g, " ").trim() || null, shellSection: !!document.getElementById("sec-shell"), cpu: (document.getElementById("cpu-load") || {}).textContent || null })',
+      'JSON.stringify({ api: !!window.sysglance, apiKeys: window.sysglance ? Object.keys(window.sysglance).length : 0, profilesApi: !!(window.sysglance && window.sysglance.profiles), processesApi: !!(window.sysglance && window.sysglance.processes), diagnosticsApi: !!(window.sysglance && window.sysglance.diagnostics), displayOptions: !!document.getElementById("display-options"), palette: !!document.getElementById("command-palette"), versionText: (document.getElementById("app-version") || {}).textContent || null, suiteFooter: ((document.getElementById("suite-footer") || {}).textContent || "").replace(/\\s+/g, " ").trim() || null, shellSection: !!document.getElementById("sec-shell"), cpu: (document.getElementById("cpu-load") || {}).textContent || null })',
       true
     );
     const state = JSON.parse(probe);
@@ -1075,7 +1152,9 @@ async function runSelfTest() {
     if (!state.api) fail.push('window.sysglance missing (preload/contextBridge not wired)');
     if (!state.profilesApi) fail.push('profiles API missing from preload bridge');
     if (!state.processesApi) fail.push('process actions API missing from preload bridge');
+    if (!state.diagnosticsApi) fail.push('diagnostics API missing from preload bridge');
     if (!state.displayOptions) fail.push('display selector missing from settings');
+    if (!state.palette) fail.push('command palette missing from renderer');
     if (!state.shellSection) fail.push('shell panel did not inject');
     if (!/^v?\d+\.\d+\.\d+/.test(String(state.versionText))) fail.push('version not rendered in the UI');
     if (!state.suiteFooter || !state.suiteFooter.includes(SUITE_FOOTER) || !state.suiteFooter.includes(APP_VERSION)) {
