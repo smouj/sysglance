@@ -40,6 +40,7 @@ check('network identity is an explicit on-demand bridge', main.includes("ipcMain
 check('active local alerts are visible in System status', html.includes('id="health-alerts"') && renderer.includes('renderHealth(data.health, data.alerts)') && renderer.includes('Active alerts'));
 check('storage exposes free space and filesystem metadata', renderer.includes('disk.available') && renderer.includes('disk.fs') && renderer.includes('disk.type'));
 check('command palette supports keyboard selection and screen-reader state', renderer.includes('ArrowDown') && renderer.includes('ArrowUp') && renderer.includes('aria-selected') && html.includes('aria-activedescendant'));
+check('hotkey conflicts are surfaced after OS registration', main.includes('shortcutStatus') && main.includes('globalShortcut.register') && preload.includes("'hotkeys-status'") && html.includes('id="hotkey-status"') && renderer.includes('another app may own the shortcut'));
 
 console.log('\n' + passed + ' passed, ' + failed + ' failed');
 process.exit(failed ? 1 : 0);

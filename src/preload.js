@@ -26,6 +26,7 @@ const EVENTS = [
   'display-topology-changed',
   'toggle-settings',
   'toggle-palette',
+  'hotkeys-status',
   'shell-config-changed'
 ];
 

@@ -11,12 +11,12 @@ This is an evidence-based baseline. A feature is listed as implemented only when
 | Command | Result |
 |---|---|
 | `npm ci` | PASS; 285 packages installed. `npm audit` and production-only audit report 0 vulnerabilities. The initial Electron 33/electron-builder 25 audit found 14 findings; the toolchain was upgraded and retested. |
-| `npm run verify` | PASS; 37 syntax, 36 config, 28 shell, 43 extended shell, 17 history/health/alert, 10 metric, 7 diagnostics, 7 journal, 4 transaction, 5 profile-shell, 14 profile, 8 process, 10 display, 6 install, 19 desktop-action, 4 logging, 4 privacy and unique IPC checks. |
+| `npm run verify` | PASS; 37 syntax, 36 config, 28 shell, 43 extended shell, 17 history/health/alert, 10 metric, 7 diagnostics, 7 journal, 4 transaction, 5 profile-shell, 14 profile, 8 process, 10 display, 6 install, 20 desktop-action, 4 logging, 4 privacy and unique IPC checks. |
 | `npm run self-test` | PASS on Electron 44.4.3 after fixing duplicate Shell IPC registration. Real Electron window, preload bridge, fast/slow collection, product layer and hostile path refusal exercised. |
 | `npm run bench` | PASS as a measurement; see `PERFORMANCE_BASELINE.md`. |
 | `npm run bench:runtime` | PASS with 2 iterations; ready-to-show 1,195.85 ms, IPC median 0.98 ms, renderer patch median 4.63 ms, app-metrics RSS 385.0 MB across 4 Electron processes. |
 | `npm run verify:portable` | PASS 3/3; portable executable and native helper were found in `dist-portable`. |
-| `npm run build:win` / `npm run build:win:portable` | PASS on electron-builder 26.15.3; NSIS and portable artifacts plus native helper were produced. NSIS: 111,920,405 bytes, SHA-256 `3DA90032546D38FFE8896E4EEFD5B13F518E54BE21D1D4EA0FD8A33092DCCBE9`; portable: 100,605,652 bytes, SHA-256 `379FDA3034886CA3BAB525AC7B8EE30D1C020AD4C967D8C707D44E2781821D0A`. |
+| `npm run build:win` / `npm run build:win:portable` | PASS on electron-builder 26.15.3; NSIS and portable artifacts plus native helper were produced. NSIS: 111,920,748 bytes, SHA-256 `9B4016EDF13B51358A78F737B51A1ED3B968D76432BB4F14CB8BAB1496961A10`; portable: 100,605,729 bytes, SHA-256 `07B0E13A33687281DEE987F4BCFD7632DCE92C113C0AD4DD7804DA749A8195AF`. |
 
 ## Verified functionality
 
@@ -37,7 +37,7 @@ This is an evidence-based baseline. A feature is listed as implemented only when
 - Sanitized diagnostics summary copy/export with private wallpaper paths, serials, MACs and IPs redacted or excluded.
 - On-demand hardware inspector covering system/BIOS/baseboard, memory, storage, graphics, adapters and displays.
 - Network session totals/peak rates, nullable disk-I/O activity, process filtering (including exclusion of Windows' synthetic System Idle Process) and PID/path clipboard actions.
-- Configurable toggle/lock/palette shortcuts with duplicate refusal and reduced-motion/forced-colour CSS fallbacks.
+- Configurable toggle/lock/palette shortcuts with duplicate refusal, live OS-registration conflict status and reduced-motion/forced-colour CSS fallbacks.
 - Allow-listed Windows command-center actions for Settings, network, display, apps, Task Manager, Services, workstation lock, sleep and restart; state-changing power actions require confirmation and no arbitrary URI or command input crosses IPC.
 - Multi-monitor placement: validated display selection, work-area-aware geometry, topology metadata and display hot-plug fallback.
 - NSIS configuration, per-user install scripts, Linux/macOS targets and a Windows CI job are declared.

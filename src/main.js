@@ -78,6 +78,7 @@ let profileUndo = null;
 let shellApi = null;
 let shellState = null;
 let shellJournal = null;
+let shortcutStatus = {};
 
 // Metrics state: one fast snapshot, one slow snapshot, composed per broadcast.
 let lastFast = null;
@@ -636,6 +637,7 @@ function setLayout(layout) {
 function registerShortcuts() {
   globalShortcut.unregisterAll();
   const hotkeys = config.hotkeys || {};
+  const status = {};
   const bindings = [
     ['toggle', toggleVisibility],
     ['lock', togglePositionLock],
@@ -643,11 +645,21 @@ function registerShortcuts() {
   ];
   for (const [name, action] of bindings) {
     const accelerator = hotkeys[name];
-    if (!accelerator) continue;
+    if (!accelerator) {
+      status[name] = { ok: true, accelerator: null, reason: 'disabled' };
+      continue;
+    }
     try {
-      if (!globalShortcut.register(accelerator, action)) log.warn('hotkey unavailable: ' + name + ' (' + accelerator + ')');
-    } catch (err) { log.warn('hotkey refused: ' + name + ' (' + err.message + ')'); }
+      const registered = globalShortcut.register(accelerator, action);
+      status[name] = { ok: registered, accelerator, reason: registered ? null : 'unavailable' };
+      if (!registered) log.warn('hotkey unavailable: ' + name + ' (' + accelerator + ')');
+    } catch (err) {
+      status[name] = { ok: false, accelerator, reason: err.message };
+      log.warn('hotkey refused: ' + name + ' (' + err.message + ')');
+    }
   }
+  shortcutStatus = status;
+  send('hotkeys-status', shortcutStatus);
 }
 
 // ── metrics loop ────────────────────────────────────────
@@ -869,6 +881,7 @@ ipcMain.handle('get-app-info', () => ({
   platform: process.platform,
   shellHost: shellApi ? safeShellHost() : 'unavailable',
   widgetRepo: shellIpc.WIDGET_REPO,
+  hotkeys: shortcutStatus,
   refreshInterval: config.refreshInterval,
   slowInterval: config.slowInterval,
   displays: displayTopology()
@@ -1417,7 +1430,7 @@ async function runSelfTest() {
     if (!Array.isArray(composed.displays) || !composed.displays.length) fail.push('display topology did not produce a display');
 
     const probe = await mainWindow.webContents.executeJavaScript(
-      'JSON.stringify({ api: !!window.sysglance, apiKeys: window.sysglance ? Object.keys(window.sysglance).length : 0, profilesApi: !!(window.sysglance && window.sysglance.profiles), processesApi: !!(window.sysglance && window.sysglance.processes), diagnosticsApi: !!(window.sysglance && window.sysglance.diagnostics), displayOptions: !!document.getElementById("display-options"), displaySummary: !!document.getElementById("display-summary"), historyWindow: !!document.getElementById("history-window"), palette: !!document.getElementById("command-palette"), alertSurface: !!document.getElementById("health-alerts"), versionText: (document.getElementById("app-version") || {}).textContent || null, suiteFooter: ((document.getElementById("suite-footer") || {}).textContent || "").replace(/\\s+/g, " ").trim() || null, shellSection: !!document.getElementById("sec-shell"), cpu: (document.getElementById("cpu-load") || {}).textContent || null })',
+      'JSON.stringify({ api: !!window.sysglance, apiKeys: window.sysglance ? Object.keys(window.sysglance).length : 0, profilesApi: !!(window.sysglance && window.sysglance.profiles), processesApi: !!(window.sysglance && window.sysglance.processes), diagnosticsApi: !!(window.sysglance && window.sysglance.diagnostics), displayOptions: !!document.getElementById("display-options"), displaySummary: !!document.getElementById("display-summary"), historyWindow: !!document.getElementById("history-window"), palette: !!document.getElementById("command-palette"), alertSurface: !!document.getElementById("health-alerts"), hotkeyStatus: !!document.getElementById("hotkey-status"), versionText: (document.getElementById("app-version") || {}).textContent || null, suiteFooter: ((document.getElementById("suite-footer") || {}).textContent || "").replace(/\\s+/g, " ").trim() || null, shellSection: !!document.getElementById("sec-shell"), cpu: (document.getElementById("cpu-load") || {}).textContent || null })',
       true
     );
     const state = JSON.parse(probe);
@@ -1430,6 +1443,7 @@ async function runSelfTest() {
     if (!state.displaySummary) fail.push('display topology summary missing from settings');
     if (!state.historyWindow) fail.push('history window selector missing from status');
     if (!state.alertSurface) fail.push('alert surface missing from system status');
+    if (!state.hotkeyStatus) fail.push('hotkey status missing from settings');
     if (!state.palette) fail.push('command palette missing from renderer');
     if (!state.shellSection) fail.push('shell panel did not inject');
     if (!/^v?\d+\.\d+\.\d+/.test(String(state.versionText))) fail.push('version not rendered in the UI');

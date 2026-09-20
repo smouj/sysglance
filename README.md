@@ -98,7 +98,8 @@ to tray. `Ctrl+Shift+S` toggles it. Everything is configurable from the built-in
 ### Settings panel
 Layout · position · theme · opacity (30–100%) · **fast refresh (0.5–5 s)** ·
 **hardware refresh (5–10 s)** · per-section toggles · lock/drag mode ·
-compact mode · configurable toggle/lock/palette shortcuts. Every value is
+compact mode · configurable toggle/lock/palette shortcuts with live conflict
+status. Every value is
 persisted, validated and clamped; reduced-motion and forced-colour preferences
 are respected by the UI.
 

@@ -44,7 +44,7 @@
     opacityVal: $('opacity-val'), refreshVal: $('refresh-val'), slowVal: $('slow-val'),
     btnLockSettings: $('btn-lock-settings'), btnCompactSettings: $('btn-compact-settings'),
     layoutOptions: $('layout-options'), anchorOptions: $('anchor-options'),
-    themeOptions: $('theme-options'), displayOptions: $('display-options'), displaySummary: $('display-summary'), hotkeyToggle: $('hotkey-toggle'), hotkeyLock: $('hotkey-lock'), hotkeyPalette: $('hotkey-palette'), sectionToggles: $('section-toggles'),
+    themeOptions: $('theme-options'), displayOptions: $('display-options'), displaySummary: $('display-summary'), hotkeyToggle: $('hotkey-toggle'), hotkeyLock: $('hotkey-lock'), hotkeyPalette: $('hotkey-palette'), hotkeyStatus: $('hotkey-status'), sectionToggles: $('section-toggles'),
     profileSelect: $('profile-select'), profileName: $('profile-name'), profileSave: $('profile-save'),
     profileApply: $('profile-apply'), profileApplyShell: $('profile-apply-shell'), profileDelete: $('profile-delete'), profileDuplicate: $('profile-duplicate'),
     profileExport: $('profile-export'), profileImport: $('profile-import'), profileUndo: $('profile-undo'), profileStatus: $('profile-status'),
@@ -241,6 +241,26 @@
     });
     dom.btnCompactSettings.textContent = cfg.compactMode ? 'Compact: on' : 'Compact mode';
     dom.btnLockSettings.textContent = positionLocked ? 'Unlock position' : 'Lock position';
+  }
+
+  function renderHotkeyStatus(status) {
+    if (!dom.hotkeyStatus) return;
+    if (!status || typeof status !== 'object') {
+      setText(dom.hotkeyStatus, 'Shortcut availability not reported.');
+      return;
+    }
+    var unavailable = Object.keys(status).filter(function (name) { return status[name] && status[name].ok === false; });
+    if (!unavailable.length) {
+      setText(dom.hotkeyStatus, 'Enabled shortcuts are registered locally.');
+      return;
+    }
+    var labels = { toggle: 'Toggle', lock: 'Lock', palette: 'Palette' };
+    var details = unavailable.map(function (name) {
+      var item = status[name] || {};
+      var accelerator = String(item.accelerator || '').replace('CommandOrControl', 'Ctrl');
+      return (labels[name] || name) + (accelerator ? ' (' + accelerator + ')' : '');
+    });
+    setText(dom.hotkeyStatus, 'Unavailable: ' + details.join(', ') + ' — another app may own the shortcut.');
   }
 
   function profileStatus(text, bad) {
@@ -964,6 +984,7 @@
   });
   api.on('toggle-settings', function () { toggleSettings(); });
   api.on('toggle-palette', openPalette);
+  api.on('hotkeys-status', renderHotkeyStatus);
   api.on('app-version', function (info) {
     if (info && info.version) {
       dom.appVersion.textContent = 'v' + info.version;
@@ -981,6 +1002,7 @@
       dom.appInfo.textContent = 'SysGlance ' + info.version + ' · Electron ' + info.electron + ' · shell host: ' + info.shellHost;
     }
     if (info.displays) renderDisplays(info.displays);
+    renderHotkeyStatus(info.hotkeys);
   }).catch(function () { /* version is cosmetic */ });
 
   api.getSystemData().then(function (data) {
