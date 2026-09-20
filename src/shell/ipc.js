@@ -100,6 +100,26 @@ function register(ctx) {
     return cfg.shell;
   };
 
+  function resolveSpecialFolderPath(folderPath) {
+    if (!folderPath || typeof folderPath !== 'string' || !path.isAbsolute(folderPath)) {
+      return { ok: false, error: 'folder path must be one of the offered home folders' };
+    }
+    const requested = path.resolve(folderPath);
+    const listed = taskbar.listSpecialFolders();
+    const match = listed && Array.isArray(listed.folders)
+      ? listed.folders.find((folder) => {
+        if (!folder || typeof folder.path !== 'string') return false;
+        const offered = path.resolve(folder.path);
+        return process.platform === 'win32'
+          ? offered.toLowerCase() === requested.toLowerCase()
+          : offered === requested;
+      })
+      : null;
+    return match
+      ? { ok: true, path: path.resolve(match.path), id: match.id }
+      : { ok: false, error: 'folder path is not an offered home folder' };
+  }
+
   const persist = (patch) => {
     const shell = shellConfig();
     Object.assign(shell, patch);
@@ -179,9 +199,11 @@ function register(ctx) {
       }
     } else if (entry.kind === 'folder') {
       const before = entry.before || {};
-      result = typeof taskbar.restoreFolderCustomization === 'function'
-        ? await taskbar.restoreFolderCustomization(entry.meta && entry.meta.folderPath, before)
-        : await taskbar.writeFolderCustomization(entry.meta && entry.meta.folderPath, before.ok ? (before.iconResource || before.iconFile || null) : null);
+      const safeFolder = resolveSpecialFolderPath(entry.meta && entry.meta.folderPath);
+      if (!safeFolder.ok) result = safeFolder;
+      else result = typeof taskbar.restoreFolderCustomization === 'function'
+        ? await taskbar.restoreFolderCustomization(safeFolder.path, before)
+        : await taskbar.writeFolderCustomization(safeFolder.path, before.ok ? (before.iconResource || before.iconFile || null) : null);
     } else if (entry.kind === 'start-menu') {
       const before = entry.before || {};
       const pairs = [['showRecentApps', before.showRecentApps], ['showSuggestions', before.showSuggestions], ['fullScreenStart', before.fullScreenStart]];
@@ -381,14 +403,17 @@ function register(ctx) {
 
   // ── folder customization ───────────────────────────────
   async function readFolderCustomization(folderPath) {
-    return taskbar.readFolderCustomization(folderPath);
+    const safeFolder = resolveSpecialFolderPath(folderPath);
+    return safeFolder.ok ? taskbar.readFolderCustomization(safeFolder.path) : safeFolder;
   }
 
   async function writeFolderCustomization(folderPath, iconSpec) {
-    const before = journal ? await taskbar.readFolderCustomization(folderPath) : null;
-    const res = await taskbar.writeFolderCustomization(folderPath, iconSpec);
+    const safeFolder = resolveSpecialFolderPath(folderPath);
+    if (!safeFolder.ok) return safeFolder;
+    const before = journal ? await taskbar.readFolderCustomization(safeFolder.path) : null;
+    const res = await taskbar.writeFolderCustomization(safeFolder.path, iconSpec);
     if (res.ok) {
-      if (journal) journal.record('folder', before, await taskbar.readFolderCustomization(folderPath), { action: 'folder icon', folderPath });
+      if (journal) journal.record('folder', before, await taskbar.readFolderCustomization(safeFolder.path), { action: 'folder icon', folderPath: safeFolder.path });
       kickThemeBroadcast('folderCustomization');
     }
     return res;
@@ -399,9 +424,11 @@ function register(ctx) {
   }
 
   async function restoreFolderDefault(folderPath) {
-    const before = journal ? await taskbar.readFolderCustomization(folderPath) : null;
-    const res = await taskbar.writeFolderCustomization(folderPath, null);
-    if (res.ok && journal) journal.record('folder', before, await taskbar.readFolderCustomization(folderPath), { action: 'folder icon reset', folderPath });
+    const safeFolder = resolveSpecialFolderPath(folderPath);
+    if (!safeFolder.ok) return safeFolder;
+    const before = journal ? await taskbar.readFolderCustomization(safeFolder.path) : null;
+    const res = await taskbar.writeFolderCustomization(safeFolder.path, null);
+    if (res.ok && journal) journal.record('folder', before, await taskbar.readFolderCustomization(safeFolder.path), { action: 'folder icon reset', folderPath: safeFolder.path });
     return res;
   }
 

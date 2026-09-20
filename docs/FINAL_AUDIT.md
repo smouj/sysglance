@@ -77,6 +77,7 @@ clientes analíticos ni dependencias runtime directas innecesarias.
 - I/O de disco mantenido nullable en vez de fabricar valores.
 - Paths, clipboard, PID, wallpaper y controles shell revalidados en main process.
 - La galería de wallpapers dejó de aceptar rutas arbitrarias: lista, preview y Explorer quedan limitados a `Pictures\\Wallpaper`, con canonicalización para evitar escapes por junction/symlink.
+- Los handlers de folder icons también dejaron de aceptar directorios absolutos arbitrarios: solo resuelven las seis carpetas ofrecidas y revalidan el undo persistido.
 - Aplicación de perfiles shell convertida en transacción con rollback.
 - Histórico separado entre resumen completo y serie renderizada para evitar coste
   creciente en la ventana de 24 horas.
@@ -90,7 +91,7 @@ clientes analíticos ni dependencias runtime directas innecesarias.
 |---|---|
 | `npm ci` | PASS; 285 paquetes instalados. |
 | `npm audit --audit-level=high` | PASS; 0 vulnerabilidades reportadas. |
-| `npm run verify` | PASS; 37 sintaxis, 36 config, 28 shell, 43 shell extendido, 17 histórico/alertas, 10 métricas, 7 diagnostics, 7 journal, 4 transaction, 5 profile-shell, 14 profiles, 8 processes, 10 displays, 6 install, 18 actions, 4 logging, 4 privacy e IPC único. |
+| `npm run verify` | PASS; 37 sintaxis, 36 config, 28 shell, 43 shell extendido, 17 histórico/alertas, 10 métricas, 7 diagnostics, 7 journal, 4 transaction, 5 profile-shell, 14 profiles, 8 processes, 10 displays, 6 install, 19 actions, 4 logging, 4 privacy e IPC único. |
 | `npm run self-test` | PASS con Electron 44.4.3, ventana real, preload, tiers, inspector, displays, alert surface y rechazo de paths hostiles. |
 | `npm run bench -- --iterations=3 --new` | PASS; fast 0.69 ms mediana, slow 3149.01 ms mediana, 166.33 ms CPU/ciclo, 19.33 procesos hijos/ciclo. |
 | `npm run screenshot` | PASS; sidebar, settings, dock, mini, shell y minimum-size capturados y revisados. |
@@ -131,10 +132,10 @@ optimización.
 | GitHub Actions remoto | NOT VERIFIED en este checkout; el workflow está preparado. |
 | firma de código / auto-update seguro | NOT IMPLEMENTED. |
 
-El instalador actual mide 111,919,208 bytes y tiene SHA-256
-`EB68780CA7814D1A324FEC3430B557293CD7E34260C1D729A7008EB2D3705BCC`.
-El portable mide 100,602,529 bytes y tiene SHA-256
-`2D8C60B5FE7B4430996FBAB0CD140C6B064F848C59612419BA0AE86A43CFFF8D`.
+El instalador actual mide 111,919,484 bytes y tiene SHA-256
+`A319BAFBD24C79EE223AE789C7E242853302C9D1A8E8C6D1E5E68155CD9A3142`.
+El portable mide 100,603,864 bytes y tiene SHA-256
+`8A3E4FB646B182A1123A4490D3BC908DB9A61154C0490B3F36DD046A1208515F`.
 
 ## Riesgos y deuda restante
 

@@ -11,11 +11,11 @@ This is an evidence-based baseline. A feature is listed as implemented only when
 | Command | Result |
 |---|---|
 | `npm ci` | PASS; 285 packages installed. `npm audit` and production-only audit report 0 vulnerabilities. The initial Electron 33/electron-builder 25 audit found 14 findings; the toolchain was upgraded and retested. |
-| `npm run verify` | PASS; 37 syntax, 36 config, 28 shell, 43 extended shell, 17 history/health/alert, 10 metric, 7 diagnostics, 7 journal, 4 transaction, 5 profile-shell, 14 profile, 8 process, 10 display, 6 install, 18 desktop-action, 4 logging, 4 privacy and unique IPC checks. |
+| `npm run verify` | PASS; 37 syntax, 36 config, 28 shell, 43 extended shell, 17 history/health/alert, 10 metric, 7 diagnostics, 7 journal, 4 transaction, 5 profile-shell, 14 profile, 8 process, 10 display, 6 install, 19 desktop-action, 4 logging, 4 privacy and unique IPC checks. |
 | `npm run self-test` | PASS on Electron 44.4.3 after fixing duplicate Shell IPC registration. Real Electron window, preload bridge, fast/slow collection, product layer and hostile path refusal exercised. |
 | `npm run bench` | PASS as a measurement; see `PERFORMANCE_BASELINE.md`. |
 | `npm run verify:portable` | PASS 3/3; portable executable and native helper were found in `dist-portable`. |
-| `npm run build:win` / `npm run build:win:portable` | PASS on electron-builder 26.15.3; NSIS and portable artifacts plus native helper were produced. NSIS: 111,919,208 bytes, SHA-256 `EB68780CA7814D1A324FEC3430B557293CD7E34260C1D729A7008EB2D3705BCC`; portable: 100,602,529 bytes, SHA-256 `2D8C60B5FE7B4430996FBAB0CD140C6B064F848C59612419BA0AE86A43CFFF8D`. |
+| `npm run build:win` / `npm run build:win:portable` | PASS on electron-builder 26.15.3; NSIS and portable artifacts plus native helper were produced. NSIS: 111,919,484 bytes, SHA-256 `A319BAFBD24C79EE223AE789C7E242853302C9D1A8E8C6D1E5E68155CD9A3142`; portable: 100,603,864 bytes, SHA-256 `8A3E4FB646B182A1123A4490D3BC908DB9A61154C0490B3F36DD046A1208515F`. |
 
 ## Verified functionality
 
@@ -27,6 +27,7 @@ This is an evidence-based baseline. A feature is listed as implemented only when
 - Windows shell reads and controlled writes: taskbar position/auto-hide byte math, theme, accent, wallpaper, wallpaper gallery, special folders, Start settings and Explorer restart planning.
 - Folder opening is allow-listed to the six offered home folders; wallpaper inputs are validated before decode/registry/native-helper use.
 - Wallpaper gallery listing, preview and Explorer launch are constrained to `Pictures\\Wallpaper` descendants, with canonical-path checks for existing junctions/symlinks.
+- Renderer folder-icon reads and writes are restricted to the six offered home folders; the persisted undo path is revalidated before restoration.
 - Rotating local logs and uncaught exception/unhandled rejection logging.
 - Bounded session-local history (24-hour ring-buffer ceiling), selectable 1m/5m/30m/1h/6h/24h CPU/RAM sparklines and objective System Status rows.
 - Local alert state machine with duration, cooldown and recovery transitions.

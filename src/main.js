@@ -1368,6 +1368,16 @@ async function runSelfTest() {
     console.log('[self-test] wallpaperPreview(' + outsideDir + ') -> ' + refusedWallpaper);
     if (!/"ok":false/.test(refusedWallpaper)) fail.push('wallpaperPreview accepted a non-image path');
 
+    const refusedFolderIcon = await mainWindow.webContents.executeJavaScript(
+      'window.sysglance.shell.readFolderCustomization(' + JSON.stringify(outsideDir) + ').then(function (r) { return JSON.stringify(r); })', true);
+    console.log('[self-test] readFolderCustomization(' + outsideDir + ') -> ' + refusedFolderIcon);
+    if (!/"ok":false/.test(refusedFolderIcon)) fail.push('folder customization accepted a non-offered directory');
+
+    const refusedGalleryFolder = await mainWindow.webContents.executeJavaScript(
+      'window.sysglance.shell.openWallpaperFolder(' + JSON.stringify(outsideDir) + ').then(function (r) { return JSON.stringify(r); })', true);
+    console.log('[self-test] openWallpaperFolder(' + outsideDir + ') -> ' + refusedGalleryFolder);
+    if (!/"ok":false/.test(refusedGalleryFolder)) fail.push('wallpaper gallery launcher accepted an outside directory');
+
     console.log('[self-test] log file: ' + log.file());
     if (fail.length) {
       console.log('[self-test] FAIL — ' + fail.join('; '));
