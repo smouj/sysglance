@@ -25,6 +25,7 @@ check('geometry uses the selected display work area', main.includes('getTargetDi
 check('topology includes scale and work-area metadata', main.includes('scaleFactor: display.scaleFactor') && main.includes('workArea:'));
 check('display hotplug falls back safely', main.includes("display-removed") && main.includes("config.displayId = null"));
 check('renderer exposes a target-display selector', renderer.includes("id=\"display-options\"") || renderer.includes('displayOptions'));
+check('renderer exposes selected display topology summary', renderer.includes('display-summary') && renderer.includes('refreshRate') && renderer.includes('rotation'));
 
 console.log('\n' + passed + ' passed, ' + failed + ' failed');
 process.exit(failed ? 1 : 0);

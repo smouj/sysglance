@@ -1312,7 +1312,7 @@ async function runSelfTest() {
     if (!Array.isArray(composed.displays) || !composed.displays.length) fail.push('display topology did not produce a display');
 
     const probe = await mainWindow.webContents.executeJavaScript(
-      'JSON.stringify({ api: !!window.sysglance, apiKeys: window.sysglance ? Object.keys(window.sysglance).length : 0, profilesApi: !!(window.sysglance && window.sysglance.profiles), processesApi: !!(window.sysglance && window.sysglance.processes), diagnosticsApi: !!(window.sysglance && window.sysglance.diagnostics), displayOptions: !!document.getElementById("display-options"), historyWindow: !!document.getElementById("history-window"), palette: !!document.getElementById("command-palette"), alertSurface: !!document.getElementById("health-alerts"), versionText: (document.getElementById("app-version") || {}).textContent || null, suiteFooter: ((document.getElementById("suite-footer") || {}).textContent || "").replace(/\\s+/g, " ").trim() || null, shellSection: !!document.getElementById("sec-shell"), cpu: (document.getElementById("cpu-load") || {}).textContent || null })',
+      'JSON.stringify({ api: !!window.sysglance, apiKeys: window.sysglance ? Object.keys(window.sysglance).length : 0, profilesApi: !!(window.sysglance && window.sysglance.profiles), processesApi: !!(window.sysglance && window.sysglance.processes), diagnosticsApi: !!(window.sysglance && window.sysglance.diagnostics), displayOptions: !!document.getElementById("display-options"), displaySummary: !!document.getElementById("display-summary"), historyWindow: !!document.getElementById("history-window"), palette: !!document.getElementById("command-palette"), alertSurface: !!document.getElementById("health-alerts"), versionText: (document.getElementById("app-version") || {}).textContent || null, suiteFooter: ((document.getElementById("suite-footer") || {}).textContent || "").replace(/\\s+/g, " ").trim() || null, shellSection: !!document.getElementById("sec-shell"), cpu: (document.getElementById("cpu-load") || {}).textContent || null })',
       true
     );
     const state = JSON.parse(probe);
@@ -1322,6 +1322,7 @@ async function runSelfTest() {
     if (!state.processesApi) fail.push('process actions API missing from preload bridge');
     if (!state.diagnosticsApi) fail.push('diagnostics API missing from preload bridge');
     if (!state.displayOptions) fail.push('display selector missing from settings');
+    if (!state.displaySummary) fail.push('display topology summary missing from settings');
     if (!state.historyWindow) fail.push('history window selector missing from status');
     if (!state.alertSurface) fail.push('alert surface missing from system status');
     if (!state.palette) fail.push('command palette missing from renderer');

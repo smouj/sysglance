@@ -44,7 +44,7 @@
     opacityVal: $('opacity-val'), refreshVal: $('refresh-val'), slowVal: $('slow-val'),
     btnLockSettings: $('btn-lock-settings'), btnCompactSettings: $('btn-compact-settings'),
     layoutOptions: $('layout-options'), anchorOptions: $('anchor-options'),
-    themeOptions: $('theme-options'), displayOptions: $('display-options'), hotkeyToggle: $('hotkey-toggle'), hotkeyLock: $('hotkey-lock'), hotkeyPalette: $('hotkey-palette'), sectionToggles: $('section-toggles'),
+    themeOptions: $('theme-options'), displayOptions: $('display-options'), displaySummary: $('display-summary'), hotkeyToggle: $('hotkey-toggle'), hotkeyLock: $('hotkey-lock'), hotkeyPalette: $('hotkey-palette'), sectionToggles: $('section-toggles'),
     profileSelect: $('profile-select'), profileName: $('profile-name'), profileSave: $('profile-save'),
     profileApply: $('profile-apply'), profileApplyShell: $('profile-apply-shell'), profileDelete: $('profile-delete'), profileDuplicate: $('profile-duplicate'),
     profileExport: $('profile-export'), profileImport: $('profile-import'), profileUndo: $('profile-undo'), profileStatus: $('profile-status'),
@@ -195,6 +195,17 @@
     dom.displayOptions.innerHTML = html;
     if (selected && Array.prototype.some.call(dom.displayOptions.options, function (option) { return option.value === selected; })) {
       dom.displayOptions.value = selected;
+    }
+    var target = displays.filter(function (display) { return String(display.id) === dom.displayOptions.value; })[0] ||
+      displays.filter(function (display) { return display.primary; })[0] || displays[0];
+    if (dom.displaySummary && target) {
+      var size = target.size && target.size.width && target.size.height ? target.size.width + '×' + target.size.height : null;
+      var work = target.workArea && target.workArea.width && target.workArea.height ? 'work area ' + target.workArea.width + '×' + target.workArea.height : null;
+      var scale = target.scaleFactor ? Math.round(target.scaleFactor * 100) + '%' : null;
+      var hz = target.refreshRate ? Math.round(target.refreshRate) + ' Hz' : null;
+      var rotation = target.rotation ? 'rotation ' + target.rotation + '°' : null;
+      var primary = target.primary ? 'primary' : 'secondary';
+      setText(dom.displaySummary, [size, scale, hz, rotation, primary, work].filter(Boolean).join(' · ') || 'Display topology unavailable');
     }
   }
 
