@@ -41,6 +41,7 @@
     "dev": "electron . --dev",
     "self-test": "electron . --self-test",
     "screenshot": "electron . --screenshot",
+    "bench:runtime": "electron . --runtime-bench",
     "icons": "electron . --icons",
     "verify": "node scripts/verify-syntax.js && node scripts/verify-config.js && node scripts/verify-shell.js && node scripts/verify-shell-extended.js && node scripts/verify-health.js && node scripts/verify-metrics.js && node scripts/verify-diagnostics.js && node scripts/verify-journal.js && node scripts/verify-transaction.js && node scripts/verify-profile-shell.js && node scripts/verify-ipc.js && node scripts/verify-profiles.js && node scripts/verify-processes.js && node scripts/verify-displays.js && node scripts/verify-install.js && node scripts/verify-actions.js && node scripts/verify-logging.js && node scripts/verify-privacy.js",
     "verify:config": "node scripts/verify-config.js",

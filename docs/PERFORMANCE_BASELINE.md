@@ -38,6 +38,15 @@ The sample spawned 77 children overall, mostly provider-side PowerShell calls;
 this is why the slow tier remains cadence-limited and is not part of the fast
 UI loop.
 
+The runtime benchmark (`$env:SYSGLANCE_RUNTIME_BENCH_ITERATIONS='2'; npm run
+bench:runtime` in PowerShell) measures the real Electron window and bridge on the same host.
+It reported **1,195.85 ms** from main-process boot to `ready-to-show`, fast
+cycle median **0.78 ms**, slow cycle median **3,639.49 ms**, IPC round-trip
+median **0.98 ms**, and a representative 100-write renderer patch median
+**4.63 ms**. The sample reported **138.5 MB** main-process RSS, **385.0 MB**
+aggregate Electron working-set memory and **4** Electron processes. The
+renderer figure is a controlled DOM patch, not a 60 Hz frame-pacing claim.
+
 ## Runtime smoke measurement
 
 One normal launch on the same Windows 10 host (20 September 2026, current
@@ -51,14 +60,14 @@ the app is idle between polls. A second shorter sample measured 1,512 ms to
 window and 396.9 MB RSS; the spread shows why these are baselines, not release
 guarantees. The process tree was closed after each run.
 
-The final Windows installer from this audit is **111,919,484 bytes** with
-SHA-256 `A319BAFBD24C79EE223AE789C7E242853302C9D1A8E8C6D1E5E68155CD9A3142`.
+The final Windows installer from this audit is **111,920,405 bytes** with
+SHA-256 `3DA90032546D38FFE8896E4EEFD5B13F518E54BE21D1D4EA0FD8A33092DCCBE9`.
 It was
 built in `dist-verify` with electron-builder 26.15.3 and includes the packaged
 native helper.
 
-The matching portable Windows artifact is **100,603,864 bytes** with SHA-256
-`8A3E4FB646B182A1123A4490D3BC908DB9A61154C0490B3F36DD046A1208515F`.
+The matching portable Windows artifact is **100,605,652 bytes** with SHA-256
+`379FDA3034886CA3BAB525AC7B8EE30D1C020AD4C967D8C707D44E2781821D0A`.
 It was built in `dist-portable` and passed `npm run verify:portable`.
 
 ## Current performance controls
@@ -68,6 +77,7 @@ It was built in `dist-portable` and passed `npm run verify:portable`.
 - Slow collection skips hidden sections.
 - Renderer updates are batched through `requestAnimationFrame` and avoid unchanged DOM writes.
 - Slow and fast cycles have running guards; skipped and failed ticks are exposed in the composed metrics payload.
+- `npm run bench:runtime` provides a repeatable local sample for startup, IPC, renderer patch cost, RSS and Electron process count.
 
 ## NOT VERIFIED
 

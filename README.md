@@ -220,6 +220,7 @@ npm start              # run the app
 npm run self-test      # boot, read metrics, assert the IPC bridge, exit non-zero on error
 npm run verify         # syntax + settings validation + shell harness
 npm run bench          # before/after refresh-cycle benchmark
+npm run bench:runtime  # startup, real tiers, IPC, renderer patch and RSS sample
 ```
 
 | Gate | Command | Covers |

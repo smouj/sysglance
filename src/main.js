@@ -33,6 +33,8 @@ const { ShellJournal } = require('./shell/journal');
 const diagnostics = require('./diagnostics');
 
 const SELF_TEST = process.argv.includes('--self-test');
+const RUNTIME_BENCH = process.argv.includes('--runtime-bench');
+const BOOT_TIME_NS = process.hrtime.bigint();
 // --screenshot[=dir] boots the real app, captures the panel (sidebar, settings,
 // dock) and exits. Used to keep docs/*.png honest and to review visual changes.
 const SCREENSHOT_ARG = process.argv.find((a) => a.startsWith('--screenshot'));
@@ -99,6 +101,8 @@ const HISTORY_WINDOWS = new Set([60 * 1000, 5 * 60 * 1000, 30 * 60 * 1000, 60 * 
 
 // Renderer-side errors seen in self-test mode.
 const rendererErrors = [];
+let runtimeBenchStarted = false;
+let runtimeBenchReadyMs = null;
 
 // ── config persistence ──────────────────────────────────
 function loadConfig() {
@@ -350,9 +354,21 @@ function createWindow() {
   if (positionLocked) mainWindow.setIgnoreMouseEvents(true, { forward: true });
   mainWindow.setBackgroundColor('#00000000');
   mainWindow.setOpacity(config.opacity);
+  if (RUNTIME_BENCH) {
+    mainWindow.webContents.once('did-finish-load', () => {
+      console.log('[runtime-bench] did-finish-load ' + (Number(process.hrtime.bigint() - BOOT_TIME_NS) / 1e6).toFixed(2) + ' ms');
+    });
+  }
   mainWindow.loadFile(path.join(__dirname, 'index.html'));
 
-  mainWindow.once('ready-to-show', () => { if (!SELF_TEST) mainWindow.show(); });
+  mainWindow.once('ready-to-show', () => {
+    if (RUNTIME_BENCH) {
+      runtimeBenchReadyMs = Number(process.hrtime.bigint() - BOOT_TIME_NS) / 1e6;
+      console.log('[runtime-bench] ready-to-show ' + runtimeBenchReadyMs.toFixed(2) + ' ms');
+      mainWindow.show();
+      runRuntimeBench();
+    } else if (!SELF_TEST) mainWindow.show();
+  });
 
   mainWindow.webContents.on('console-message', (_e, level, message, line, source) => {
     const where = (source || '').split(/[\\/]/).pop() + ':' + line;
@@ -1143,6 +1159,94 @@ app.on('before-quit', () => {
   globalShortcut.unregisterAll();
   log.info('SysGlance shutting down');
 });
+
+// ── runtime benchmark (local performance evidence) ─────
+function runtimeBenchStats(values) {
+  const sorted = values.slice().sort((a, b) => a - b);
+  const mean = values.reduce((sum, value) => sum + value, 0) / values.length;
+  return {
+    minMs: +sorted[0].toFixed(2),
+    medianMs: +sorted[Math.floor(sorted.length / 2)].toFixed(2),
+    meanMs: +mean.toFixed(2),
+    maxMs: +sorted[sorted.length - 1].toFixed(2)
+  };
+}
+
+async function runtimeBenchMeasure(run, iterations) {
+  const values = [];
+  for (let i = 0; i < iterations; i++) {
+    const t0 = process.hrtime.bigint();
+    await run();
+    values.push(Number(process.hrtime.bigint() - t0) / 1e6);
+  }
+  return runtimeBenchStats(values);
+}
+
+async function runRuntimeBench() {
+  if (runtimeBenchStarted) return;
+  runtimeBenchStarted = true;
+  const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+  const requested = Number(process.env.SYSGLANCE_RUNTIME_BENCH_ITERATIONS || 3);
+  const iterations = Number.isFinite(requested) ? Math.max(1, Math.min(5, Math.round(requested))) : 3;
+  try {
+    // Stop the normal timers so the direct tier measurements are not competing
+    // with a background cycle already started during app boot.
+    stopDataCollection();
+    for (let i = 0; i < 60 && (fastRunning || slowRunning); i++) await sleep(250);
+    metrics.reset();
+    await metrics.collectFast(); // prime the in-process CPU delta
+    await sleep(250);
+
+    const fastCycleMs = await runtimeBenchMeasure(() => metrics.collectFast(), iterations);
+    const slowCycleMs = await runtimeBenchMeasure(
+      () => metrics.collectSlow({ sections: { gpu: true, disks: true, network: true, processes: true, battery: true } }),
+      iterations
+    );
+    const ipcRoundTripMs = await runtimeBenchMeasure(
+      () => mainWindow.webContents.executeJavaScript('window.sysglance.getAppInfo().then(function () { return true; })', true),
+      iterations
+    );
+    const rendererPatchMs = await runtimeBenchMeasure(() => mainWindow.webContents.executeJavaScript(`(function () {
+      var cpu = document.getElementById('cpu-load');
+      var bar = document.getElementById('cpu-bar');
+      if (!cpu || !bar) return 0;
+      var oldText = cpu.textContent;
+      var oldStyle = bar.getAttribute('style');
+      var t = performance.now();
+      for (var i = 0; i < 100; i++) {
+        cpu.textContent = (i % 101).toFixed(1) + '%';
+        bar.style.width = (i % 101) + '%';
+      }
+      var elapsed = performance.now() - t;
+      cpu.textContent = oldText;
+      if (oldStyle === null) bar.removeAttribute('style'); else bar.setAttribute('style', oldStyle);
+      return elapsed;
+    })()`, true), iterations);
+
+    const appMetrics = app.getAppMetrics();
+    const appMetricsRssBytes = appMetrics.reduce((sum, item) => sum + ((item.memory && item.memory.workingSetSize) || 0) * 1024, 0);
+    const result = {
+      bootToReadyMs: +(runtimeBenchReadyMs == null ? 0 : runtimeBenchReadyMs.toFixed(2)),
+      iterations,
+      fastCycleMs,
+      slowCycleMs,
+      ipcRoundTripMs,
+      rendererPatchMs,
+      memory: {
+        mainRssMB: +(process.memoryUsage().rss / 1048576).toFixed(1),
+        appMetricsRssMB: +(appMetricsRssBytes / 1048576).toFixed(1)
+      },
+      electronProcessCount: appMetrics.length
+    };
+    console.log('[runtime-bench] ' + JSON.stringify(result));
+    isQuitting = true;
+    app.exit(0);
+  } catch (err) {
+    console.error('[runtime-bench] FAIL — ' + (err && err.stack ? err.stack : err));
+    isQuitting = true;
+    app.exit(1);
+  }
+}
 
 // ── self-test (CI / headless smoke test) ────────────────
 // Boots the real window, reads one fast and one slow cycle, proves the preload

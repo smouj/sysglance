@@ -94,6 +94,7 @@ clientes analíticos ni dependencias runtime directas innecesarias.
 | `npm run verify` | PASS; 37 sintaxis, 36 config, 28 shell, 43 shell extendido, 17 histórico/alertas, 10 métricas, 7 diagnostics, 7 journal, 4 transaction, 5 profile-shell, 14 profiles, 8 processes, 10 displays, 6 install, 19 actions, 4 logging, 4 privacy e IPC único. |
 | `npm run self-test` | PASS con Electron 44.4.3, ventana real, preload, tiers, inspector, displays, alert surface y rechazo de paths hostiles. |
 | `npm run bench -- --iterations=3 --new` | PASS; fast 0.69 ms mediana, slow 3149.01 ms mediana, 166.33 ms CPU/ciclo, 19.33 procesos hijos/ciclo. |
+| `npm run bench:runtime` (PowerShell env: 2 iterations) | PASS; ready-to-show 1195.85 ms, fast 0.78 ms mediana, slow 3639.49 ms mediana, IPC 0.98 ms mediana, renderer patch 4.63 ms mediana, 385.0 MB RSS agregado y 4 procesos Electron. |
 | `npm run screenshot` | PASS; sidebar, settings, dock, mini, shell y minimum-size capturados y revisados. |
 | `npm run build:win -- --config.directories.output=dist-verify` | PASS con electron-builder 26.15.3. |
 | `npm run verify:install` | PASS 6/6; helper 6144 bytes, uninstaller 600 bytes. |
@@ -132,10 +133,10 @@ optimización.
 | GitHub Actions remoto | NOT VERIFIED en este checkout; el workflow está preparado. |
 | firma de código / auto-update seguro | NOT IMPLEMENTED. |
 
-El instalador actual mide 111,919,484 bytes y tiene SHA-256
-`A319BAFBD24C79EE223AE789C7E242853302C9D1A8E8C6D1E5E68155CD9A3142`.
-El portable mide 100,603,864 bytes y tiene SHA-256
-`8A3E4FB646B182A1123A4490D3BC908DB9A61154C0490B3F36DD046A1208515F`.
+El instalador actual mide 111,920,405 bytes y tiene SHA-256
+`3DA90032546D38FFE8896E4EEFD5B13F518E54BE21D1D4EA0FD8A33092DCCBE9`.
+El portable mide 100,605,652 bytes y tiene SHA-256
+`379FDA3034886CA3BAB525AC7B8EE30D1C020AD4C967D8C707D44E2781821D0A`.
 
 ## Riesgos y deuda restante
 
