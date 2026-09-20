@@ -26,7 +26,8 @@ check('diagnostics bridge is narrow', preload.includes('diagnostics: {') && !pre
 check('clipboard actions reject control characters and length abuse', main.includes("ipcMain.handle('copy-text'") && main.includes('invalid clipboard text'));
 check('command palette is present in the UI', html.includes('id="command-palette"') && html.includes('id="palette-input"'));
 check('command palette has a global shortcut', config.includes("palette: 'CommandOrControl+K'") && main.includes('registerShortcuts') && preload.includes("'toggle-palette'"));
-check('palette commands are navigation-only or explicit UI actions', renderer.includes('PALETTE_COMMANDS') && renderer.includes('Show system status'));
+check('palette commands are navigation-only or explicit UI actions', renderer.includes('PALETTE_COMMANDS') && renderer.includes('Show system status') && renderer.includes("action: 'taskManager'") && main.includes("ipcMain.handle('control:open'"));
+check('control actions are allow-listed and argument-safe', main.includes("ms-settings:network") && main.includes("execFile('taskmgr.exe', [], { windowsHide: true }") && main.includes("['user32.dll,LockWorkStation']") && !main.includes('exec('));
 check('processes expose local filter and copy actions', html.includes('id="process-filter"') && renderer.includes('data-action="path"') && renderer.includes('PID copied'));
 check('shell mutations expose a journal-backed undo channel', shellIpc.includes("ipcMain.handle('shell:undo'") && preload.includes("undo: 'shell:undo'") && shellIpc.includes('restoreShellState'));
 

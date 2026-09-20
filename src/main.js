@@ -853,6 +853,26 @@ ipcMain.handle('copy-text', (_e, value) => {
   return { ok: true };
 });
 
+// Fixed, user-facing control actions. The renderer can select an action name,
+// never a URI, executable or argument list. No shell command is accepted here.
+const CONTROL_ACTIONS = {
+  settings: () => shell.openExternal('ms-settings:'),
+  network: () => shell.openExternal('ms-settings:network'),
+  display: () => shell.openExternal('ms-settings:display'),
+  apps: () => shell.openExternal('ms-settings:appsfeatures'),
+  taskManager: () => new Promise((resolve) => execFile('taskmgr.exe', [], { windowsHide: true }, (err) => resolve(err ? { ok: false, error: err.message } : { ok: true }))),
+  lock: () => new Promise((resolve) => execFile('rundll32.exe', ['user32.dll,LockWorkStation'], { windowsHide: true }, (err) => resolve(err ? { ok: false, error: err.message } : { ok: true })))
+};
+ipcMain.handle('control:open', async (_event, action) => {
+  if (process.platform !== 'win32') return { ok: false, error: 'Windows control actions are unavailable on this host' };
+  if (typeof action !== 'string' || !Object.prototype.hasOwnProperty.call(CONTROL_ACTIONS, action)) return { ok: false, error: 'unknown control action' };
+  try {
+    const result = await CONTROL_ACTIONS[action]();
+    if (typeof result === 'object') return result;
+    return { ok: true };
+  } catch (err) { return { ok: false, error: err.message }; }
+});
+
 // ── explicit process actions ─────────────────────────────
 function validPid(pid) { return Number.isInteger(pid) && pid > 4 && pid <= 0x7fffffff; }
 

@@ -108,8 +108,10 @@ monitoring configuration and selected display; shell registry changes are
 reported as pending and are never applied silently. The display selector
 tracks each monitor's work area, scale factor and hot-plug lifecycle.
 
-Ctrl+K opens a small in-app command palette for navigating the health, metric,
-process and profile sections; it is intentionally not a general launcher.
+The command palette is a small in-app control center: it navigates health,
+metrics, processes and profiles, and can open the allow-listed Windows Settings,
+network, display, apps and Task Manager surfaces or lock the PC. It is
+intentionally not a general launcher.
 
 The settings panel also provides a sanitized system summary for clipboard copy
 or JSON export. It excludes document contents, serials, network addresses and

@@ -83,6 +83,9 @@ contextBridge.exposeInMainWorld('sysglance', {
   // filesystem
   openFolder: (folderPath) => ipcRenderer.invoke('open-folder', folderPath),
   copyText: (value) => ipcRenderer.invoke('copy-text', value),
+  control: {
+    open: (action) => ipcRenderer.invoke('control:open', action)
+  },
 
   // local profiles: one named wrapper per operation, no generic IPC bridge
   profiles: {

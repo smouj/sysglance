@@ -350,6 +350,12 @@
   // ── command palette ──────────────────────────────────
   var PALETTE_COMMANDS = [
     { label: 'Open settings', terms: 'settings preferences', run: function () { toggleSettings(true); } },
+    { label: 'Open Windows Settings', terms: 'settings control panel', action: 'settings' },
+    { label: 'Open network settings', terms: 'network wifi ethernet internet', action: 'network' },
+    { label: 'Open display settings', terms: 'display monitor screen dpi', action: 'display' },
+    { label: 'Open Apps settings', terms: 'apps applications uninstall', action: 'apps' },
+    { label: 'Open Task Manager', terms: 'task manager processes cpu', action: 'taskManager' },
+    { label: 'Lock PC', terms: 'lock workstation security', action: 'lock' },
     { label: 'Show system status', terms: 'status health', section: 'health' },
     { label: 'Show CPU', terms: 'cpu processor', section: 'cpu' },
     { label: 'Show memory', terms: 'memory ram', section: 'memory' },
@@ -388,6 +394,11 @@
       if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
     if (item.run) item.run();
+    if (item.action && api.control && api.control.open) {
+      api.control.open(item.action).then(function (res) {
+        if (res && !res.ok) diagnosticsStatus(res.error || 'Control action unavailable', true);
+      }).catch(function (err) { diagnosticsStatus(err.message || 'Control action unavailable', true); });
+    }
   }
   if (dom.paletteInput) dom.paletteInput.addEventListener('input', function (event) { renderPalette(event.target.value); });
   if (dom.paletteInput) dom.paletteInput.addEventListener('keydown', function (event) {
@@ -401,7 +412,6 @@
   if (dom.paletteClose) dom.paletteClose.addEventListener('click', closePalette);
   if (dom.commandPalette) dom.commandPalette.addEventListener('click', function (event) { if (event.target === dom.commandPalette) closePalette(); });
   document.addEventListener('keydown', function (event) {
-    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') { event.preventDefault(); openPalette(); }
     if (event.key === 'Escape' && dom.commandPalette && !dom.commandPalette.classList.contains('hidden')) closePalette();
   });
 

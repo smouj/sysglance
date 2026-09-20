@@ -11,7 +11,7 @@ This is an evidence-based baseline. A feature is listed as implemented only when
 | Command | Result |
 |---|---|
 | `npm ci` | PASS; 285 packages installed. `npm audit` and production-only audit report 0 vulnerabilities. The initial Electron 33/electron-builder 25 audit found 14 findings; the toolchain was upgraded and retested. |
-| `npm run verify` | PASS; 28 syntax, 36 config, 28 shell, 32 extended shell, 14 history/health/alert, 6 metric, 7 journal, 12 profile, 7 process, 9 display, 10 desktop-action and unique IPC checks. |
+| `npm run verify` | PASS; 28 syntax, 36 config, 28 shell, 32 extended shell, 14 history/health/alert, 6 metric, 7 journal, 12 profile, 7 process, 9 display, 11 desktop-action and unique IPC checks. |
 | `npm run self-test` | PASS on Electron 44.4.3 after fixing duplicate Shell IPC registration. Real Electron window, preload bridge, fast/slow collection, product layer and hostile path refusal exercised. |
 | `npm run bench` | PASS as a measurement; see `PERFORMANCE_BASELINE.md`. |
 | `npm run build:win` | PASS on electron-builder 26.15.3; NSIS installer, blockmap, unpacked app and native helper were produced. |
@@ -34,6 +34,7 @@ This is an evidence-based baseline. A feature is listed as implemented only when
 - On-demand hardware inspector covering system/BIOS/baseboard, memory, storage, graphics, adapters and displays.
 - Network session totals/peak rates, nullable disk-I/O activity, process filtering and PID/path clipboard actions.
 - Configurable toggle/lock/palette shortcuts with duplicate refusal and reduced-motion/forced-colour CSS fallbacks.
+- Allow-listed Windows command-center actions for Settings, network, display, apps, Task Manager and workstation lock; no arbitrary URI or command input crosses IPC.
 - Multi-monitor placement: validated display selection, work-area-aware geometry, topology metadata and display hot-plug fallback.
 - NSIS configuration, per-user install scripts, Linux/macOS targets and a Windows CI job are declared.
 
