@@ -27,7 +27,7 @@
     memPct: $('mem-pct'), memBar: $('mem-bar'), memUsed: $('mem-used'), memSwap: $('mem-swap'),
     gpuLoad: $('gpu-load'), gpuName: $('gpu-name'), gpuBars: $('gpu-bars'),
     fsHome: $('fs-home'), fsFolders: $('fs-folders'), secFs: $('sec-filesystem'),
-    secHealth: $('sec-health'), healthSummary: $('health-summary'), healthList: $('health-list'), historyWindow: $('history-window'),
+    secHealth: $('sec-health'), healthSummary: $('health-summary'), healthList: $('health-list'), healthAlerts: $('health-alerts'), historyWindow: $('history-window'),
     secGpu: $('sec-gpu'),
     diskList: $('disk-list'), diskActivity: $('disk-activity'), diskActivityValue: $('disk-activity-value'), storageAnalyze: $('storage-analyze'), storageAnalysis: $('storage-analysis'),
     netIface: $('net-iface'), netRx: $('net-rx'), netTx: $('net-tx'), netPeak: $('net-peak'), netSession: $('net-session'), netDetails: $('net-details'),
@@ -652,7 +652,7 @@
     if (polyline.getAttribute('points') !== coords) polyline.setAttribute('points', coords);
   }
 
-  function renderHealth(health) {
+  function renderHealth(health, alerts) {
     if (!health || !dom.healthList) return;
     setText(dom.healthSummary, health.message || 'No issues detected');
     var html = '';
@@ -665,6 +665,25 @@
         '<span class="health-status">' + esc(item.status) + '</span></div>';
     });
     if (dom.healthList.innerHTML !== html) dom.healthList.innerHTML = html;
+
+    var active = alerts && Array.isArray(alerts.active) ? alerts.active : [];
+    if (!dom.healthAlerts) return;
+    if (!active.length) {
+      dom.healthAlerts.hidden = true;
+      if (dom.healthAlerts.innerHTML) dom.healthAlerts.innerHTML = '';
+      return;
+    }
+    var alertHtml = '<div class="alert-list-title">Active alerts</div>';
+    active.forEach(function (item) {
+      var severity = String(item.severity || 'WARNING').toLowerCase();
+      var value = item.lastValue == null ? '' : ' · ' + esc(String(item.lastValue));
+      alertHtml += '<div class="alert-row alert-' + esc(severity) + '">' +
+        '<span class="alert-dot" aria-hidden="true"></span>' +
+        '<span class="alert-label">' + esc(item.label || item.id || 'Alert') + '</span>' +
+        '<span class="alert-severity">' + esc(item.severity || 'WARNING') + value + '</span></div>';
+    });
+    dom.healthAlerts.hidden = false;
+    if (dom.healthAlerts.innerHTML !== alertHtml) dom.healthAlerts.innerHTML = alertHtml;
   }
 
   function applyUpdate() {
@@ -676,7 +695,7 @@
     if (data.displays) renderDisplays(data.displays);
 
     // Objective system status: each line is backed by a current measurement.
-    renderHealth(data.health);
+    renderHealth(data.health, data.alerts);
     if (data.history && data.history.series) {
       if (dom.historyWindow && data.history.windowMs) dom.historyWindow.value = String(data.history.windowMs);
       renderSparkline(dom.cpuSparkline, data.history.series.cpu);

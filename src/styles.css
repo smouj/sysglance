@@ -310,6 +310,18 @@ body.unlocked .ic-unlocked{display:block}
 }
 .section-note.is-alert{color:var(--warn)}
 
+/* Active local alert state is visible, calm and measurement-backed. */
+.alert-list{margin-top:7px;padding-top:6px;border-top:1px solid var(--line)}
+.alert-list-title{margin-bottom:4px;color:var(--warn);font-size:8px;font-weight:700;letter-spacing:.7px;text-transform:uppercase}
+.alert-row{display:flex;align-items:baseline;gap:6px;min-width:0;padding:3px 4px;border-radius:var(--r-sm);background:var(--warn-soft);color:var(--fg-2);font-size:9px}
+.alert-row+.alert-row{margin-top:2px}
+.alert-dot{width:6px;height:6px;flex:0 0 auto;border-radius:50%;background:var(--warn);box-shadow:0 0 7px var(--warn-soft)}
+.alert-critical{background:var(--bad-soft)}
+.alert-critical .alert-dot{background:var(--bad);box-shadow:0 0 7px var(--bad-soft)}
+.alert-label{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.alert-severity{margin-left:auto;flex:0 0 auto;color:var(--warn);font-size:8px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.alert-critical .alert-severity{color:var(--bad)}
+
 /* ═══ Storage ═════════════════════════════════════════ */
 .disk-item{margin-bottom:9px}
 .disk-item:last-child{margin-bottom:0}

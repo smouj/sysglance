@@ -220,6 +220,7 @@
     <div class="section health-section" id="sec-health">
       <div class="section-header"><span class="section-icon"><svg class="ic" viewBox="0 0 24 24"><use href="#i-os"/></svg></span><span class="section-title">System status</span><span class="section-note" id="health-summary">Checking…</span><select id="history-window" class="history-window" aria-label="History window"><option value="60000">1m</option><option value="300000">5m</option><option value="1800000">30m</option><option value="3600000" selected>1h</option><option value="21600000">6h</option><option value="86400000">24h</option></select></div>
       <div id="health-list" class="health-list"></div>
+      <div id="health-alerts" class="alert-list" role="status" aria-live="polite" hidden></div>
     </div>
     <div class="section" id="sec-cpu">
       <div class="section-header"><span class="section-icon"><svg class="ic" viewBox="0 0 24 24"><use href="#i-cpu"/></svg></span><span class="section-title">CPU</span><span class="section-value" id="cpu-load">—</span></div>

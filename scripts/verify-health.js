@@ -26,6 +26,8 @@ history.record({ cpu: 90 }, 5000);
 check('ring buffer remains bounded', history.buffers.cpu.size <= history.capacity, history.buffers.cpu.size + '/' + history.capacity);
 check('window filters old points', history.series('cpu', 1500, 5000).length === 2);
 check('summary exposes latest average and peak', history.snapshot(5000, 5000).summary.cpu.peak === 90);
+history.record({ cpu: 100 }, 6000);
+check('history rollover prunes samples outside retention', history.series('cpu', 5000, 6001)[0].at === 2000);
 const dense = Array.from({ length: 1000 }, (_, i) => ({ at: i * 1000, value: i % 100 }));
 const denseStore = new HistoryStore({ intervalMs: 1000, retentionMs: 2000000 });
 dense.forEach((point) => denseStore.record({ cpu: point.value }, point.at));

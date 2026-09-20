@@ -8,6 +8,6 @@ Alerts are local state transitions, not scareware. The current engine evaluates:
 - Any volume below 10 GB free for 15 seconds — warning.
 - A process at or above 25% CPU for 30 seconds — warning.
 
-Every rule has a duration and cooldown. A condition must remain true before it triggers, repeated triggers are suppressed during cooldown, and clearing the condition emits `RECOVERED`. The engine stores only a bounded transition list and does not contact a server.
+Every rule has a duration and cooldown. A condition must remain true before it triggers, repeated triggers are suppressed during cooldown, and clearing the condition emits `RECOVERED`. The engine stores only a bounded transition list and does not contact a server. Active rules are rendered in the System status card with their severity and last measured value.
 
-The current renderer shows objective System Status rows. Windows toast/tray presentation is deliberately a later adapter so the domain engine remains testable and notification spam can be reviewed separately.
+The current renderer shows objective System Status rows and the active-alert surface. Windows toast/tray presentation is deliberately a later adapter so the domain engine remains testable and notification spam can be reviewed separately.

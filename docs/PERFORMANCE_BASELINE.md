@@ -31,9 +31,9 @@ slow loop into a cached on-demand bridge. The follow-up measured 0.72 ms fast,
 3,330.59 ms slow and 19.33 child processes per slow cycle. This is an explicit
 guard against silently turning network identity into a 7-second polling cost.
 
-Fresh post-packaging sample (`npm run bench -- --iterations=3 --new`, same
-Windows host) measured **0.70 ms median fast**, **2,978.93 ms median slow**,
-**93.67 ms CPU per slow cycle** and **19.33 child processes per slow cycle**.
+Latest post-packaging sample (`npm run bench -- --iterations=3 --new`, same
+Windows host) measured **0.82 ms median fast**, **3,046.11 ms median slow**,
+**156.33 ms CPU per slow cycle** and **19.33 child processes per slow cycle**.
 The sample spawned 77 children overall, mostly provider-side PowerShell calls;
 this is why the slow tier remains cadence-limited and is not part of the fast
 UI loop.
@@ -51,8 +51,8 @@ the app is idle between polls. A second shorter sample measured 1,512 ms to
 window and 396.9 MB RSS; the spread shows why these are baselines, not release
 guarantees. The process tree was closed after each run.
 
-The final Windows installer from this audit is **111,917,842 bytes** with
-SHA-256 `0A70D15AC6A44921B77357BD4C283B7DC8DD762977C9ABEB695C3AAA2854BF86`.
+The final Windows installer from this audit is **111,918,172 bytes** with
+SHA-256 `A2BBB23062DC2246B52D5035ADEFA5CF01A1549E5F660F82263403F6CFDA74CE`.
 It was
 built in `dist-verify` with electron-builder 26.15.3 and includes the packaged
 native helper.

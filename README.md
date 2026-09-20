@@ -56,8 +56,8 @@ to tray. `Ctrl+Shift+S` toggles it. Everything is configurable from the built-in
 - **Processes** — top 8 by CPU with PID, RAM, local filtering, copy-PID/path, open-location and confirmed end-task actions
 - **Battery** — percentage and charging state (laptops only)
 - **System Status** — objective CPU, RAM, GPU temperature, storage and network status rows; no scareware scores
-- **Local history** — bounded CPU/RAM/GPU/temperature/network ring buffers with one-hour sparklines and a 24-hour retention ceiling
-- **Local alerts** — threshold + duration + cooldown + recovery for sustained load, temperature, RAM, disk and process conditions
+- **Local history** — bounded CPU/RAM/GPU/temperature/network ring buffers with selectable 1m/5m/30m/1h/6h/24h sparklines and a 24-hour retention ceiling
+- **Local alerts** — threshold + duration + cooldown + recovery for sustained load, temperature, RAM, disk and process conditions; active alerts appear in System status without contacting a server
 - **Filesystem** — Desktop, Documents, Downloads, Pictures, Videos, Music as real
   tiles: item counts, a hover/focus affordance, Enter/Space activation, and a
   status message when a folder cannot be opened
@@ -129,15 +129,15 @@ The hot path uses **Node's own `os` module in process** — no `wmic`, no
 for what Node cannot read (GPU, temperatures, disks, network counters,
 processes, battery) and runs on a slower, configurable cadence.
 
-Measured with `npm run bench` on the same host, same run:
+Measured with `npm run bench` on the same Windows host; the fast-cycle figure is the latest three-iteration sample and the steady-state comparison is the recorded follow-up run:
 
 | | before | after |
 |---|---|---|
-| cost of one fast cycle | ~47 ms | **0.47 ms** |
+| cost of one fast cycle | ~47 ms | **0.82 ms** |
 | child processes per fast cycle | ~12.5 | **0** |
 | steady state, per second of uptime | 31.1 ms / 8.3 spawns | **11.8 ms / 2.9 spawns** |
 
-The status bar shows the measured cost of the last cycle (`⏱ 0.4 ms`), so the
+The status bar shows the measured cost of the last cycle (`⏱ 0.8 ms`), so the
 number above is verifiable in the app rather than taken on faith.
 
 ## 📦 Install

@@ -17,7 +17,7 @@ Each cycle has a running flag. A timer tick that arrives while its cycle is stil
 
 ## History sampling
 
-`HistoryStore` samples the composed values every five seconds into bounded ring buffers with a 24-hour retention ceiling. The store is local and session-scoped; it exposes summaries and a one-hour renderer window without sending the full 24-hour buffer on every update.
+`HistoryStore` samples the composed values every five seconds into bounded ring buffers with a 24-hour retention ceiling. The store is local and session-scoped; it exposes summaries for the full selected window while downsampling the renderer series to at most 240 points for the selectable 1m/5m/30m/1h/6h/24h windows.
 
 ## Future provider contract
 
