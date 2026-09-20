@@ -385,6 +385,8 @@
     { label: 'Open Apps settings', terms: 'apps applications uninstall', action: 'apps' },
     { label: 'Open Task Manager', terms: 'task manager processes cpu', action: 'taskManager' },
     { label: 'Lock PC', terms: 'lock workstation security', action: 'lock' },
+    { label: 'Sleep PC', terms: 'sleep suspend standby power', action: 'sleep' },
+    { label: 'Restart PC', terms: 'restart reboot power', action: 'restart' },
     { label: 'Show system status', terms: 'status health', section: 'health' },
     { label: 'Show CPU', terms: 'cpu processor', section: 'cpu' },
     { label: 'Show memory', terms: 'memory ram', section: 'memory' },

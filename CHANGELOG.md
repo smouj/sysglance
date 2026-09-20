@@ -21,6 +21,8 @@ the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Added a confirmed, rollback-capable profile shell transaction for taskbar, theme, accent and wallpaper; direct folder undo now restores exact `desktop.ini` bytes.
 - Added on-demand network identity (IPv4, gateway, DNS and link speed) and bounded home-folder size analysis; expensive network routing queries stay out of the regular slow loop.
 - Added a local ZIP support bundle containing sanitized diagnostics and redacted bounded logs.
+- Profiles now retain bounded exact snapshots for the six known home-folder `desktop.ini` files and restore them transactionally with shell settings.
+- Added confirmed Sleep PC and Restart PC actions to the allow-listed command palette.
 
 - **System Status** with objective health rows, bounded local history for key metrics and CPU/RAM sparklines.
 - **Local Alert Engine** with threshold, duration, cooldown and recovery state transitions.

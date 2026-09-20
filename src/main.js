@@ -942,12 +942,26 @@ const CONTROL_ACTIONS = {
   display: () => shell.openExternal('ms-settings:display'),
   apps: () => shell.openExternal('ms-settings:appsfeatures'),
   taskManager: () => new Promise((resolve) => execFile('taskmgr.exe', [], { windowsHide: true }, (err) => resolve(err ? { ok: false, error: err.message } : { ok: true }))),
-  lock: () => new Promise((resolve) => execFile('rundll32.exe', ['user32.dll,LockWorkStation'], { windowsHide: true }, (err) => resolve(err ? { ok: false, error: err.message } : { ok: true })))
+  lock: () => new Promise((resolve) => execFile('rundll32.exe', ['user32.dll,LockWorkStation'], { windowsHide: true }, (err) => resolve(err ? { ok: false, error: err.message } : { ok: true }))),
+  sleep: () => new Promise((resolve) => execFile('rundll32.exe', ['powrprof.dll,SetSuspendState', '0,1,0'], { windowsHide: true }, (err) => resolve(err ? { ok: false, error: err.message } : { ok: true }))),
+  restart: () => new Promise((resolve) => execFile('shutdown.exe', ['/r', '/t', '0'], { windowsHide: true }, (err) => resolve(err ? { ok: false, error: err.message } : { ok: true })))
+};
+const CONTROL_CONFIRMATIONS = {
+  sleep: { title: 'Sleep this PC?', message: 'SysGlance will put Windows into sleep mode.', detail: 'Unsaved work in other applications may remain open but should be saved first.' },
+  restart: { title: 'Restart this PC?', message: 'SysGlance will restart Windows immediately.', detail: 'Save work in every application before continuing.' }
 };
 ipcMain.handle('control:open', async (_event, action) => {
   if (process.platform !== 'win32') return { ok: false, error: 'Windows control actions are unavailable on this host' };
   if (typeof action !== 'string' || !Object.prototype.hasOwnProperty.call(CONTROL_ACTIONS, action)) return { ok: false, error: 'unknown control action' };
   try {
+    if (CONTROL_CONFIRMATIONS[action]) {
+      const prompt = CONTROL_CONFIRMATIONS[action];
+      const confirmation = await dialog.showMessageBox(mainWindow, {
+        type: 'warning', title: prompt.title, message: prompt.message, detail: prompt.detail,
+        buttons: ['Cancel', 'Continue'], defaultId: 0, cancelId: 0, noLink: true
+      });
+      if (confirmation.response !== 1) return { ok: false, canceled: true };
+    }
     const result = await CONTROL_ACTIONS[action]();
     if (typeof result === 'object') return result;
     return { ok: true };

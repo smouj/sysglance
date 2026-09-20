@@ -42,13 +42,15 @@
     "self-test": "electron . --self-test",
     "screenshot": "electron . --screenshot",
     "icons": "electron . --icons",
-    "verify": "node scripts/verify-syntax.js && node scripts/verify-config.js && node scripts/verify-shell.js && node scripts/verify-shell-extended.js && node scripts/verify-health.js && node scripts/verify-metrics.js && node scripts/verify-diagnostics.js && node scripts/verify-journal.js && node scripts/verify-transaction.js && node scripts/verify-ipc.js && node scripts/verify-profiles.js && node scripts/verify-processes.js && node scripts/verify-displays.js && node scripts/verify-actions.js",
+    "verify": "node scripts/verify-syntax.js && node scripts/verify-config.js && node scripts/verify-shell.js && node scripts/verify-shell-extended.js && node scripts/verify-health.js && node scripts/verify-metrics.js && node scripts/verify-diagnostics.js && node scripts/verify-journal.js && node scripts/verify-transaction.js && node scripts/verify-profile-shell.js && node scripts/verify-ipc.js && node scripts/verify-profiles.js && node scripts/verify-processes.js && node scripts/verify-displays.js && node scripts/verify-install.js && node scripts/verify-actions.js",
     "verify:config": "node scripts/verify-config.js",
     "verify:shell": "node scripts/verify-shell.js",
     "verify:shell-extended": "node scripts/verify-shell-extended.js",
     "verify:health": "node scripts/verify-health.js",
     "verify:metrics": "node scripts/verify-metrics.js",
     "verify:diagnostics": "node scripts/verify-diagnostics.js",
+    "verify:profile-shell": "node scripts/verify-profile-shell.js",
+    "verify:install": "node scripts/verify-install.js",
     "verify:journal": "node scripts/verify-journal.js",
     "verify:transaction": "node scripts/verify-transaction.js",
     "verify:history": "node scripts/verify-health.js",
@@ -134,6 +136,10 @@
       {
         "from": "src/native/shell/SysGlanceShellHelper.exe",
         "to": "."
+      },
+      {
+        "from": "scripts/uninstall-user.ps1",
+        "to": "uninstall-user.ps1"
       }
     ]
   },

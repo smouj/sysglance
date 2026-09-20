@@ -112,8 +112,8 @@ and hot-plug lifecycle.
 
 The command palette is a small in-app control center: it navigates health,
 metrics, processes and profiles, and can open the allow-listed Windows Settings,
-network, display, apps and Task Manager surfaces or lock the PC. It is
-intentionally not a general launcher.
+network, display, apps and Task Manager surfaces, lock the PC, or request sleep
+and restart with confirmation. It is intentionally not a general launcher.
 
 The settings panel also provides a sanitized system summary for clipboard copy,
 JSON export, a ZIP support bundle and an explicit Open logs action. It excludes

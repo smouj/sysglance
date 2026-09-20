@@ -37,7 +37,7 @@ $sizeKb = [int]((Get-ChildItem $dest -Recurse -File | Measure-Object Length -Sum
 foreach ($kv in @{
   DisplayName = 'SysGlance'; DisplayVersion = $version; Publisher = 'smouj'
   InstallLocation = $dest; DisplayIcon = "$exe,0"
-  UninstallString = 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "' + (Join-Path $dest 'resources\app\scripts\uninstall-user.ps1') + '"'
+  UninstallString = 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "' + (Join-Path $dest 'resources\uninstall-user.ps1') + '"'
 }.GetEnumerator()) { Set-ItemProperty $key -Name $kv.Key -Value $kv.Value }
 Set-ItemProperty $key -Name NoModify -Value 1 -Type DWord
 Set-ItemProperty $key -Name NoRepair -Value 1 -Type DWord
