@@ -8,6 +8,12 @@ the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Upgraded the runtime/toolchain to Electron 44.4.3 and electron-builder 26.15.3; `npm audit` is clean.
+
+- **System Status** with objective health rows, bounded local history for key metrics and CPU/RAM sparklines.
+- **Local Alert Engine** with threshold, duration, cooldown and recovery state transitions.
+- Backpressure counters for fast and slow metric cycles, plus verification gates for history, alerts and unique IPC registration.
+
 - **Wallpaper gallery.** List images from `Pictures\Wallpaper` and subfolders, with thumbnail previews. Animated wallpapers (.webm/.mp4) are detected and flagged; SysGlance offers to open the folder for the user's preferred tool (Lively Wallpaper etc.) since Windows has no native animated wallpaper API.
 - **Folder customization.** Read/write folder icons via `desktop.ini` (`IconResource` / `IconFile`). Lists the six standard user folders (Desktop, Documents, Downloads, Pictures, Videos, Music) and lets the user customize or restore each. Folder attributes are set correctly for Windows to pick up the change.
 - **Start menu personalization.** Read and toggle Start menu settings: show recent apps, show suggestions, full-screen Start mode. Registry keys under `Explorer\Advanced` are written via `reg.exe` (the project's existing pattern). A button opens `ms-settings:personalization`.
@@ -19,6 +25,9 @@ the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Smooth CSS transitions on accent swatch, gallery items, and section groups.
 
 ### Fixed
+
+- Removed duplicate Shell IPC registrations that attempted to register `shell:accent:setHex` and legacy aliases twice, producing an Electron handler error during startup.
+- Fixed native helper resolution for packaged builds: electron-builder extra resources are resolved from `process.resourcesPath`, while development resolves the helper beside its C# source.
 
 - **SysGlance is not retired.** A concurrent session had added a retirement
   banner to the README and a "queda retirada" status to `PRODUCT.md`, alongside a

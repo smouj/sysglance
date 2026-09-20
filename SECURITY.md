@@ -22,6 +22,14 @@ The parts that matter most for security are:
 
 Reports about those areas are especially welcome.
 
+## Audit status
+
+The renderer/main boundary is covered by `docs/IPC-SECURITY.md` and the
+repository audit is recorded in `docs/COMMERCIAL_BASELINE.md`. The current
+Electron 44.4.3/electron-builder 26.15.3 is now the pinned development
+toolchain; `npm audit` is clean after the upgrade and the Electron self-test
+passes. Code signing and secure auto-update are not implemented.
+
 ## Out of scope
 
 - Issues that require an already-compromised machine.

@@ -23,6 +23,9 @@ const os = require('os');
 const log = require('./log');
 const configModule = require('./config');
 const metrics = require('./metrics');
+const { HistoryStore } = require('./history');
+const { AlertEngine } = require('./alerts');
+const { evaluateHealth } = require('./health');
 const shellIpc = require('./shell/ipc');
 
 const SELF_TEST = process.argv.includes('--self-test');
@@ -75,7 +78,15 @@ let slowMs = null;
 let staticData = null;
 let fastTimer = null;
 let slowTimer = null;
+let fastRunning = false;
 let slowRunning = false;
+let fastSkippedTicks = 0;
+let slowSkippedTicks = 0;
+let fastFailedTicks = 0;
+let slowFailedTicks = 0;
+const historyStore = new HistoryStore({ intervalMs: 5000, retentionMs: 24 * 60 * 60 * 1000 });
+const alertEngine = new AlertEngine();
+let lastAnalysisAt = 0;
 
 // Renderer-side errors seen in self-test mode.
 const rendererErrors = [];
@@ -452,6 +463,8 @@ function setLayout(layout) {
 const msSince = (t0) => Math.round(Number(process.hrtime.bigint() - t0) / 1e5) / 10;
 
 async function runFastCycle() {
+  if (fastRunning) { fastSkippedTicks++; return; }
+  fastRunning = true;
   const t0 = process.hrtime.bigint();
   try {
     lastFast = await metrics.collectFast();
@@ -461,12 +474,15 @@ async function runFastCycle() {
     }
     broadcastSystemData();
   } catch (err) {
+    fastFailedTicks++;
     log.exception('fast metrics cycle', err);
+  } finally {
+    fastRunning = false;
   }
 }
 
 async function runSlowCycle() {
-  if (slowRunning) return;
+  if (slowRunning) { slowSkippedTicks++; return; }
   slowRunning = true;
   const t0 = process.hrtime.bigint();
   try {
@@ -474,6 +490,7 @@ async function runSlowCycle() {
     slowMs = msSince(t0);
     broadcastSystemData();
   } catch (err) {
+    slowFailedTicks++;
     log.exception('slow metrics cycle', err);
   } finally {
     slowRunning = false;
@@ -493,7 +510,7 @@ function composePayload() {
     memory.swapUsed = slow.memory.swapUsed;
   }
   const sections = config.showSections || {};
-  return {
+  const payload = {
     timestamp: Date.now(),
     layout: config.layout,
     cpu: fast ? {
@@ -527,10 +544,45 @@ function composePayload() {
       refreshInterval: config.refreshInterval,
       slowInterval: config.slowInterval,
       slowCalls: slow ? slow.calls : [],
-      sources: metrics.info
+      sources: metrics.info,
+      backpressure: {
+        fastSkippedTicks, slowSkippedTicks, fastFailedTicks, slowFailedTicks,
+        fastRunning, slowRunning
+      }
     },
     config
   };
+  const gpu = Array.isArray(payload.gpu) ? payload.gpu : [];
+  const gpuTemperature = gpu.reduce((max, item) => Math.max(max, Number(item && item.temp) || -Infinity), -Infinity);
+  const processCpu = Array.isArray(payload.processes) ? payload.processes.map((item) => Number(item.cpu) || 0) : [];
+  const minDiskFree = Array.isArray(payload.disks) && payload.disks.length
+    ? Math.min(...payload.disks.map((item) => Number(item.available) || 0)) : null;
+  const sample = {
+    cpu: payload.cpu ? payload.cpu.load : null,
+    memory: payload.memory ? payload.memory.percentage : null,
+    gpu: gpu.length && Number.isFinite(gpu[0].utilization) ? gpu[0].utilization : null,
+    vram: gpu.length && gpu[0].vram && gpu[0].vramUsed != null ? (gpu[0].vramUsed / gpu[0].vram) * 100 : null,
+    temperature: payload.cpu ? payload.cpu.temp : null,
+    gpuTemperature: Number.isFinite(gpuTemperature) ? gpuTemperature : null,
+    networkRx: payload.network ? payload.network.rx_sec : null,
+    networkTx: payload.network ? payload.network.tx_sec : null
+  };
+  if (payload.timestamp !== lastAnalysisAt) {
+    historyStore.record(sample, payload.timestamp);
+    const transitions = alertEngine.evaluate({
+      cpu: sample.cpu, memory: sample.memory, gpuTemperature: sample.gpuTemperature,
+      minDiskFree, maxProcessCpu: processCpu.length ? Math.max(...processCpu) : null
+    }, payload.timestamp).transitions;
+    for (const event of transitions) {
+      const level = event.type === 'RECOVERED' ? 'info' : 'warn';
+      log[level]('alert ' + event.type.toLowerCase() + ': ' + event.label + (event.notify ? '' : ' (cooldown)'));
+    }
+    lastAnalysisAt = payload.timestamp;
+  }
+  payload.health = evaluateHealth(payload);
+  payload.alerts = alertEngine.snapshot();
+  payload.history = historyStore.snapshot(60 * 60 * 1000, payload.timestamp);
+  return payload;
 }
 
 function broadcastSystemData() {
@@ -857,6 +909,14 @@ async function runSelfTest() {
     const slow = await metrics.collectSlow({ sections: config.showSections });
     console.log('[self-test] slow cycle: ' + msSince(t1) + ' ms, calls [' + slow.calls.join(', ') + '], gpu ' + (slow.gpu ? slow.gpu.length : 0) + ', disks ' + slow.disks.length + ', procs ' + slow.processes.length + ', folders ' + (slow.filesystem ? slow.filesystem.folders.length : 0));
     if (!slow.filesystem || !slow.filesystem.folders.length) fail.push('slow tier returned no filesystem data');
+
+    const composed = composePayload();
+    console.log('[self-test] product layer: health=' + (composed.health && composed.health.rows ? composed.health.rows.length : 0) +
+      ' rows, history=' + (composed.history && composed.history.summary ? composed.history.summary.cpu.count : 0) +
+      ' CPU points, alerts=' + (composed.alerts && composed.alerts.active ? composed.alerts.active.length : 0) + ' active');
+    if (!composed.health || composed.health.rows.length < 5) fail.push('health status did not produce the expected rows');
+    if (!composed.history || !composed.history.summary) fail.push('history store did not produce a snapshot');
+    if (!composed.alerts || !composed.alerts.rules) fail.push('alert engine did not produce a state snapshot');
 
     const probe = await mainWindow.webContents.executeJavaScript(
       'JSON.stringify({ api: !!window.sysglance, apiKeys: window.sysglance ? Object.keys(window.sysglance).length : 0, versionText: (document.getElementById("app-version") || {}).textContent || null, suiteFooter: ((document.getElementById("suite-footer") || {}).textContent || "").replace(/\\s+/g, " ").trim() || null, shellSection: !!document.getElementById("sec-shell"), cpu: (document.getElementById("cpu-load") || {}).textContent || null })',

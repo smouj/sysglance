@@ -229,7 +229,7 @@ function register(ctx) {
   async function accentSetHex(hex) {
     const res = await taskbar.setAccentHex(hex);
     if (res.ok) {
-      persist({ accentAuto: false, accent: { r: res.color ? taskbar.decodeAbgr(taskbar.encodeAbgr(res.color)).r : null, g: null, b: null, hex } });
+      persist({ accentAuto: false, accent: { r: res.r, g: res.g, b: res.b, hex: res.hex } });
       kickThemeBroadcast('accentSetHex');
     }
     return res;
@@ -282,42 +282,6 @@ function register(ctx) {
     return taskbar.openWindowsPersonalization();
   }
 
-  // ── wallpaper gallery ──────────────────────────────────
-  async function wallpaperGallery(dirPath) {
-    try { return await taskbar.listWallpapers(dirPath || undefined); }
-    catch (e) { return { ok: false, error: e.message }; }
-  }
-
-  async function wallpaperGalleryPreview(filePath) {
-    try { return taskbar.wallpaperGalleryPreview(filePath); }
-    catch (e) { return { ok: false, error: e.message }; }
-  }
-
-  async function wallpaperOpenFolder(dirPath) {
-    try { return taskbar.openInExplorer(dirPath); }
-    catch (e) { return { ok: false, error: e.message }; }
-  }
-
-  // ── folder customization ────────────────────────────────
-  async function folderList() { return taskbar.listSpecialFolders(); }
-  async function folderReadCustomization(fp) { return taskbar.readFolderCustomization(fp); }
-  async function folderWriteCustomization(fp, spec) { return taskbar.writeFolderCustomization(fp, spec); }
-
-  // ── start menu / personalization ───────────────────────
-  async function startMenuGetState() { return taskbar.getStartMenuState(); }
-  async function startMenuToggle(name, enabled) { return taskbar.setStartMenuToggle(name, enabled); }
-  async function openPersonalization() { return taskbar.openWindowsPersonalization(); }
-
-  // ── accent hex ──────────────────────────────────────────
-  async function accentSetHex(hex) {
-    const res = await taskbar.setAccentHex(hex);
-    if (res.ok) {
-      persist({ accent: { r: res.r, g: res.g, b: res.b, hex: res.hex }, accentAuto: false });
-      kickThemeBroadcast('accentSetHex');
-    }
-    return res;
-  }
-
   // ── sibling app (vibrancy owner) ───────────────────────
   function widgetInfo() {
     return {
@@ -361,23 +325,6 @@ function register(ctx) {
   ipcMain.handle('shell:startMenu:getState', () => getStartMenuState());
   ipcMain.handle('shell:startMenu:setToggle', (_e, n, v) => setStartMenuToggle(n, v).then(answer));
   ipcMain.handle('shell:startMenu:openPersonalization', () => openWindowsPersonalization());
-  // ── accent hex ──────────────────────────────────────────
-  ipcMain.handle('shell:accent:setHex', (_e, hex) => accentSetHex(hex).then(answer));
-
-  // ── wallpaper gallery ────────────────────────────────────
-  ipcMain.handle('shell:wallpaper:gallery', (_e, dirPath) => wallpaperGallery(dirPath));
-  ipcMain.handle('shell:wallpaper:galleryPreview', (_e, filePath) => Promise.resolve(wallpaperGalleryPreview(filePath)));
-  ipcMain.handle('shell:wallpaper:openFolder', (_e, dirPath) => wallpaperOpenFolder(dirPath));
-
-  // ── folder customization ─────────────────────────────────
-  ipcMain.handle('shell:folder:list', () => folderList());
-  ipcMain.handle('shell:folder:readCustomization', (_e, p) => folderReadCustomization(p));
-  ipcMain.handle('shell:folder:writeCustomization', (_e, p, spec) => folderWriteCustomization(p, spec));
-
-  // ── start menu / personalization ─────────────────────────
-  ipcMain.handle('shell:startMenu:getState', () => startMenuGetState());
-  ipcMain.handle('shell:startMenu:toggle', (_e, name, enabled) => startMenuToggle(name, enabled).then(answer));
-  ipcMain.handle('shell:personalization:open', () => openPersonalization());
 
   ipcMain.handle('shell:widget:info', () => Promise.resolve(widgetInfo()));
   ipcMain.handle('shell:widget:open', () => openWidget());
@@ -387,9 +334,9 @@ function register(ctx) {
   return {
     state, setPosition, setAutoHide, setDark, accentFromWallpaper, accentAuto,
     applyWallpaper, pickWallpaper, wallpaperPreview, restartExplorer, widgetInfo, openWidget,
-    wallpaperGallery, wallpaperGalleryPreview, wallpaperOpenFolder,
-    folderList, folderReadCustomization, folderWriteCustomization,
-    startMenuGetState, startMenuToggle, openPersonalization,
+    listWallpapers, wallpaperGalleryPreview, openWallpaperFolder,
+    readFolderCustomization, writeFolderCustomization, listSpecialFolders, restoreFolderDefault,
+    getStartMenuState, setStartMenuToggle, openWindowsPersonalization,
     accentSetHex,
     broadcast, CHANNELS, WIDGET_REPO
   };

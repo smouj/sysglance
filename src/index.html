@@ -149,9 +149,14 @@
   </div>
 
   <div id="content" class="content">
+    <div class="section health-section" id="sec-health">
+      <div class="section-header"><span class="section-icon"><svg class="ic" viewBox="0 0 24 24"><use href="#i-os"/></svg></span><span class="section-title">System status</span><span class="section-note" id="health-summary">Checking…</span></div>
+      <div id="health-list" class="health-list"></div>
+    </div>
     <div class="section" id="sec-cpu">
       <div class="section-header"><span class="section-icon"><svg class="ic" viewBox="0 0 24 24"><use href="#i-cpu"/></svg></span><span class="section-title">CPU</span><span class="section-value" id="cpu-load">—</span></div>
       <div class="progress-bar"><div class="progress-fill" id="cpu-bar"></div></div>
+      <svg class="sparkline" viewBox="0 0 120 24" preserveAspectRatio="none" aria-label="CPU history"><polyline id="cpu-sparkline" points="" /></svg>
       <div class="info-row"><span id="cpu-model" class="info-subtitle">Loading…</span><span id="cpu-temp" class="info-badge" style="display:none"></span></div>
       <div class="info-row info-row-secondary"><span id="cpu-speed" class="info-small"></span><span id="cpu-cores" class="info-small"></span></div>
       <div id="cpu-percore" class="percore-grid"></div>
@@ -160,6 +165,7 @@
     <div class="section" id="sec-memory">
       <div class="section-header"><span class="section-icon"><svg class="ic" viewBox="0 0 24 24"><use href="#i-memory"/></svg></span><span class="section-title">Memory</span><span class="section-value" id="mem-pct">—</span></div>
       <div class="progress-bar"><div class="progress-fill" id="mem-bar"></div></div>
+      <svg class="sparkline" viewBox="0 0 120 24" preserveAspectRatio="none" aria-label="Memory history"><polyline id="memory-sparkline" points="" /></svg>
       <div class="info-row"><span id="mem-used" class="info-small">— / —</span><span id="mem-swap" class="info-small"></span></div>
     </div>
 

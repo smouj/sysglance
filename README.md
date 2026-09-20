@@ -10,7 +10,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/platform-Windows%20%7C%20Linux-blue?style=flat-square" alt="Platform">
-  <img src="https://img.shields.io/badge/Electron-33-61dafb?style=flat-square" alt="Electron">
+  <img src="https://img.shields.io/badge/Electron-44-61dafb?style=flat-square" alt="Electron">
   <img src="https://img.shields.io/badge/license-MIT-green?style=flat-square" alt="License">
   <img src="https://img.shields.io/badge/status-stable-brightgreen?style=flat-square" alt="Status">
   <img src="https://img.shields.io/badge/dependencies-1-blueviolet?style=flat-square" alt="Dependencies">
@@ -55,6 +55,9 @@ to tray. `Ctrl+Shift+S` toggles it. Everything is configurable from the built-in
 - **Network** — live download/upload per interface
 - **Processes** — top 8 by CPU, colour-coded
 - **Battery** — percentage and charging state (laptops only)
+- **System Status** — objective CPU, RAM, GPU temperature, storage and network status rows; no scareware scores
+- **Local history** — bounded CPU/RAM/GPU/temperature/network ring buffers with one-hour sparklines and a 24-hour retention ceiling
+- **Local alerts** — threshold + duration + cooldown + recovery for sustained load, temperature, RAM, disk and process conditions
 - **Filesystem** — Desktop, Documents, Downloads, Pictures, Videos, Music as real
   tiles: item counts, a hover/focus affordance, Enter/Space activation, and a
   status message when a folder cannot be opened
@@ -93,6 +96,10 @@ to tray. `Ctrl+Shift+S` toggles it. Everything is configurable from the built-in
 Layout · position · theme · opacity (30–100%) · **fast refresh (0.5–5 s)** ·
 **hardware refresh (5–10 s)** · per-section toggles · lock/drag mode ·
 compact mode. Every value is persisted, validated and clamped.
+
+The current release does not yet expose saved desktop profiles, a command
+palette, multi-monitor placement or destructive process actions. Those remain
+separate milestones rather than being presented as finished features.
 
 ### Performance, measured
 The hot path uses **Node's own `os` module in process** — no `wmic`, no
@@ -161,6 +168,14 @@ npm run build:win      # -> dist/SysGlance-Setup-1.2.0.exe   (NSIS)
 npm run build:linux    # -> dist/SysGlance-1.2.0-x64.AppImage + .deb
 npm run build:mac      # -> dist/*.dmg
 ```
+
+On Windows, build the one-shot shell helper before packaging:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\build-native.ps1
+```
+
+The Windows CI job performs this step automatically.
 Building Windows targets from Linux/macOS requires a **32-bit-capable** Wine:
 electron-builder runs `rcedit-ia32.exe` to stamp the installer's icon and
 version resources, and that is a 32-bit binary. A wine64-only install gets as
@@ -215,6 +230,8 @@ directory it names.
 The CSP allows no inline script and no network access from the page.
 Details: [`docs/IPC-SECURITY.md`](docs/IPC-SECURITY.md).
 
+The audit and measured baselines live in [`docs/COMMERCIAL_BASELINE.md`](docs/COMMERCIAL_BASELINE.md) and [`docs/PERFORMANCE_BASELINE.md`](docs/PERFORMANCE_BASELINE.md). The metric, alert and release boundaries are documented in [`docs/METRIC_ENGINE.md`](docs/METRIC_ENGINE.md), [`docs/ALERTS.md`](docs/ALERTS.md) and [`docs/RELEASE.md`](docs/RELEASE.md).
+
 ## 📁 Project structure
 
 ```
@@ -267,7 +284,7 @@ sysglance/
 
 | Technology | Purpose |
 |---|---|
-| **Electron 33** | Desktop runtime |
+| **Electron 44** | Desktop runtime |
 | **Node `os` / `/proc`** | Fast metrics tier — in-process, zero spawns |
 | **systeminformation** | Hardware tier only (GPU, temps, disks, network, processes, battery) |
 | **Vanilla JS + CSS** | Zero framework overhead; `backdrop-filter` for the glass |

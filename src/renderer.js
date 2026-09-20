@@ -27,6 +27,7 @@
     memPct: $('mem-pct'), memBar: $('mem-bar'), memUsed: $('mem-used'), memSwap: $('mem-swap'),
     gpuLoad: $('gpu-load'), gpuName: $('gpu-name'), gpuBars: $('gpu-bars'),
     fsHome: $('fs-home'), fsFolders: $('fs-folders'), secFs: $('sec-filesystem'),
+    secHealth: $('sec-health'), healthSummary: $('health-summary'), healthList: $('health-list'),
     secGpu: $('sec-gpu'),
     diskList: $('disk-list'),
     netIface: $('net-iface'), netRx: $('net-rx'), netTx: $('net-tx'),
@@ -35,6 +36,7 @@
     osDistro: $('os-distro'), osUptime: $('os-uptime'),
     btnLock: $('btn-lock'), btnSettings: $('btn-settings'), btnMinimize: $('btn-minimize'),
     statusClock: $('status-clock'), perfReadout: $('perf-readout'), appVersion: $('app-version'),
+    cpuSparkline: $('cpu-sparkline'), memorySparkline: $('memory-sparkline'),
     content: $('content'),
     suiteVersion: $('suite-version'),
     settingsPanel: $('settings-panel'), btnCloseSettings: $('btn-close-settings'),
@@ -111,7 +113,7 @@
   // One delegated listener covers every card, including the Shell panel that
   // shell/panel.js injects after this file has already run. Collapsing keeps the
   // card's headline value visible, so a folded card still tells you the number.
-  var COLLAPSIBLE = ['cpu', 'memory', 'gpu', 'filesystem', 'disks', 'network', 'processes', 'battery', 'shell'];
+  var COLLAPSIBLE = ['health', 'cpu', 'memory', 'gpu', 'filesystem', 'disks', 'network', 'processes', 'battery', 'shell'];
 
   function sectionKey(sec) {
     if (!sec || !sec.id) return null;
@@ -336,12 +338,48 @@
     if (!rafScheduled) { rafScheduled = true; requestAnimationFrame(applyUpdate); }
   }
 
+  function renderSparkline(polyline, points) {
+    if (!polyline || !points || !points.length) return;
+    var values = points.map(function (p) { return Number(p.value); }).filter(function (v) { return Number.isFinite(v); });
+    if (!values.length) return;
+    var min = Math.min.apply(Math, values), max = Math.max.apply(Math, values);
+    var span = max - min || 1;
+    var coords = values.map(function (v, i) {
+      var x = values.length === 1 ? 0 : (i / (values.length - 1)) * 120;
+      var y = 22 - ((v - min) / span) * 18;
+      return x.toFixed(1) + ',' + y.toFixed(1);
+    }).join(' ');
+    if (polyline.getAttribute('points') !== coords) polyline.setAttribute('points', coords);
+  }
+
+  function renderHealth(health) {
+    if (!health || !dom.healthList) return;
+    setText(dom.healthSummary, health.message || 'No issues detected');
+    var html = '';
+    (health.rows || []).forEach(function (item) {
+      var status = String(item.status || 'UNKNOWN').toLowerCase();
+      html += '<div class="health-row health-' + status + '">' +
+        '<span class="health-dot" aria-hidden="true"></span>' +
+        '<span class="health-label">' + esc(item.label) + '</span>' +
+        '<span class="health-detail">' + esc(item.detail) + '</span>' +
+        '<span class="health-status">' + esc(item.status) + '</span></div>';
+    });
+    if (dom.healthList.innerHTML !== html) dom.healthList.innerHTML = html;
+  }
+
   function applyUpdate() {
     rafScheduled = false;
     var data = pendingData;
     if (!data || data.error) return;
 
     if (data.layout) document.body.setAttribute('data-layout', data.layout);
+
+    // Objective system status: each line is backed by a current measurement.
+    renderHealth(data.health);
+    if (data.history && data.history.series) {
+      renderSparkline(dom.cpuSparkline, data.history.series.cpu);
+      renderSparkline(dom.memorySparkline, data.history.series.memory);
+    }
 
     // CPU
     if (data.cpu) {

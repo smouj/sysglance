@@ -21,14 +21,20 @@ const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 
-// The helper is placed by electron-builder's extraResources next to the asar
-// (resources/SysGlanceShellHelper.exe). Inside the asar, __dirname points to a
-// virtual path, so we resolve relative to the app root instead.
+// electron-builder's extraResources land in process.resourcesPath in a
+// packaged app. During development the helper is built beside its C# source.
+// Keep both paths explicit: resolving relative to an asar path alone points at
+// a file that can never exist in the packaged resources directory.
 const APP_ROOT = path.join(__dirname, '..', '..');
-const HELPER = path.join(APP_ROOT, 'SysGlanceShellHelper.exe');
+const DEV_HELPER = path.join(__dirname, 'shell', 'SysGlanceShellHelper.exe');
+const PACKAGED_HELPER = path.join(process.resourcesPath || APP_ROOT, 'SysGlanceShellHelper.exe');
+const HELPER = PACKAGED_HELPER;
 
 function helperPath() {
-  return process.env.SYSGLANCE_HELPER || HELPER;
+  if (process.env.SYSGLANCE_HELPER) return process.env.SYSGLANCE_HELPER;
+  if (fs.existsSync(PACKAGED_HELPER)) return PACKAGED_HELPER;
+  if (fs.existsSync(DEV_HELPER)) return DEV_HELPER;
+  return HELPER;
 }
 
 const helperExists = () => {

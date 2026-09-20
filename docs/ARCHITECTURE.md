@@ -1,0 +1,35 @@
+# SysGlance architecture
+
+SysGlance is an Electron Windows-first control center with a deliberately small native boundary.
+
+```text
+BrowserWindow (sandboxed renderer)
+        │ explicit preload API
+        ▼
+main process ── config + logs + lifecycle + tray
+        ├── Metric Engine (fast / slow / static)
+        ├── HistoryStore (bounded, local, session)
+        ├── AlertEngine (threshold / duration / cooldown / recovery)
+        ├── Health evaluator (objective status rows)
+        └── shell IPC ── taskbar.js ── reg.exe / one-shot C# helper
+```
+
+The renderer has no Node access, no filesystem access and no generic IPC primitive. The main process validates paths, settings and shell arguments. Shell writes remain explicit and are never driven by a renderer-supplied command string.
+
+## Lifecycle
+
+1. Load and normalize local config.
+2. Create the transparent overlay and preload bridge.
+3. Register the unique Shell IPC channel set.
+4. Render the shell quickly; static hardware identity and slow providers complete asynchronously.
+5. Run non-overlapping fast and slow cycles; compose current metrics, health, history and alerts.
+6. Stop timers, flush config and unregister shortcuts on quit.
+
+## Current boundaries
+
+- `src/metrics.js` owns provider access and failure-tolerant metric shape.
+- `src/history.js`, `src/health.js` and `src/alerts.js` are dependency-free domain modules.
+- `src/shell/taskbar.js` owns Windows registry math and shell operations.
+- `src/native/shellHelper.js` resolves the packaged helper from `process.resourcesPath` and the development helper beside its source.
+
+Profiles, multi-monitor placement, process actions and diagnostics are intentionally not represented as fake capabilities yet; they require their own schemas and rollback tests.

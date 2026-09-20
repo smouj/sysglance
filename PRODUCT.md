@@ -5,7 +5,7 @@ Two desktop apps, one suite. Complementary, never competitors.
 | | **SysGlance** (this repo) | **OpenClaw Widget** (https://github.com/smouj/openclaw-desktop-widget) |
 |---|---|---|
 | Role | On-demand control center | Always-on glance |
-| Stack | Electron 33 + systeminformation | C# / WPF, .NET Framework 4.x (in-box compiler), 0 dependencies |
+| Stack | Electron 44 + systeminformation | C# / WPF, .NET Framework 4.x (in-box compiler), 0 dependencies |
 | Runs | Only while the user has it open | Always resident, lightweight |
 | Owns | Deep dashboards (files, processes, GPU, project info) and **Shell configuration** (taskbar position, auto-hide, dark mode, accent, wallpaper, wallpaper gallery, folder icons, Start menu) | System health readout, OpenClaw/Codex status and **the resident taskbar vibrancy effect** |
 | Does not own | Resident taskbar effects | Shell configuration UI |

@@ -42,9 +42,13 @@
     "self-test": "electron . --self-test",
     "screenshot": "electron . --screenshot",
     "icons": "electron . --icons",
-    "verify": "node scripts/verify-syntax.js && node scripts/verify-config.js && node scripts/verify-shell.js && node scripts/verify-shell-extended.js",
+    "verify": "node scripts/verify-syntax.js && node scripts/verify-config.js && node scripts/verify-shell.js && node scripts/verify-shell-extended.js && node scripts/verify-health.js && node scripts/verify-ipc.js",
     "verify:config": "node scripts/verify-config.js",
     "verify:shell": "node scripts/verify-shell.js",
+    "verify:health": "node scripts/verify-health.js",
+    "verify:history": "node scripts/verify-health.js",
+    "verify:alerts": "node scripts/verify-health.js",
+    "verify:ipc": "node scripts/verify-ipc.js",
     "verify:syntax": "node scripts/verify-syntax.js",
     "bench": "node scripts/bench-metrics.js",
     "build": "electron-builder",
@@ -55,7 +59,7 @@
   "build": {
     "appId": "com.sysglance.app",
     "productName": "SysGlance",
-    "copyright": "Copyright \u00a9 2026 smouj",
+    "copyright": "Copyright © 2026 smouj",
     "directories": {
       "output": "dist"
     },
@@ -125,8 +129,8 @@
     ]
   },
   "devDependencies": {
-    "electron": "^33.0.0",
-    "electron-builder": "^25.0.0"
+    "electron": "^44.4.3",
+    "electron-builder": "^26.15.3"
   },
   "dependencies": {
     "systeminformation": "^5.23.0"

@@ -23,7 +23,7 @@ const THEMES = ['dark', 'light', 'lcd'];
 const SECTION_KEYS = ['cpu', 'memory', 'gpu', 'filesystem', 'disks', 'network', 'processes', 'battery'];
 // Cards the user may fold away. `shell` is injected by src/shell/panel.js, so it
 // is a collapsible view too even though it is not a metrics section.
-const COLLAPSIBLE_KEYS = SECTION_KEYS.concat(['shell']);
+const COLLAPSIBLE_KEYS = ['health'].concat(SECTION_KEYS, ['shell']);
 
 // Refresh cadences. The fast tier is in-process (`os` module only, see
 // src/metrics.js); the slow tier is the systeminformation hardware tier.

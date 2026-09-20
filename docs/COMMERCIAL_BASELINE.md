@@ -1,0 +1,58 @@
+# SysGlance commercial baseline
+
+Audit date: 2026-09-20  
+Audited commit: `1c1ddc5bcaf9408130b1423a2cf9b2a8a54996eb` (`main`)  
+Host used for verification: Windows 10 Pro 10.0.19045, x64, Intel Core i7-6700 (8 logical CPUs), 16 GiB RAM.
+
+This is an evidence-based baseline. A feature is listed as implemented only when it is present in executable code and was exercised by a check or by the real Electron self-test.
+
+## Commands run
+
+| Command | Result |
+|---|---|
+| `npm ci` | PASS; 285 packages installed. `npm audit` and production-only audit report 0 vulnerabilities. The initial Electron 33/electron-builder 25 audit found 14 findings; the toolchain was upgraded and retested. |
+| `npm run verify` | PASS; 20 syntax, 33 config, 28 shell, 32 extended shell, 14 history/health/alert and unique IPC checks. |
+| `npm run self-test` | PASS on Electron 44.4.3 after fixing duplicate Shell IPC registration. Real Electron window, preload bridge, fast/slow collection, product layer and hostile path refusal exercised. |
+| `npm run bench` | PASS as a measurement; see `PERFORMANCE_BASELINE.md`. |
+| `npm run build:win` | PASS on electron-builder 26.15.3; NSIS installer, blockmap, unpacked app and native helper were produced. |
+
+## Verified functionality
+
+- Electron 33 overlay with tray, single-instance lock, three layouts (Sidebar, Dock, Corner), opacity, theme and compact mode.
+- Fast metrics use Node's `os` module; slow metrics use `systeminformation` only for GPU, storage, network, process, battery and temperature data; static identity is cached per session.
+- Section-aware slow collection: hidden sections do not issue their corresponding expensive calls.
+- Renderer is sandboxed with `contextIsolation: true`, `nodeIntegration: false`, `sandbox: true`, CSP and an explicit preload bridge.
+- Config normalization, clamping, prototype-pollution resistance, atomic persistence and collapsible sections.
+- Windows shell reads and controlled writes: taskbar position/auto-hide byte math, theme, accent, wallpaper, wallpaper gallery, special folders, Start settings and Explorer restart planning.
+- Folder opening is allow-listed to the six offered home folders; wallpaper inputs are validated before decode/registry/native-helper use.
+- Rotating local logs and uncaught exception/unhandled rejection logging.
+- Bounded session-local history (24-hour ring-buffer ceiling), one-hour CPU/RAM sparklines and objective System Status rows.
+- Local alert state machine with duration, cooldown and recovery transitions.
+- NSIS configuration, per-user install scripts, Linux/macOS targets and a Windows CI job are declared.
+
+## Incomplete or not yet evidenced
+
+- No saved desktop profiles with import/export/rollback are present.
+- No first-class multi-monitor placement model; current geometry uses the primary display.
+- Process rows are read-only; actions such as end task, copy PID/path and open file location are not implemented in the UI.
+- No complete hardware inspector/export view or user-triggered folder-size analysis.
+- Network view exposes current interface rates only; session totals, peaks, gateway/DNS/link speed are not exposed.
+- No command palette, configurable hotkey editor, diagnostics package or explicit undo journal for shell changes.
+- Windows 10/11, DPI matrix, sleep/resume, Explorer restart, GPU reset and monitor disconnect/reconnect remain NOT VERIFIED on a test matrix.
+- The native C# helper is source-only in the checkout; the audited build warned that `SysGlanceShellHelper.exe` was missing.
+- Code signing uses electron-builder's current local signing path but no publisher certificate is configured; production certificate handling remains NOT IMPLEMENTED.
+
+## Security observations
+
+- No generic renderer IPC invoke/send surface was found.
+- `shell.openPath` is reached only after an allow-list check for home folders; null bytes and path canonicalization should remain regression-tested when Electron is upgraded.
+- Registry writes are concentrated in `src/shell/taskbar.js`, but a formal per-setting backup/undo journal is not yet present.
+- Code signing and secure update are documentation/design work only; auto-update is not implemented.
+
+## First commercial milestones
+
+1. Keep the current low-cost metric split and add explicit backpressure counters.
+2. Add bounded local history and a small health/status surface.
+3. Add duration/cooldown/recovery alerts with no notification spam.
+4. Add profiles and rollback only after shell changes have explicit reversible snapshots.
+5. Close the Windows build, signing, dependency and hardware-matrix gaps before calling a release candidate commercial-ready.
