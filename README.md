@@ -254,7 +254,7 @@ directory it names.
 The CSP allows no inline script and no network access from the page.
 Details: [`docs/IPC-SECURITY.md`](docs/IPC-SECURITY.md).
 
-The audit and measured baselines live in [`docs/COMMERCIAL_BASELINE.md`](docs/COMMERCIAL_BASELINE.md) and [`docs/PERFORMANCE_BASELINE.md`](docs/PERFORMANCE_BASELINE.md). The final evidence report is [`docs/FINAL_AUDIT.md`](docs/FINAL_AUDIT.md). The metric, alert and release boundaries are documented in [`docs/METRIC_ENGINE.md`](docs/METRIC_ENGINE.md), [`docs/ALERTS.md`](docs/ALERTS.md) and [`docs/RELEASE.md`](docs/RELEASE.md).
+The audit and measured baselines live in [`docs/COMMERCIAL_BASELINE.md`](docs/COMMERCIAL_BASELINE.md) and [`docs/PERFORMANCE_BASELINE.md`](docs/PERFORMANCE_BASELINE.md). The final evidence report is [`docs/FINAL_AUDIT.md`](docs/FINAL_AUDIT.md). The metric, alert, release and optional Store/MSIX boundaries are documented in [`docs/METRIC_ENGINE.md`](docs/METRIC_ENGINE.md), [`docs/ALERTS.md`](docs/ALERTS.md), [`docs/RELEASE.md`](docs/RELEASE.md) and [`docs/MSIX.md`](docs/MSIX.md).
 
 ## 📁 Project structure
 

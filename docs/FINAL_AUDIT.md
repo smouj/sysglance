@@ -150,9 +150,12 @@ El portable mide 100,603,864 bytes y tiene SHA-256
    unavailable hasta disponer de una API fiable.
 5. El producto no tiene certificado de firma ni actualización segura; no debe
    publicarse como release comercial firmado todavía.
-6. El CI remoto no se observó verde porque los commits locales están por delante
+6. La ruta Microsoft Store/MSIX está documentada como opcional, pero sigue sin
+   implementación hasta validar identidad, firma, shell boundary y upgrades en
+   máquina limpia.
+7. El CI remoto no se observó verde porque los commits locales están por delante
    de `origin/main` y no se hizo push automático.
-7. El support bundle está sanitizado localmente, pero falta validar el flujo de
+8. El support bundle está sanitizado localmente, pero falta validar el flujo de
    retención/revisión del equipo de soporte.
 
 ## Siguiente milestone recomendado

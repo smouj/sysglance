@@ -50,6 +50,7 @@ This is an evidence-based baseline. A feature is listed as implemented only when
 - Windows 10/11, DPI matrix, sleep/resume, Explorer restart, GPU reset and monitor disconnect/reconnect remain NOT VERIFIED on a hardware test matrix; the runtime now has display topology and hot-plug handling.
 - The native C# helper is built by the Windows package workflow and was present in the packaged app at `resources/SysGlanceShellHelper.exe`.
 - Code signing uses electron-builder's current local signing path but no publisher certificate is configured; production certificate handling remains NOT IMPLEMENTED.
+- Microsoft Store/MSIX is documented as an optional track in `docs/MSIX.md`, but remains NOT IMPLEMENTED until package identity, signing and shell-boundary tests exist.
 - The compatibility ledger is explicit in `docs/COMPATIBILITY_MATRIX.md`; remote GitHub Actions green status and clean-machine install/uninstall are still NOT VERIFIED.
 
 ## Security observations

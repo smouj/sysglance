@@ -13,3 +13,8 @@ The hardware and clean-install evidence ledger is maintained in
 assumptions based on the local developer workstation.
 
 The current checkout is not a release candidate: production signing/secure update and the Windows compatibility matrix are NOT VERIFIED. The local NSIS and portable packaging paths are verified, but install/uninstall residue still needs a clean-machine test.
+
+The Microsoft Store/MSIX path is intentionally documented but **NOT IMPLEMENTED**;
+see [`MSIX.md`](MSIX.md). It must not be advertised or added to the release
+workflow until its package identity, signing, shell boundary and clean-machine
+upgrade/uninstall matrix have executable evidence.
