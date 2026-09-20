@@ -11,7 +11,7 @@ This is an evidence-based baseline. A feature is listed as implemented only when
 | Command | Result |
 |---|---|
 | `npm ci` | PASS; 285 packages installed. `npm audit` and production-only audit report 0 vulnerabilities. The initial Electron 33/electron-builder 25 audit found 14 findings; the toolchain was upgraded and retested. |
-| `npm run verify` | PASS; 30 syntax, 36 config, 28 shell, 34 extended shell, 14 history/health/alert, 6 metric, 7 journal, 4 transaction, 13 profile, 7 process, 9 display, 12 desktop-action and unique IPC checks. |
+| `npm run verify` | PASS; 34 syntax, 36 config, 28 shell, 34 extended shell, 15 history/health/alert, 8 metric, 7 diagnostics, 7 journal, 4 transaction, 5 profile-shell, 14 profile, 8 process, 9 display, 6 install, 15 desktop-action and unique IPC checks. |
 | `npm run self-test` | PASS on Electron 44.4.3 after fixing duplicate Shell IPC registration. Real Electron window, preload bridge, fast/slow collection, product layer and hostile path refusal exercised. |
 | `npm run bench` | PASS as a measurement; see `PERFORMANCE_BASELINE.md`. |
 | `npm run build:win` | PASS on electron-builder 26.15.3; NSIS installer, blockmap, unpacked app and native helper were produced. |
