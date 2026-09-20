@@ -10,6 +10,7 @@ const configModule = require('./config');
 
 const PROFILE_VERSION = 1;
 const PROFILE_NAME = /^[\p{L}\p{N}][\p{L}\p{N} _-]{0,39}$/u;
+const PROFILE_FOLDER_IDS = ['Desktop', 'Documents', 'Downloads', 'Pictures', 'Videos', 'Music'];
 const PROFILE_CONFIG_KEYS = [
   'opacity', 'refreshInterval', 'slowInterval', 'fontSize', 'compactMode',
   'showFilesystem', 'theme', 'layout', 'anchor', 'showSections', 'collapsedSections', 'hotkeys', 'shell'
@@ -35,6 +36,21 @@ function snapshotConfig(config) {
   return out;
 }
 
+function normalizeFolderCustomizations(raw) {
+  const out = {};
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return out;
+  for (const id of PROFILE_FOLDER_IDS) {
+    const item = raw[id];
+    if (!item || typeof item !== 'object' || Array.isArray(item)) continue;
+    const hasDesktopIni = item.hasDesktopIni === true;
+    const contentBase64 = hasDesktopIni && typeof item.contentBase64 === 'string' && item.contentBase64.length <= 1024 * 1024
+      && /^[A-Za-z0-9+/]*={0,2}$/.test(item.contentBase64) ? item.contentBase64 : null;
+    if (hasDesktopIni && contentBase64) out[id] = { hasDesktopIni: true, contentBase64 };
+    else if (!hasDesktopIni) out[id] = { hasDesktopIni: false, contentBase64: null };
+  }
+  return out;
+}
+
 function normalizeProfile(raw, fallbackName) {
   const source = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
   const nameResult = validateName(source.name !== undefined ? source.name : fallbackName);
@@ -48,7 +64,8 @@ function normalizeProfile(raw, fallbackName) {
       name: nameResult.value,
       createdAt: Number.isFinite(source.createdAt) ? source.createdAt : now,
       updatedAt: Number.isFinite(source.updatedAt) ? source.updatedAt : now,
-      config: cfg
+      config: cfg,
+      folderCustomizations: normalizeFolderCustomizations(source.folderCustomizations)
     }
   };
 }
@@ -99,8 +116,8 @@ function get(file, name) {
   return found ? { ok: true, profile: clone(found) } : { ok: false, error: 'profile not found' };
 }
 
-function upsert(file, name, config) {
-  const normalized = normalizeProfile({ name, config });
+function upsert(file, name, config, folderCustomizations) {
+  const normalized = normalizeProfile({ name, config, folderCustomizations });
   if (!normalized.ok) return normalized;
   const loaded = load(file);
   const profile = normalized.profile;
@@ -141,7 +158,7 @@ function rename(file, oldName, newName) {
 function duplicate(file, sourceName, targetName) {
   const found = get(file, sourceName);
   if (!found.ok) return found;
-  return upsert(file, targetName, found.profile.config);
+  return upsert(file, targetName, found.profile.config, found.profile.folderCustomizations);
 }
 
 function exportProfile(file, name, destination) {
@@ -157,12 +174,12 @@ function importProfile(file, source) {
   try {
     const normalized = normalizeProfile(JSON.parse(fs.readFileSync(source, 'utf8')));
     if (!normalized.ok) return normalized;
-    return upsert(file, normalized.profile.name, normalized.profile.config);
+    return upsert(file, normalized.profile.name, normalized.profile.config, normalized.profile.folderCustomizations);
   }
   catch (err) { return { ok: false, error: 'profile import failed: ' + err.message }; }
 }
 
 module.exports = {
-  PROFILE_VERSION, PROFILE_CONFIG_KEYS, validateName, snapshotConfig, normalizeProfile,
+  PROFILE_VERSION, PROFILE_CONFIG_KEYS, PROFILE_FOLDER_IDS, validateName, snapshotConfig, normalizeFolderCustomizations, normalizeProfile,
   normalizeStore, load, save, list, get, upsert, remove, rename, duplicate, exportProfile, importProfile
 };

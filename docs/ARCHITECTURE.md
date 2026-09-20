@@ -43,5 +43,5 @@ topology; disconnects fall back to the primary display and reflow the overlay.
 The diagnostics export is intentionally a sanitized snapshot and the hardware
 inspector is fetched on demand. The support-bundle writer packages the
 sanitized snapshot and bounded redacted logs in a dependency-free ZIP. External
-support-workflow retention/review and profile folder-icon snapshots remain
-future work.
+support-workflow retention/review and profile folder-icon behavior after
+Explorer restart remain future work.

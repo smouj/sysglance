@@ -136,13 +136,47 @@ function register(ctx) {
     return result;
   }
 
+  async function captureProfileFolders() {
+    const listed = await taskbar.listSpecialFolders();
+    const out = {};
+    if (!listed || !listed.ok || !Array.isArray(listed.folders)) return out;
+    for (const folder of listed.folders) {
+      if (!folder || !folder.exists || !folder.id || !folder.path) continue;
+      const snapshot = await taskbar.readFolderCustomization(folder.path);
+      if (snapshot && snapshot.ok) out[folder.id] = {
+        hasDesktopIni: snapshot.hasDesktopIni === true,
+        contentBase64: snapshot.hasDesktopIni && typeof snapshot.contentBase64 === 'string' ? snapshot.contentBase64 : null
+      };
+    }
+    return out;
+  }
+
+  async function restoreProfileFolders(snapshots) {
+    if (!snapshots || typeof snapshots !== 'object') return { ok: true, restored: 0 };
+    const listed = await taskbar.listSpecialFolders();
+    const paths = new Map((listed && listed.folders || []).map((folder) => [folder.id, folder.path]));
+    let restored = 0;
+    for (const [id, snapshot] of Object.entries(snapshots)) {
+      const folderPath = paths.get(id);
+      if (!folderPath || !snapshot) continue;
+      const result = await taskbar.restoreFolderCustomization(folderPath, snapshot);
+      if (!result.ok) return result;
+      restored++;
+    }
+    return { ok: true, restored };
+  }
+
   async function undo() {
     if (!journal) return { ok: false, error: 'shell undo journal unavailable' };
     const entry = journal.latest();
     if (!entry) return { ok: false, error: 'no shell change to undo' };
     let result;
     if (entry.kind === 'shell' || entry.kind === 'profile-shell') {
-      result = await taskbar.restoreShellState(entry.before);
+      const beforeShell = entry.kind === 'profile-shell' && entry.before && entry.before.shell ? entry.before.shell : entry.before;
+      result = await taskbar.restoreShellState(beforeShell);
+      if (result && result.ok && entry.kind === 'profile-shell' && entry.before && entry.before.folders) {
+        result = await restoreProfileFolders(entry.before.folders);
+      }
     } else if (entry.kind === 'folder') {
       const before = entry.before || {};
       result = typeof taskbar.restoreFolderCustomization === 'function'
@@ -166,10 +200,16 @@ function register(ctx) {
     return result;
   }
 
-  async function applyProfileShell(target) {
+  async function applyProfileShell(target, folderCustomizations) {
     if (!target || typeof target !== 'object' || Array.isArray(target)) return { ok: false, error: 'invalid shell profile' };
     const before = await taskbar.getState();
     if (!before.ok) return before;
+    const folderTargets = folderCustomizations && typeof folderCustomizations === 'object' && !Array.isArray(folderCustomizations)
+      ? folderCustomizations : {};
+    const targetFolderIds = Object.keys(folderTargets);
+    const beforeFolders = targetFolderIds.length ? await captureProfileFolders() : null;
+    const listed = targetFolderIds.length ? await taskbar.listSpecialFolders() : { folders: [] };
+    const folderPaths = new Map((listed && listed.folders || []).map((folder) => [folder.id, folder.path]));
     const operations = [];
     if (Number.isInteger(target.taskbarPosition)) operations.push({ label: 'taskbar position', run: () => taskbar.setPosition(target.taskbarPosition) });
     if (typeof target.autoHide === 'boolean') operations.push({ label: 'taskbar auto-hide', run: () => taskbar.setAutoHide(target.autoHide) });
@@ -190,11 +230,24 @@ function register(ctx) {
         operations.push({ label: 'accent colour', run: () => taskbar.setAccent({ r, g, b }, { auto: false }) });
       }
     }
+    for (const id of targetFolderIds) {
+      const folderPath = folderPaths.get(id);
+      const snapshot = folderTargets[id];
+      if (!folderPath || !snapshot || typeof snapshot !== 'object') continue;
+      operations.push({ label: 'folder icon ' + id, run: () => taskbar.restoreFolderCustomization(folderPath, snapshot) });
+    }
     if (!operations.length) return { ok: true, changed: false, applied: [] };
-    const transaction = await runShellTransaction(before, operations, (snapshot) => taskbar.restoreShellState(snapshot));
+    const transactionBefore = targetFolderIds.length ? { shell: before, folders: beforeFolders } : before;
+    const transaction = await runShellTransaction(transactionBefore, operations, async (snapshot) => {
+      const shellBefore = snapshot && snapshot.shell ? snapshot.shell : snapshot;
+      const shellResult = await taskbar.restoreShellState(shellBefore);
+      if (!shellResult.ok) return shellResult;
+      return snapshot && snapshot.folders ? restoreProfileFolders(snapshot.folders) : shellResult;
+    });
     if (!transaction.ok) return transaction;
     const after = await taskbar.getState();
-    const entry = journal ? journal.record('profile-shell', before, after, { action: 'profile shell apply' }) : null;
+    const afterState = targetFolderIds.length ? { shell: after, folders: await captureProfileFolders() } : after;
+    const entry = journal ? journal.record('profile-shell', transactionBefore, afterState, { action: 'profile shell apply' }) : null;
     const restartRequired = transaction.results.some((item) => item.result && item.result.restartRequired);
     return { ok: true, changed: true, applied: operations.map((item) => item.label), restartRequired, journalId: entry && entry.id };
   }

@@ -19,6 +19,7 @@ const preload = fs.readFileSync(path.join(root, 'src', 'preload.js'), 'utf8');
 const html = fs.readFileSync(path.join(root, 'src', 'index.html'), 'utf8');
 const renderer = fs.readFileSync(path.join(root, 'src', 'renderer.js'), 'utf8');
 const metricsSource = fs.readFileSync(path.join(root, 'src', 'metrics.js'), 'utf8');
+const profiles = fs.readFileSync(path.join(root, 'src', 'profiles.js'), 'utf8');
 
 check('profile apply has an explicit undo path', main.includes("ipcMain.handle('profiles:undo'") && main.includes('profileUndo = null'));
 check('diagnostics copy/export/bundle/open-logs are explicit IPC handlers', main.includes("ipcMain.handle('diagnostics:copy'") && main.includes("ipcMain.handle('diagnostics:export'") && main.includes("ipcMain.handle('diagnostics:bundle'") && main.includes("ipcMain.handle('diagnostics:openLogs'") && preload.includes('bundle:'));
@@ -32,6 +33,7 @@ check('control actions are allow-listed and argument-safe', main.includes("ms-se
 check('processes expose local filter and copy actions', html.includes('id="process-filter"') && renderer.includes('data-action="path"') && renderer.includes('PID copied'));
 check('shell mutations expose a journal-backed undo channel', shellIpc.includes("ipcMain.handle('shell:undo'") && preload.includes("undo: 'shell:undo'") && shellIpc.includes('restoreShellState'));
 check('profile shell apply is explicit and transactional', main.includes("ipcMain.handle('profiles:applyShell'") && main.includes('showMessageBox') && shellIpc.includes('applyProfileShell') && shellIpc.includes('runShellTransaction'));
+check('profiles carry exact folder snapshots through transactional shell apply', profiles.includes('folderCustomizations') && main.includes('captureProfileFolders') && shellIpc.includes('restoreProfileFolders') && shellIpc.includes('folder icon '));
 check('folder analysis is explicit and bounded', main.includes("ipcMain.handle('storage:analyzeHome'") && html.includes('id="storage-analyze"') && metricsSource.includes('maxEntries') && metricsSource.includes('isSymbolicLink'));
 check('network identity is an explicit on-demand bridge', main.includes("ipcMain.handle('network:inspect'") && preload.includes('network: {') && metricsSource.includes('getNetworkDetails'));
 

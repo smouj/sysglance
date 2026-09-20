@@ -115,6 +115,27 @@ function profileStorePath() {
   return profilesPath || path.join(app.getPath('userData'), 'profiles.json');
 }
 
+async function captureProfileFolders() {
+  if (!shellApi || typeof shellApi.listSpecialFolders !== 'function' || typeof shellApi.readFolderCustomization !== 'function') return {};
+  try {
+    const listed = await shellApi.listSpecialFolders();
+    if (!listed || !listed.ok || !Array.isArray(listed.folders)) return {};
+    const out = {};
+    for (const folder of listed.folders) {
+      if (!folder || !folder.exists || !folder.id || !folder.path) continue;
+      const snapshot = await shellApi.readFolderCustomization(folder.path);
+      if (snapshot && snapshot.ok) out[folder.id] = {
+        hasDesktopIni: snapshot.hasDesktopIni === true,
+        contentBase64: snapshot.hasDesktopIni && typeof snapshot.contentBase64 === 'string' ? snapshot.contentBase64 : null
+      };
+    }
+    return out;
+  } catch (err) {
+    log.warn('profile folder snapshot unavailable: ' + err.message);
+    return {};
+  }
+}
+
 function applySavedProfile(name) {
   const found = profiles.get(profileStorePath(), name);
   if (!found.ok) return found;
@@ -129,7 +150,7 @@ function applySavedProfile(name) {
   // Shell state is captured for portability, but applying it needs explicit
   // per-setting confirmation and Explorer restart. Keep it pending instead of
   // silently changing the registry from a profile click.
-  const shellPending = JSON.stringify(config.shell) !== JSON.stringify(next.shell);
+  const shellPending = JSON.stringify(config.shell) !== JSON.stringify(next.shell) || Object.keys(found.profile.folderCustomizations || {}).length > 0;
   profileUndo = { config: configModule.normalize(config).config, shellJournalId: null };
   for (const key of configModule.WRITABLE_KEYS) config[key] = next[key];
   saveConfig();
@@ -161,7 +182,7 @@ async function applySavedProfileShell(name) {
   });
   if (confirmation.response !== 0) return { ok: false, canceled: true };
   const previous = configModule.normalize(config).config;
-  const result = await shellApi.applyProfileShell(next.shell);
+  const result = await shellApi.applyProfileShell(next.shell, found.profile.folderCustomizations);
   if (!result.ok) return result;
   config.shell = next.shell;
   saveConfig();
@@ -829,7 +850,7 @@ ipcMain.handle('get-app-info', () => ({
 
 // ── local desktop profiles ───────────────────────────────
 ipcMain.handle('profiles:list', () => ({ ok: true, profiles: profiles.list(profileStorePath()) }));
-ipcMain.handle('profiles:save', (_e, name) => profiles.upsert(profileStorePath(), name, config));
+ipcMain.handle('profiles:save', async (_e, name) => profiles.upsert(profileStorePath(), name, config, await captureProfileFolders()));
 ipcMain.handle('profiles:apply', (_e, name) => applySavedProfile(name));
 ipcMain.handle('profiles:applyShell', (_e, name) => applySavedProfileShell(name));
 ipcMain.handle('profiles:undo', () => undoSavedProfile());

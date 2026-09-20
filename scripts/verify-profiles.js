@@ -23,16 +23,17 @@ check('empty names are refused', !profiles.validateName('   ').ok);
 
 const base = config.defaults();
 base.theme = 'light'; base.layout = 'dock'; base.collapsedSections = ['health'];
-const saved = profiles.upsert(store, 'Work', base);
+const saved = profiles.upsert(store, 'Work', base, { Desktop: { hasDesktopIni: true, contentBase64: Buffer.from('desktop').toString('base64') } });
 check('save creates a profile', saved.ok);
 check('list returns one profile', profiles.list(store).length === 1);
 check('get returns normalized config', profiles.get(store, 'work').profile.config.theme === 'light');
 check('profile retains configurable hotkeys', profiles.get(store, 'work').profile.config.hotkeys && profiles.get(store, 'work').profile.config.hotkeys.palette === 'CommandOrControl+K');
+check('profile retains bounded folder snapshots', profiles.get(store, 'work').profile.folderCustomizations.Desktop.contentBase64 === Buffer.from('desktop').toString('base64'));
 check('duplicate creates a second profile', profiles.duplicate(store, 'Work', 'Gaming').ok && profiles.list(store).length === 2);
 check('rename preserves profile data', profiles.rename(store, 'Gaming', 'Play').ok && profiles.get(store, 'Play').profile.config.layout === 'dock');
 check('export writes a JSON artifact', profiles.exportProfile(store, 'Work', exported).ok && fs.existsSync(exported));
 check('remove deletes only the selected profile', profiles.remove(store, 'Play').ok && profiles.list(store).length === 1);
-check('import restores the exported profile', profiles.remove(store, 'Work').ok && profiles.importProfile(store, exported).ok && profiles.list(store).length === 1);
+check('import restores the exported profile', profiles.remove(store, 'Work').ok && profiles.importProfile(store, exported).ok && profiles.list(store).length === 1 && profiles.get(store, 'Work').profile.folderCustomizations.Desktop.hasDesktopIni === true);
 
 fs.writeFileSync(store, '{broken', 'utf8');
 check('corrupt store recovers empty', profiles.load(store).recovered && profiles.list(store).length === 0);
