@@ -481,6 +481,7 @@ async function collectSlow(opts) {
   }
 
   const processes = ((r.procs || {}).list || [])
+    .filter((p) => p && p.pid !== 0 && String(p.name || '').toLowerCase() !== 'system idle process')
     .sort((a, b) => (b.cpu || 0) - (a.cpu || 0))
     .slice(0, 8)
     .map((p) => ({

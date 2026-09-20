@@ -18,6 +18,7 @@ function check(label, condition, detail) {
   check('process provider returns an array', Array.isArray(data.processes));
   const valid = data.processes.filter((item) => item.pid != null);
   check('returned PIDs are non-negative integers', valid.every((item) => Number.isInteger(item.pid) && item.pid >= 0));
+  check('System Idle Process is excluded from user-facing ranking', valid.every((item) => item.pid !== 0 && String(item.name || '').toLowerCase() !== 'system idle process'));
   check('returned paths are absolute or absent', valid.every((item) => !item.path || path.isAbsolute(item.path)));
   const main = fs.readFileSync(path.join(__dirname, '..', 'src', 'main.js'), 'utf8');
   check('end-task requires a confirmation dialog', main.includes("title: 'End task?'"));
