@@ -12,7 +12,7 @@
   <img src="https://img.shields.io/badge/platform-Windows%20%7C%20Linux-blue?style=flat-square" alt="Platform">
   <img src="https://img.shields.io/badge/Electron-44-61dafb?style=flat-square" alt="Electron">
   <img src="https://img.shields.io/badge/license-MIT-green?style=flat-square" alt="License">
-  <img src="https://img.shields.io/badge/status-stable-brightgreen?style=flat-square" alt="Status">
+  <img src="https://img.shields.io/badge/status-audited%20baseline-orange?style=flat-square" alt="Status">
   <img src="https://img.shields.io/badge/dependencies-1-blueviolet?style=flat-square" alt="Dependencies">
 </p>
 
@@ -226,6 +226,7 @@ npm run bench          # before/after refresh-cycle benchmark
 | Syntax | `npm run verify:syntax` | `node --check` on every JS file in `src/` and `scripts/` |
 | Settings | `npm run verify:config` | defaults, clamping, enums, hostile input, atomic persistence |
 | Shell | `npm run verify:shell` | live Windows state, byte-precise registry math, accent math |
+| Privacy | `npm run verify:privacy` | no outbound/telemetry primitives, vendor SDKs or unnecessary direct runtime dependencies |
 | End to end | `npm run self-test` | real window, real metrics, `window.sysglance` present, version rendered |
 
 The shell harness is read-only; its only write is a scratch registry key it
