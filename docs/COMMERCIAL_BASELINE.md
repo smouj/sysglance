@@ -16,6 +16,7 @@ This is an evidence-based baseline. A feature is listed as implemented only when
 | `npm run bench` | PASS as a measurement; see `PERFORMANCE_BASELINE.md`. |
 | `npm run bench:runtime` | PASS with 2 iterations; ready-to-show 1,195.85 ms, IPC median 0.98 ms, renderer patch median 4.63 ms, app-metrics RSS 385.0 MB across 4 Electron processes. |
 | `npm run verify:portable` | PASS 3/3; portable executable and native helper were found in `dist-portable`. |
+| `npm run verify:release` | PASS locally against the versioned NSIS/portable artifacts; exact filenames, PE headers, packaged helper/uninstaller and SHA-256 evidence are checked. Release tags additionally require valid Authenticode signatures for packaged PE files and the native helper. |
 | `npm run build:win` / `npm run build:win:portable` | PASS on electron-builder 26.15.3; NSIS and portable artifacts plus native helper were produced. NSIS: 111,920,748 bytes, SHA-256 `9B4016EDF13B51358A78F737B51A1ED3B968D76432BB4F14CB8BAB1496961A10`; portable: 100,605,729 bytes, SHA-256 `07B0E13A33687281DEE987F4BCFD7632DCE92C113C0AD4DD7804DA749A8195AF`. |
 
 ## Verified functionality

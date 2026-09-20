@@ -5,7 +5,8 @@
 3. Build the NSIS installer and portable executable on a real Windows runner; this audit produced local artifacts in `dist-verify` and `dist-portable` with electron-builder 26.15.3. The default `dist/` output may still be unavailable when another Electron process holds a stale unpacked directory.
 4. Test install, first run, tray hide/show, uninstall and config/log cleanup.
 5. Verify Windows 10/11 and the DPI/monitor/sleep matrix before release.
-6. Sign production artifacts, generate hashes and review the dependency audit.
+6. Sign production artifacts, run `npm run verify:release` with
+   `SYSGLANCE_REQUIRE_SIGNING=1`, generate hashes and review the dependency audit.
 7. Do not enable auto-update until the manifest transport, signature verification and user control are implemented and tested.
 
 The hardware and clean-install evidence ledger is maintained in

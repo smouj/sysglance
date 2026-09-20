@@ -64,6 +64,7 @@
     "verify:logging": "node scripts/verify-logging.js",
     "verify:privacy": "node scripts/verify-privacy.js",
     "verify:portable": "node scripts/verify-portable.js",
+    "verify:release": "node scripts/verify-release.js",
     "verify:syntax": "node scripts/verify-syntax.js",
     "bench": "node scripts/bench-metrics.js",
     "build": "electron-builder",

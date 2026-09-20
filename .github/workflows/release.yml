@@ -21,6 +21,9 @@ jobs:
   release:
     name: Build and publish
     runs-on: windows-latest
+    env:
+      CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+      CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -33,6 +36,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Full verification suite
+        run: npm run verify
 
       - name: Tag must match package.json
         shell: bash
@@ -76,15 +82,27 @@ jobs:
           SYSGLANCE_PORTABLE_DIR: dist-portable
         run: npm run verify:portable
 
+      - name: Verify signed release artifacts
+        shell: powershell
+        env:
+          SYSGLANCE_PACKAGE_DIR: dist
+          SYSGLANCE_PORTABLE_DIR: dist-portable
+          SYSGLANCE_REQUIRE_SIGNING: '1'
+        run: npm run verify:release
+
       - name: Checksums
-        shell: bash
+        shell: powershell
         run: |
-          cd dist
-          sha256sum *.exe > SHA256SUMS.txt || certutil -hashfile *.exe SHA256
-          cat SHA256SUMS.txt
-          cd ../dist-portable
-          sha256sum *.exe > SHA256SUMS.txt || certutil -hashfile *.exe SHA256
-          cat SHA256SUMS.txt
+          Get-ChildItem dist -Filter *.exe |
+            Get-FileHash -Algorithm SHA256 |
+            ForEach-Object { "{0} *{1}" -f $_.Hash, $_.Path.Substring((Resolve-Path dist).Path.Length + 1) } |
+            Set-Content -Encoding ascii dist/SHA256SUMS.txt
+          Get-ChildItem dist-portable -Filter *.exe |
+            Get-FileHash -Algorithm SHA256 |
+            ForEach-Object { "{0} *{1}" -f $_.Hash, $_.Path.Substring((Resolve-Path dist-portable).Path.Length + 1) } |
+            Set-Content -Encoding ascii dist-portable/SHA256SUMS.txt
+          Get-Content dist/SHA256SUMS.txt
+          Get-Content dist-portable/SHA256SUMS.txt
 
       - name: Publish release with the installer as an asset
         uses: softprops/action-gh-release@v2

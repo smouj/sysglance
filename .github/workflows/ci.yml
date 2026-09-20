@@ -98,6 +98,13 @@ jobs:
           SYSGLANCE_PORTABLE_DIR: dist-portable
         run: npm run verify:portable
 
+      - name: Verify release artifact identity
+        shell: powershell
+        env:
+          SYSGLANCE_PACKAGE_DIR: dist
+          SYSGLANCE_PORTABLE_DIR: dist-portable
+        run: npm run verify:release
+
       - name: Upload installer artifact
         uses: actions/upload-artifact@v4
         with:

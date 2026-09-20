@@ -100,6 +100,7 @@ clientes analíticos ni dependencias runtime directas innecesarias.
 | `npm run build:win -- --config.directories.output=dist-verify` | PASS con electron-builder 26.15.3. |
 | `npm run verify:install` | PASS 6/6; helper 6144 bytes, uninstaller 600 bytes. |
 | `npm run verify:portable` | PASS 3/3; portable executable and native helper were found in `dist-portable`. |
+| `npm run verify:release` | PASS local; versioned PE artifacts, helper, uninstaller and SHA-256 evidence are checked. Release tags fail closed unless Authenticode is valid for all packaged PE files. |
 
 ## Rendimiento observado
 
