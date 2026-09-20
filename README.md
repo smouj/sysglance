@@ -103,10 +103,12 @@ persisted, validated and clamped; reduced-motion and forced-colour preferences
 are respected by the UI.
 
 Desktop profiles are local and versioned: save, apply, duplicate, rename,
-delete, import and export. Applying a profile changes the SysGlance layout,
-monitoring configuration and selected display; shell registry changes are
-reported as pending and are never applied silently. The display selector
-tracks each monitor's work area, scale factor and hot-plug lifecycle.
+delete, import and export. Normal Apply changes the SysGlance layout,
+monitoring configuration and selected display. A separate **Apply shell
+settings** action asks for confirmation and applies taskbar/theme/accent/
+wallpaper as one rollback-capable transaction; it never changes the registry
+silently. The display selector tracks each monitor's work area, scale factor
+and hot-plug lifecycle.
 
 The command palette is a small in-app control center: it navigates health,
 metrics, processes and profiles, and can open the allow-listed Windows Settings,
@@ -117,8 +119,8 @@ The settings panel also provides a sanitized system summary for clipboard copy,
 JSON export and an explicit Open logs action. It excludes document contents,
 serials and network addresses, redacts the saved wallpaper path and includes
 only a bounded recent-log tail. Direct shell changes have a bounded local undo
-journal; profile application continues to keep shell changes pending until an
-explicit transactional profile path is available.
+journal; profile shell application is a separate confirmed transaction with
+the same rollback journal.
 
 ### Performance, measured
 The hot path uses **Node's own `os` module in process** — no `wmic`, no

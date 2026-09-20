@@ -233,8 +233,10 @@ Direct shell mutations are recorded in a bounded local journal at the Electron
 user-data path. The Shell panel exposes `shell:undo`; entries contain validated
 before/after state, never executable command strings. This covers taskbar/theme/
 accent/wallpaper, folder customization metadata and Start-menu toggles. Profile
-application intentionally keeps shell fields pending until a complete
-transactional profile path exists.
+application is available through an explicit profile action. It applies
+taskbar/theme/accent/wallpaper as one transaction and records one
+`profile-shell` journal entry; profile folder icons remain outside the profile
+schema, while direct folder edits retain exact `desktop.ini` bytes for undo.
 
 ## 6. Verification
 
@@ -243,13 +245,14 @@ build 19045):
 
 ```bash
 # syntax of every touched JS file
-node scripts/verify-syntax.js                    # 14 files checked, 0 failed
+node scripts/verify-syntax.js                    # 30 files checked, 0 failed
 
 # module loads outside Electron (no electron require at load time)
 node -e "require('./src/shell/taskbar.js')"      # OK
 
 # full harness: live state, byte math, reversible registry write, accent math
-node scripts/verify-shell.js                     # 26 passed, 0 failed
+node scripts/verify-shell.js                     # 28 passed, 0 failed
+node scripts/verify-shell-extended.js            # 34 passed, 0 failed
 ```
 
 Held-out cross-check: under WSL, Electron runs headlessly against Xvfb, so

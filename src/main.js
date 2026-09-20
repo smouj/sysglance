@@ -129,7 +129,7 @@ function applySavedProfile(name) {
   // per-setting confirmation and Explorer restart. Keep it pending instead of
   // silently changing the registry from a profile click.
   const shellPending = JSON.stringify(config.shell) !== JSON.stringify(next.shell);
-  profileUndo = configModule.normalize(config).config;
+  profileUndo = { config: configModule.normalize(config).config, shellJournalId: null };
   for (const key of configModule.WRITABLE_KEYS) config[key] = next[key];
   saveConfig();
   sendConfig();
@@ -143,9 +143,42 @@ function applySavedProfile(name) {
   return { ok: true, name: found.profile.name, shellPending, applied: configModule.WRITABLE_KEYS.slice() };
 }
 
-function undoSavedProfile() {
+async function applySavedProfileShell(name) {
+  const found = profiles.get(profileStorePath(), name);
+  if (!found.ok) return found;
+  if (!shellApi || typeof shellApi.applyProfileShell !== 'function') return { ok: false, error: 'shell controls unavailable' };
+  const next = configModule.normalize(found.profile.config).config;
+  if (JSON.stringify(config.shell) === JSON.stringify(next.shell)) return { ok: true, name: found.profile.name, changed: false, shellPending: false };
+  const confirmation = await dialog.showMessageBox(mainWindow, {
+    type: 'warning',
+    buttons: ['Apply shell settings', 'Cancel'],
+    defaultId: 1,
+    cancelId: 1,
+    title: 'Apply desktop shell settings?',
+    message: 'SysGlance will change taskbar, theme, accent or wallpaper settings for this profile.',
+    detail: 'The operation is transactional and will attempt to restore the previous shell state if a step fails. Taskbar changes may require restarting Explorer.'
+  });
+  if (confirmation.response !== 0) return { ok: false, canceled: true };
+  const previous = configModule.normalize(config).config;
+  const result = await shellApi.applyProfileShell(next.shell);
+  if (!result.ok) return result;
+  config.shell = next.shell;
+  saveConfig();
+  sendConfig();
+  profileUndo = { config: previous, shellJournalId: result.journalId || null };
+  await refreshShellState();
+  return { ok: true, name: found.profile.name, changed: result.changed, applied: result.applied, restartRequired: result.restartRequired, journalId: result.journalId };
+}
+
+async function undoSavedProfile() {
   if (!profileUndo) return { ok: false, error: 'no profile change to undo' };
-  const previous = profileUndo;
+  const previous = profileUndo.config || profileUndo;
+  if (profileUndo.shellJournalId) {
+    const latest = shellJournal && shellJournal.latest();
+    if (!latest || latest.id !== profileUndo.shellJournalId) return { ok: false, error: 'shell history changed; use Shell Undo first' };
+    const shellResult = shellApi && typeof shellApi.undo === 'function' ? await shellApi.undo() : { ok: false, error: 'shell undo unavailable' };
+    if (!shellResult || !shellResult.ok) return Object.assign({ ok: false }, shellResult || { error: 'shell undo failed' });
+  }
   profileUndo = null;
   const beforeFast = config.refreshInterval;
   const beforeSlow = config.slowInterval;
@@ -795,6 +828,7 @@ ipcMain.handle('get-app-info', () => ({
 ipcMain.handle('profiles:list', () => ({ ok: true, profiles: profiles.list(profileStorePath()) }));
 ipcMain.handle('profiles:save', (_e, name) => profiles.upsert(profileStorePath(), name, config));
 ipcMain.handle('profiles:apply', (_e, name) => applySavedProfile(name));
+ipcMain.handle('profiles:applyShell', (_e, name) => applySavedProfileShell(name));
 ipcMain.handle('profiles:undo', () => undoSavedProfile());
 ipcMain.handle('profiles:delete', (_e, name) => profiles.remove(profileStorePath(), name));
 ipcMain.handle('profiles:rename', (_e, oldName, newName) => profiles.rename(profileStorePath(), oldName, newName));

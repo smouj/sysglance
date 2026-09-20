@@ -639,7 +639,7 @@ module.exports = {
   // wallpaper gallery
   listWallpapers, wallpaperGalleryPreview, openInExplorer,
   // folder customization
-  readFolderCustomization, writeFolderCustomization, listSpecialFolders,
+  readFolderCustomization, writeFolderCustomization, restoreFolderCustomization, listSpecialFolders,
   // start menu
   getStartMenuState, setStartMenuToggle, openWindowsPersonalization,
   // extended state
@@ -791,9 +791,10 @@ async function readFolderCustomization(folderPath) {
   const iniPath = path.join(folderPath, 'desktop.ini');
   try {
     if (!fs.existsSync(iniPath)) {
-      return { ok: true, path: folderPath, iconResource: null, iconFile: null, iconIndex: null, hasDesktopIni: false };
+      return { ok: true, path: folderPath, iconResource: null, iconFile: null, iconIndex: null, hasDesktopIni: false, contentBase64: null };
     }
-    const content = fs.readFileSync(iniPath, 'utf8');
+    const raw = fs.readFileSync(iniPath);
+    const content = raw.toString('utf8');
     // Parse the .ini format (sections and key=value)
     let iconResource = null;
     let iconFile = null;
@@ -812,7 +813,7 @@ async function readFolderCustomization(folderPath) {
         if (Number.isFinite(n)) iconIndex = n;
       }
     }
-    return { ok: true, path: folderPath, iconResource, iconFile, iconIndex, hasDesktopIni: true };
+    return { ok: true, path: folderPath, iconResource, iconFile, iconIndex, hasDesktopIni: true, contentBase64: raw.toString('base64') };
   } catch (e) {
     return { ok: false, error: 'cannot read desktop.ini: ' + e.message };
   }
@@ -919,6 +920,30 @@ async function writeFolderCustomization(folderPath, iconSpec) {
   }
 
   return writeIniAndAttrib(iniPath, filtered, folderPath);
+}
+
+/** Restore the exact desktop.ini bytes captured by readFolderCustomization. */
+async function restoreFolderCustomization(folderPath, snapshot) {
+  if (!folderPath || !path.isAbsolute(folderPath)) return { ok: false, error: 'folder path must be absolute' };
+  try {
+    const st = fs.statSync(folderPath);
+    if (!st.isDirectory()) return { ok: false, error: 'not a directory: ' + folderPath };
+  } catch (e) { return { ok: false, error: 'folder not found: ' + folderPath }; }
+  const iniPath = path.join(folderPath, 'desktop.ini');
+  try {
+    const attrExe = IS_WINDOWS ? 'attrib.exe' : '/mnt/c/Windows/System32/attrib.exe';
+    if (fs.existsSync(iniPath)) {
+      try { execFileSync(attrExe, ['-H', '-S', '-R', iniPath], { windowsHide: true, timeout: 3000 }); } catch (_) { /* best effort */ }
+    }
+    if (snapshot && snapshot.hasDesktopIni && typeof snapshot.contentBase64 === 'string') {
+      fs.writeFileSync(iniPath, Buffer.from(snapshot.contentBase64, 'base64'));
+      try { execFileSync(attrExe, ['+H', '+S', iniPath], { windowsHide: true, timeout: 3000 }); } catch (_) { /* best effort */ }
+    } else {
+      try { fs.unlinkSync(iniPath); } catch (err) { if (err.code !== 'ENOENT') throw err; }
+      try { execFileSync(attrExe, ['-R', folderPath], { windowsHide: true, timeout: 3000 }); } catch (_) { /* best effort */ }
+    }
+    return { ok: true, path: folderPath, restored: !!(snapshot && snapshot.hasDesktopIni) };
+  } catch (e) { return { ok: false, error: 'restore failed: ' + e.message }; }
 }
 
 function iconLines(iconSpec) {

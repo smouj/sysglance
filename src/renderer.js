@@ -46,7 +46,7 @@
     layoutOptions: $('layout-options'), anchorOptions: $('anchor-options'),
     themeOptions: $('theme-options'), displayOptions: $('display-options'), hotkeyToggle: $('hotkey-toggle'), hotkeyLock: $('hotkey-lock'), hotkeyPalette: $('hotkey-palette'), sectionToggles: $('section-toggles'),
     profileSelect: $('profile-select'), profileName: $('profile-name'), profileSave: $('profile-save'),
-    profileApply: $('profile-apply'), profileDelete: $('profile-delete'), profileDuplicate: $('profile-duplicate'),
+    profileApply: $('profile-apply'), profileApplyShell: $('profile-apply-shell'), profileDelete: $('profile-delete'), profileDuplicate: $('profile-duplicate'),
     profileExport: $('profile-export'), profileImport: $('profile-import'), profileUndo: $('profile-undo'), profileStatus: $('profile-status'),
     inspectorSummary: $('inspector-summary'), inspectorRefresh: $('inspector-refresh'),
     diagnosticsCopy: $('diagnostics-copy'), diagnosticsExport: $('diagnostics-export'), diagnosticsOpenLogs: $('diagnostics-open-logs'), diagnosticsStatus: $('diagnostics-status'),
@@ -308,6 +308,9 @@
   });
   if (dom.profileApply) dom.profileApply.addEventListener('click', function () {
     runProfile(function (name) { return api.profiles.apply(name); }, 'Profile applied.');
+  });
+  if (dom.profileApplyShell) dom.profileApplyShell.addEventListener('click', function () {
+    runProfile(function (name) { return api.profiles.applyShell(name); }, 'Shell settings applied.');
   });
   if (dom.profileDelete) dom.profileDelete.addEventListener('click', function () {
     runProfile(function (name) { return api.profiles.remove(name); }, 'Profile deleted.');

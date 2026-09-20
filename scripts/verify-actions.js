@@ -30,6 +30,7 @@ check('palette commands are navigation-only or explicit UI actions', renderer.in
 check('control actions are allow-listed and argument-safe', main.includes("ms-settings:network") && main.includes("execFile('taskmgr.exe', [], { windowsHide: true }") && main.includes("['user32.dll,LockWorkStation']") && !main.includes('exec('));
 check('processes expose local filter and copy actions', html.includes('id="process-filter"') && renderer.includes('data-action="path"') && renderer.includes('PID copied'));
 check('shell mutations expose a journal-backed undo channel', shellIpc.includes("ipcMain.handle('shell:undo'") && preload.includes("undo: 'shell:undo'") && shellIpc.includes('restoreShellState'));
+check('profile shell apply is explicit and transactional', main.includes("ipcMain.handle('profiles:applyShell'") && main.includes('showMessageBox') && shellIpc.includes('applyProfileShell') && shellIpc.includes('runShellTransaction'));
 
 console.log('\n' + passed + ' passed, ' + failed + ' failed');
 process.exit(failed ? 1 : 0);

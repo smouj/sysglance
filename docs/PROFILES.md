@@ -7,6 +7,7 @@ profile
 ├── theme / accent / wallpaper
 ├── taskbar position / auto-hide (with explicit Explorer restart)
 ├── layout / anchor / visible and collapsed sections
+├── configurable toggle / lock / palette shortcuts
 └── selected display and refresh preferences
 ```
 
@@ -15,9 +16,10 @@ export through a local versioned store. Applying a profile changes only the
 validated SysGlance configuration, including the selected display. Shell state
 is retained as `shellPending` and is not written to the registry automatically;
 the UI can undo the last profile apply for SysGlance-owned settings. Direct shell
-mutations have a bounded journal-backed undo action, but profile application
-still leaves shell fields pending: a complete transaction covering taskbar,
-wallpaper, accent, theme and folder customization must be implemented before
-profiles can apply shell fields automatically.
+mutations have a bounded journal-backed undo action. A separate explicit
+“Apply shell settings” action now runs taskbar, wallpaper, accent and theme
+changes as one rollback-capable transaction; profile application still does not
+include folder-icon customizations because those are not part of the profile
+schema yet.
 
 Profiles never contain passwords, document contents or arbitrary commands.

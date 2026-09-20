@@ -12,7 +12,7 @@ const PROFILE_VERSION = 1;
 const PROFILE_NAME = /^[\p{L}\p{N}][\p{L}\p{N} _-]{0,39}$/u;
 const PROFILE_CONFIG_KEYS = [
   'opacity', 'refreshInterval', 'slowInterval', 'fontSize', 'compactMode',
-  'showFilesystem', 'theme', 'layout', 'anchor', 'showSections', 'collapsedSections', 'shell'
+  'showFilesystem', 'theme', 'layout', 'anchor', 'showSections', 'collapsedSections', 'hotkeys', 'shell'
 ];
 
 function clone(value) {

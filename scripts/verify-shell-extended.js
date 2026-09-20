@@ -13,6 +13,8 @@
 // ═══════════════════════════════════════════════════════
 
 const path = require('path');
+const fs = require('fs');
+const os = require('os');
 const taskbar = require(path.join(__dirname, '..', 'src', 'shell', 'taskbar.js'));
 
 let pass = 0, fail = 0;
@@ -33,6 +35,7 @@ function section(t) { console.log('\n' + t); }
   check('openInExplorer is a function', typeof taskbar.openInExplorer === 'function');
   check('readFolderCustomization is a function', typeof taskbar.readFolderCustomization === 'function');
   check('writeFolderCustomization is a function', typeof taskbar.writeFolderCustomization === 'function');
+  check('restoreFolderCustomization is a function', typeof taskbar.restoreFolderCustomization === 'function');
   check('listSpecialFolders is a function', typeof taskbar.listSpecialFolders === 'function');
   check('getStartMenuState is a function', typeof taskbar.getStartMenuState === 'function');
   check('setStartMenuToggle is a function', typeof taskbar.setStartMenuToggle === 'function');
@@ -68,6 +71,18 @@ function section(t) { console.log('\n' + t); }
   check('relative path returns error', relPath.ok === false, relPath.error || '');
   const noPath = await taskbar.readFolderCustomization('/nonexistent/folder/that/does/not/exist');
   check('nonexistent folder returns error', noPath.ok === false, noPath.error || '');
+  const scratchFolder = fs.mkdtempSync(path.join(os.tmpdir(), 'sysglance-folder-'));
+  try {
+    const originalIni = Buffer.from('[.ShellClassInfo]\r\nIconResource=C:\\Windows\\System32\\shell32.dll,-4\r\nCustom=keep\r\n', 'utf8');
+    fs.writeFileSync(path.join(scratchFolder, 'desktop.ini'), originalIni);
+    const folderBefore = await taskbar.readFolderCustomization(scratchFolder);
+    const changed = await taskbar.writeFolderCustomization(scratchFolder, 'C:\\Windows\\System32\\shell32.dll,-1');
+    const restored = await taskbar.restoreFolderCustomization(scratchFolder, folderBefore);
+    const exact = fs.readFileSync(path.join(scratchFolder, 'desktop.ini'));
+    check('folder undo restores exact desktop.ini bytes', folderBefore.ok && changed.ok && restored.ok && Buffer.compare(originalIni, exact) === 0);
+  } finally {
+    try { fs.rmSync(scratchFolder, { recursive: true, force: true }); } catch (_) { /* cleanup is best effort */ }
+  }
 
   // ── 5. setAccentHex validation ────────────────────────
   section('5. Accent hex picker (validation)');

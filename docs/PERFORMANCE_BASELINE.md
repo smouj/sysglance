@@ -37,7 +37,9 @@ the app is idle between polls. A second shorter sample measured 1,512 ms to
 window and 396.9 MB RSS; the spread shows why these are baselines, not release
 guarantees. The process tree was closed after each run.
 
-The final Windows installer from this audit is **111,911,559 bytes**. It was
+The final Windows installer from this audit is **111,912,928 bytes** with
+SHA-256 `FED616F6CEDDD339D8502B37B9A9BA0EE30BFA182EFCC048CA2F4100C893E589`.
+It was
 built in `dist-verify` with electron-builder 26.15.3 and includes the packaged
 native helper.
 

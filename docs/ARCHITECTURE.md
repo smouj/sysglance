@@ -13,7 +13,7 @@ main process ── config + logs + lifecycle + tray
         ├── Health evaluator (objective status rows)
         ├── Display topology / work-area placement
         ├── Diagnostics inspector / snapshot / profile undo
-        ├── Shell journal / direct mutation undo
+        ├── Shell journal / transactional profile apply / undo
         └── shell IPC ── taskbar.js ── reg.exe / one-shot C# helper
 ```
 

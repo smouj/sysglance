@@ -92,6 +92,7 @@ contextBridge.exposeInMainWorld('sysglance', {
     list: () => ipcRenderer.invoke('profiles:list'),
     save: (name) => ipcRenderer.invoke('profiles:save', name),
     apply: (name) => ipcRenderer.invoke('profiles:apply', name),
+    applyShell: (name) => ipcRenderer.invoke('profiles:applyShell', name),
     undo: () => ipcRenderer.invoke('profiles:undo'),
     remove: (name) => ipcRenderer.invoke('profiles:delete', name),
     rename: (oldName, newName) => ipcRenderer.invoke('profiles:rename', oldName, newName),

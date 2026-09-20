@@ -33,6 +33,7 @@
 
 const path = require('path');
 const taskbar = require('./taskbar');
+const { runShellTransaction } = require('./transaction');
 
 const WIDGET_REPO = 'https://github.com/smouj/openclaw-desktop-widget';
 const WIDGET_NAME = 'OpenClaw Widget';
@@ -140,12 +141,13 @@ function register(ctx) {
     const entry = journal.latest();
     if (!entry) return { ok: false, error: 'no shell change to undo' };
     let result;
-    if (entry.kind === 'shell') {
+    if (entry.kind === 'shell' || entry.kind === 'profile-shell') {
       result = await taskbar.restoreShellState(entry.before);
     } else if (entry.kind === 'folder') {
       const before = entry.before || {};
-      const icon = before.ok ? (before.iconResource || before.iconFile || null) : null;
-      result = await taskbar.writeFolderCustomization(entry.meta && entry.meta.folderPath, icon);
+      result = typeof taskbar.restoreFolderCustomization === 'function'
+        ? await taskbar.restoreFolderCustomization(entry.meta && entry.meta.folderPath, before)
+        : await taskbar.writeFolderCustomization(entry.meta && entry.meta.folderPath, before.ok ? (before.iconResource || before.iconFile || null) : null);
     } else if (entry.kind === 'start-menu') {
       const before = entry.before || {};
       const pairs = [['showRecentApps', before.showRecentApps], ['showSuggestions', before.showSuggestions], ['fullScreenStart', before.fullScreenStart]];
@@ -162,6 +164,39 @@ function register(ctx) {
       result.undone = entry.kind;
     }
     return result;
+  }
+
+  async function applyProfileShell(target) {
+    if (!target || typeof target !== 'object' || Array.isArray(target)) return { ok: false, error: 'invalid shell profile' };
+    const before = await taskbar.getState();
+    if (!before.ok) return before;
+    const operations = [];
+    if (Number.isInteger(target.taskbarPosition)) operations.push({ label: 'taskbar position', run: () => taskbar.setPosition(target.taskbarPosition) });
+    if (typeof target.autoHide === 'boolean') operations.push({ label: 'taskbar auto-hide', run: () => taskbar.setAutoHide(target.autoHide) });
+    if (typeof target.darkMode === 'boolean') operations.push({ label: 'dark mode', run: () => taskbar.setDark(target.darkMode) });
+    if (typeof target.wallpaperPath === 'string' && target.wallpaperPath) operations.push({ label: 'wallpaper', run: () => taskbar.applyWallpaper(target.wallpaperPath) });
+    if (target.accentAuto === true) {
+      operations.push({
+        label: 'accent from wallpaper',
+        run: async () => {
+          const derived = await taskbar.accentFromWallpaper(target.wallpaperPath || undefined);
+          if (!derived.ok) return derived;
+          return taskbar.setAccent({ r: derived.r, g: derived.g, b: derived.b }, { auto: true });
+        }
+      });
+    } else if (target.accent && typeof target.accent === 'object') {
+      const { r, g, b } = target.accent;
+      if ([r, g, b].every((value) => Number.isInteger(value) && value >= 0 && value <= 255)) {
+        operations.push({ label: 'accent colour', run: () => taskbar.setAccent({ r, g, b }, { auto: false }) });
+      }
+    }
+    if (!operations.length) return { ok: true, changed: false, applied: [] };
+    const transaction = await runShellTransaction(before, operations, (snapshot) => taskbar.restoreShellState(snapshot));
+    if (!transaction.ok) return transaction;
+    const after = await taskbar.getState();
+    const entry = journal ? journal.record('profile-shell', before, after, { action: 'profile shell apply' }) : null;
+    const restartRequired = transaction.results.some((item) => item.result && item.result.restartRequired);
+    return { ok: true, changed: true, applied: operations.map((item) => item.label), restartRequired, journalId: entry && entry.id };
   }
 
   // The ImmersiveColorSet broadcast can take tens of seconds on a busy desktop
@@ -386,6 +421,7 @@ function register(ctx) {
   return {
     state, undo, setPosition, setAutoHide, setDark, accentFromWallpaper, accentAuto,
     applyWallpaper, pickWallpaper, wallpaperPreview, restartExplorer, widgetInfo, openWidget,
+    applyProfileShell,
     listWallpapers, wallpaperGalleryPreview, openWallpaperFolder,
     readFolderCustomization, writeFolderCustomization, listSpecialFolders, restoreFolderDefault,
     getStartMenuState, setStartMenuToggle, openWindowsPersonalization,
