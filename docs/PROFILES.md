@@ -1,13 +1,20 @@
 # Desktop profiles
 
-Profiles are planned as local, versioned snapshots of settings that SysGlance already owns:
+Profiles are local, versioned snapshots of settings that SysGlance already owns:
 
 ```text
 profile
 ├── theme / accent / wallpaper
 ├── taskbar position / auto-hide (with explicit Explorer restart)
 ├── layout / anchor / visible and collapsed sections
-└── future monitor placement and refresh preferences
+└── selected display and refresh preferences
 ```
 
-The current release does not expose save/apply/import/export profiles yet. Before implementation, each shell mutation needs a reversible snapshot and a per-setting backup/verify path. Profiles must never contain passwords, document contents or arbitrary commands.
+The current release exposes save, apply, duplicate, rename, delete, import and
+export through a local versioned store. Applying a profile changes only the
+validated SysGlance configuration, including the selected display. Shell state
+is retained as `shellPending` and is not written to the registry automatically;
+a future rollback-capable shell transaction must be implemented before
+applying those fields.
+
+Profiles never contain passwords, document contents or arbitrary commands.

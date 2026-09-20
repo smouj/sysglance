@@ -72,6 +72,13 @@
         </div>
       </div>
       <div class="settings-group">
+        <div class="settings-label">Display</div>
+        <select id="display-options" class="display-select" aria-label="Target display">
+          <option value="">Primary display</option>
+        </select>
+        <div class="settings-hint">The overlay follows this monitor’s work area and scale.</div>
+      </div>
+      <div class="settings-group">
         <div class="settings-label">Appearance</div>
         <div class="settings-options" id="theme-options" role="group" aria-label="Theme">
           <button class="settings-opt" data-theme="dark">Dark</button>
@@ -106,6 +113,27 @@
           <label class="toggle-row"><input type="checkbox" data-section="network" checked><span>Network</span></label>
           <label class="toggle-row"><input type="checkbox" data-section="processes" checked><span>Processes</span></label>
           <label class="toggle-row"><input type="checkbox" data-section="battery" checked><span>Battery</span></label>
+        </div>
+      </div>
+
+      <div class="settings-group">
+        <div class="settings-label">Desktop profiles</div>
+        <div class="profile-controls">
+          <select id="profile-select" class="profile-select" aria-label="Saved desktop profile">
+            <option value="">No saved profiles</option>
+          </select>
+          <input id="profile-name" class="profile-name" type="text" maxlength="40" placeholder="Profile name" aria-label="Profile name">
+          <div class="settings-actions profile-actions">
+            <button id="profile-save" class="settings-action">Save current</button>
+            <button id="profile-apply" class="settings-action">Apply</button>
+            <button id="profile-delete" class="settings-action">Delete</button>
+          </div>
+          <div class="settings-actions profile-actions">
+            <button id="profile-duplicate" class="settings-action">Duplicate</button>
+            <button id="profile-export" class="settings-action">Export</button>
+            <button id="profile-import" class="settings-action">Import</button>
+          </div>
+          <div id="profile-status" class="settings-hint" aria-live="polite">Profiles stay local to this PC.</div>
         </div>
       </div>
 
@@ -194,7 +222,7 @@
     </div>
 
     <div class="section" id="sec-processes">
-      <div class="section-header"><span class="section-icon"><svg class="ic" viewBox="0 0 24 24"><use href="#i-processes"/></svg></span><span class="section-title">Top processes</span></div>
+      <div class="section-header"><span class="section-icon"><svg class="ic" viewBox="0 0 24 24"><use href="#i-processes"/></svg></span><span class="section-title">Top processes</span><span id="process-status" class="section-note"></span></div>
       <div id="proc-list" class="proc-list"></div>
     </div>
 

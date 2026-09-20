@@ -11,6 +11,7 @@ main process ── config + logs + lifecycle + tray
         ├── HistoryStore (bounded, local, session)
         ├── AlertEngine (threshold / duration / cooldown / recovery)
         ├── Health evaluator (objective status rows)
+        ├── Display topology / work-area placement
         └── shell IPC ── taskbar.js ── reg.exe / one-shot C# helper
 ```
 
@@ -32,4 +33,9 @@ The renderer has no Node access, no filesystem access and no generic IPC primiti
 - `src/shell/taskbar.js` owns Windows registry math and shell operations.
 - `src/native/shellHelper.js` resolves the packaged helper from `process.resourcesPath` and the development helper beside its source.
 
-Profiles, multi-monitor placement, process actions and diagnostics are intentionally not represented as fake capabilities yet; they require their own schemas and rollback tests.
+Profiles are stored in a separate versioned local file and apply only the
+validated SysGlance configuration. Process actions re-query the PID in the
+main process before opening a location or showing the destructive confirmation.
+Display selection is validated and resolved against Electron's live display
+topology; disconnects fall back to the primary display and reflow the overlay.
+Diagnostics and shell rollback still require their own schemas and tests.

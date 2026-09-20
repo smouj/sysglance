@@ -31,7 +31,7 @@
     secGpu: $('sec-gpu'),
     diskList: $('disk-list'),
     netIface: $('net-iface'), netRx: $('net-rx'), netTx: $('net-tx'),
-    procList: $('proc-list'),
+    procList: $('proc-list'), processStatus: $('process-status'),
     batPct: $('bat-pct'), batBar: $('bat-bar'), batStatus: $('bat-status'), secBattery: $('sec-battery'),
     osDistro: $('os-distro'), osUptime: $('os-uptime'),
     btnLock: $('btn-lock'), btnSettings: $('btn-settings'), btnMinimize: $('btn-minimize'),
@@ -44,7 +44,10 @@
     opacityVal: $('opacity-val'), refreshVal: $('refresh-val'), slowVal: $('slow-val'),
     btnLockSettings: $('btn-lock-settings'), btnCompactSettings: $('btn-compact-settings'),
     layoutOptions: $('layout-options'), anchorOptions: $('anchor-options'),
-    themeOptions: $('theme-options'), sectionToggles: $('section-toggles'),
+    themeOptions: $('theme-options'), displayOptions: $('display-options'), sectionToggles: $('section-toggles'),
+    profileSelect: $('profile-select'), profileName: $('profile-name'), profileSave: $('profile-save'),
+    profileApply: $('profile-apply'), profileDelete: $('profile-delete'), profileDuplicate: $('profile-duplicate'),
+    profileExport: $('profile-export'), profileImport: $('profile-import'), profileStatus: $('profile-status'),
     appInfo: $('app-info'), metricInfo: $('metric-info')
   };
 
@@ -171,6 +174,22 @@
     dom.settingsPanel.classList.toggle('hidden', !show);
   }
 
+  function renderDisplays(displays) {
+    if (!dom.displayOptions || !Array.isArray(displays)) return;
+    var selected = dom.displayOptions.value;
+    var html = '<option value="">Primary display</option>';
+    displays.forEach(function (display) {
+      var label = display.label || ('Display ' + display.id);
+      var suffix = display.primary ? ' · primary' : '';
+      if (display.scaleFactor && display.scaleFactor !== 1) suffix += ' · ' + Math.round(display.scaleFactor * 100) + '%';
+      html += '<option value="' + esc(display.id) + '">' + esc(label + suffix) + '</option>';
+    });
+    dom.displayOptions.innerHTML = html;
+    if (selected && Array.prototype.some.call(dom.displayOptions.options, function (option) { return option.value === selected; })) {
+      dom.displayOptions.value = selected;
+    }
+  }
+
   function updateSettingsUI(cfg) {
     dom.layoutOptions.querySelectorAll('.settings-opt').forEach(function (btn) {
       btn.classList.toggle('active', btn.dataset.layout === cfg.layout);
@@ -181,6 +200,7 @@
     dom.themeOptions.querySelectorAll('.settings-opt').forEach(function (btn) {
       btn.classList.toggle('active', btn.dataset.theme === cfg.theme);
     });
+    if (dom.displayOptions) dom.displayOptions.value = cfg.displayId == null ? '' : String(cfg.displayId);
     dom.settingsOpacity.value = Math.round((cfg.opacity || 0.9) * 100);
     dom.opacityVal.textContent = Math.round((cfg.opacity || 0.9) * 100) + '%';
     dom.settingsRefresh.value = cfg.refreshInterval || 1500;
@@ -197,6 +217,74 @@
     dom.btnCompactSettings.textContent = cfg.compactMode ? 'Compact: on' : 'Compact mode';
     dom.btnLockSettings.textContent = positionLocked ? 'Unlock position' : 'Lock position';
   }
+
+  function profileStatus(text, bad) {
+    if (!dom.profileStatus) return;
+    dom.profileStatus.textContent = text;
+    dom.profileStatus.classList.toggle('is-alert', !!bad);
+  }
+
+  function selectedProfileName() {
+    return dom.profileSelect && dom.profileSelect.value ? dom.profileSelect.value : (dom.profileName && dom.profileName.value || '').trim();
+  }
+
+  function renderProfiles(items) {
+    if (!dom.profileSelect) return;
+    var selected = dom.profileSelect.value;
+    var html = '<option value="">' + (items.length ? 'Choose a profile' : 'No saved profiles') + '</option>';
+    (items || []).forEach(function (item) { html += '<option value="' + esc(item.name) + '">' + esc(item.name) + '</option>'; });
+    dom.profileSelect.innerHTML = html;
+    if ((items || []).some(function (item) { return item.name === selected; })) dom.profileSelect.value = selected;
+  }
+
+  function refreshProfiles() {
+    if (!api.profiles || !api.profiles.list) return;
+    api.profiles.list().then(function (res) {
+      if (res && res.ok) renderProfiles(res.profiles || []);
+      else profileStatus((res && res.error) || 'Could not read profiles', true);
+    }).catch(function (err) { profileStatus(err.message || 'Could not read profiles', true); });
+  }
+
+  function runProfile(action, successText) {
+    var name = selectedProfileName();
+    if (!name) { profileStatus('Choose or enter a profile name', true); return; }
+    action(name).then(function (res) {
+      if (!res || !res.ok) { profileStatus((res && res.error) || 'Profile action failed', true); return; }
+      profileStatus(successText + (res.shellPending ? ' Shell settings remain pending confirmation.' : ''));
+      refreshProfiles();
+    }).catch(function (err) { profileStatus(err.message || 'Profile action failed', true); });
+  }
+
+  if (dom.profileSelect) dom.profileSelect.addEventListener('change', function () {
+    if (dom.profileName) dom.profileName.value = dom.profileSelect.value;
+  });
+  if (dom.profileSave) dom.profileSave.addEventListener('click', function () {
+    runProfile(function (name) { return api.profiles.save(name); }, 'Profile saved.');
+  });
+  if (dom.profileApply) dom.profileApply.addEventListener('click', function () {
+    runProfile(function (name) { return api.profiles.apply(name); }, 'Profile applied.');
+  });
+  if (dom.profileDelete) dom.profileDelete.addEventListener('click', function () {
+    runProfile(function (name) { return api.profiles.remove(name); }, 'Profile deleted.');
+  });
+  if (dom.profileDuplicate) dom.profileDuplicate.addEventListener('click', function () {
+    var source = selectedProfileName();
+    var target = (dom.profileName && dom.profileName.value || '').trim();
+    if (!source || !target || source === target) { profileStatus('Choose a source and a different target name', true); return; }
+    api.profiles.duplicate(source, target).then(function (res) {
+      if (!res || !res.ok) { profileStatus((res && res.error) || 'Could not duplicate profile', true); return; }
+      profileStatus('Profile duplicated.'); refreshProfiles();
+    });
+  });
+  if (dom.profileExport) dom.profileExport.addEventListener('click', function () {
+    runProfile(function (name) { return api.profiles.export(name); }, 'Profile exported.');
+  });
+  if (dom.profileImport) dom.profileImport.addEventListener('click', function () {
+    api.profiles.import().then(function (res) {
+      if (!res || !res.ok) { if (!res || !res.canceled) profileStatus((res && res.error) || 'Could not import profile', true); return; }
+      profileStatus('Profile imported.'); refreshProfiles();
+    });
+  });
 
   function applySectionVisibility(cfg) {
     var sections = cfg.showSections || {};
@@ -227,6 +315,10 @@
   dom.themeOptions.addEventListener('click', function (e) {
     var btn = e.target.closest('.settings-opt');
     if (btn && btn.dataset.theme) api.setConfig('theme', btn.dataset.theme);
+  });
+  if (dom.displayOptions) dom.displayOptions.addEventListener('change', function (e) {
+    var value = e.target.value;
+    api.setConfig('displayId', value ? Number(value) : null);
   });
   dom.settingsOpacity.addEventListener('input', function (e) {
     setSliderFill(e.target);
@@ -259,6 +351,26 @@
   dom.btnCompactSettings.addEventListener('click', function () { api.toggleCompact(); });
   dom.btnLock.addEventListener('click', function () { api.togglePositionLock(); });
   dom.btnMinimize.addEventListener('click', function () { api.toggleVisibility(); });
+
+  function processMessage(text, bad) {
+    if (!dom.processStatus) return;
+    dom.processStatus.textContent = text;
+    dom.processStatus.classList.toggle('is-alert', !!bad);
+    if (text) setTimeout(function () { if (dom.processStatus.textContent === text) dom.processStatus.textContent = ''; }, 3200);
+  }
+
+  dom.procList.addEventListener('click', function (event) {
+    var button = event.target.closest('.proc-action');
+    if (!button) return;
+    var pid = Number(button.dataset.pid);
+    if (!Number.isInteger(pid)) return;
+    var action = button.dataset.action;
+    var call = action === 'location' && api.processes ? api.processes.openLocation(pid) : action === 'end' && api.processes ? api.processes.endTask(pid) : Promise.resolve({ ok: false, error: 'process action unavailable' });
+    call.then(function (result) {
+      if (result && result.ok) processMessage(action === 'end' ? 'Task ended' : 'Location opened');
+      else if (result && !result.canceled) processMessage((result && result.error) || 'Process action failed', true);
+    }).catch(function (err) { processMessage(err.message || 'Process action failed', true); });
+  });
 
   var fsSignature = '';   // avoids rebuilding the folder grid (and losing focus)
   var fsStatusTimer = null;
@@ -373,6 +485,7 @@
     if (!data || data.error) return;
 
     if (data.layout) document.body.setAttribute('data-layout', data.layout);
+    if (data.displays) renderDisplays(data.displays);
 
     // Objective system status: each line is backed by a current measurement.
     renderHealth(data.health);
@@ -472,17 +585,22 @@
 
     // Processes
     if (data.processes && data.processes.length) {
-      var pSig = data.processes.map(function(p) { return p.name + ':' + p.cpu; }).join('|');
+      var pSig = data.processes.map(function(p) { return p.name + ':' + p.pid + ':' + p.cpu + ':' + p.path; }).join('|');
       if (pSig !== procSignature) {
         procSignature = pSig;
-        var phtml = '<div class="proc-row proc-header"><span>Process</span><span style="text-align:right">CPU</span><span style="text-align:right">MEM</span></div>';
+        var phtml = '<div class="proc-row proc-header"><span></span><span>Process</span><span style="text-align:right">CPU</span><span style="text-align:right">MEM</span><span style="text-align:right">PID</span><span></span></div>';
         for (var p = 0; p < data.processes.length; p++) {
           var proc = data.processes[p];
           var colour = proc.cpu >= 10 ? 'var(--bad)' : proc.cpu >= 5 ? 'var(--warn)' : 'var(--fg-3)';
           phtml += '<div class="proc-row"><span class="proc-rank">' + (p + 1) + '</span>' +
             '<span class="proc-name">' + esc(proc.name) + '</span>' +
             '<span class="proc-cpu" style="color:' + colour + '">' + proc.cpu + '%</span>' +
-            '<span class="proc-mem">' + proc.mem + '%</span></div>';
+            '<span class="proc-mem">' + proc.mem + '%</span>' +
+            '<span class="proc-pid">' + (proc.pid == null ? '—' : proc.pid) + '</span>' +
+            '<span class="proc-actions">' +
+              (proc.path ? '<button class="proc-action" data-action="location" data-pid="' + proc.pid + '" title="Open file location" aria-label="Open file location">↗</button>' : '') +
+              (proc.pid != null && proc.pid > 4 ? '<button class="proc-action proc-action-danger" data-action="end" data-pid="' + proc.pid + '" title="End task" aria-label="End task">×</button>' : '') +
+            '</span></div>';
         }
         dom.procList.innerHTML = phtml;
       }
@@ -554,6 +672,7 @@
     currentConfig.layout = layout;
     updateSettingsUI(currentConfig);
   });
+  api.on('display-topology-changed', function (displays) { renderDisplays(displays); });
   api.on('config-changed', function (cfg) {
     currentConfig = cfg;
     document.body.classList.toggle('compact', cfg.compactMode);
@@ -580,6 +699,7 @@
     if (dom.appInfo) {
       dom.appInfo.textContent = 'SysGlance ' + info.version + ' · Electron ' + info.electron + ' · shell host: ' + info.shellHost;
     }
+    if (info.displays) renderDisplays(info.displays);
   }).catch(function () { /* version is cosmetic */ });
 
   api.getSystemData().then(function (data) {
@@ -591,6 +711,8 @@
     }
     scheduleUpdate(data);
   }).catch(function () { /* the interval will retry */ });
+
+  refreshProfiles();
 
   // The Shell card is injected by shell/panel.js, so decorate again once it is
   // in the DOM.

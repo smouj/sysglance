@@ -53,7 +53,7 @@ to tray. `Ctrl+Shift+S` toggles it. Everything is configurable from the built-in
 - **GPU** — model, utilization, VRAM, temperature
 - **Disks** — multi-volume usage with colour-coded bars
 - **Network** — live download/upload per interface
-- **Processes** — top 8 by CPU, colour-coded
+- **Processes** — top 8 by CPU with PID, executable path when available, open-location and confirmed end-task actions
 - **Battery** — percentage and charging state (laptops only)
 - **System Status** — objective CPU, RAM, GPU temperature, storage and network status rows; no scareware scores
 - **Local history** — bounded CPU/RAM/GPU/temperature/network ring buffers with one-hour sparklines and a 24-hour retention ceiling
@@ -97,9 +97,13 @@ Layout · position · theme · opacity (30–100%) · **fast refresh (0.5–5 s)
 **hardware refresh (5–10 s)** · per-section toggles · lock/drag mode ·
 compact mode. Every value is persisted, validated and clamped.
 
-The current release does not yet expose saved desktop profiles, a command
-palette, multi-monitor placement or destructive process actions. Those remain
-separate milestones rather than being presented as finished features.
+Desktop profiles are local and versioned: save, apply, duplicate, rename,
+delete, import and export. Applying a profile changes the SysGlance layout,
+monitoring configuration and selected display; shell registry changes are
+reported as pending and are never applied silently. The display selector
+tracks each monitor's work area, scale factor and hot-plug lifecycle.
+
+The command palette remains a separate milestone.
 
 ### Performance, measured
 The hot path uses **Node's own `os` module in process** — no `wmic`, no

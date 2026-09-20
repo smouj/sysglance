@@ -35,7 +35,7 @@ const LIMITS = {
 };
 
 // Keys a renderer is allowed to write through `set-config`.
-const WRITABLE_KEYS = ['opacity', 'refreshInterval', 'slowInterval', 'fontSize', 'compactMode', 'showFilesystem', 'theme', 'layout', 'anchor', 'showSections', 'collapsedSections'];
+const WRITABLE_KEYS = ['opacity', 'refreshInterval', 'slowInterval', 'fontSize', 'compactMode', 'showFilesystem', 'theme', 'layout', 'anchor', 'displayId', 'showSections', 'collapsedSections'];
 
 // Shell state. SysGlance *configures* Windows and remembers what it wrote;
 // it never keeps a resident effect alive (that is OpenClaw Widget's job — see
@@ -63,6 +63,7 @@ function defaults() {
     theme: 'dark',
     layout: 'sidebar',
     anchor: 'top-right',
+    displayId: null,
     fontSize: 13,
     showSections: { cpu: true, memory: true, gpu: true, filesystem: true, disks: true, network: true, processes: true, battery: true },
     collapsedSections: [],
@@ -119,6 +120,9 @@ function validateKey(key, value, fallback) {
       return LAYOUTS.includes(value) ? { ok: true, value } : { ok: false, value: fallback };
     case 'anchor':
       return ANCHORS.includes(value) ? { ok: true, value } : { ok: false, value: fallback };
+    case 'displayId':
+      return value === null || (typeof value === 'number' && Number.isSafeInteger(value) && value >= 0)
+        ? { ok: true, value } : { ok: false, value: fallback };
     case 'showSections': {
       if (!isPlainObject(value)) return { ok: false, value: fallback };
       const out = {};

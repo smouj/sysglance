@@ -22,7 +22,7 @@ The benchmark's systeminformation calls are intentionally measured in isolation 
 - New: 836.061 ms/s compute, 2.54 child processes/s.
 - Measured improvement: 2.21× lower compute estimate and 2.14× fewer child processes in this run.
 
-Follow-up after the history/health/alert integration (`npm run bench -- --iterations=5`) measured a 0.73 ms median fast cycle, 3,287.81 ms median slow cycle, 2.82× lower compute estimate and 2.21× fewer child processes versus the legacy path in that run. These are host-specific measurements, not release guarantees. The benchmark does not yet measure cold/warm window startup, renderer/main RSS, GPU-process RSS, frame pacing, installer size or idle CPU over a 10-minute window. Those are release-gate measurements still required.
+Follow-up after the profile/process/display integration (`npm run bench -- --iterations=5`) measured a 0.79 ms median fast cycle, 3,204.02 ms median slow cycle, 3.01× lower compute estimate and 2.21× fewer child processes versus the legacy path in that run. These are host-specific measurements, not release guarantees. The benchmark does not yet measure cold/warm window startup, renderer/main RSS, GPU-process RSS, frame pacing, installer size or idle CPU over a 10-minute window. Those are release-gate measurements still required.
 
 ## Current performance controls
 

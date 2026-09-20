@@ -258,13 +258,18 @@ body.unlocked .ic-unlocked{display:block}
 /* ═══ Processes ═══════════════════════════════════════ */
 .proc-list{display:flex;flex-direction:column;gap:1px;max-height:148px;overflow-y:auto;margin:0 -3px}
 .proc-row{
-  display:grid;grid-template-columns:15px 1fr 42px 40px;align-items:center;gap:2px;
+  display:grid;grid-template-columns:15px 1fr 42px 40px 48px 38px;align-items:center;gap:2px;
   padding:3px 5px;border-radius:var(--r-sm);font-size:10px;transition:background .12s;
 }
 .proc-row:hover{background:var(--bg-control)}
 .proc-rank{font-size:8.5px;color:var(--fg-4);font-variant-numeric:tabular-nums;text-align:right}
 .proc-name{color:var(--fg-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 .proc-cpu,.proc-mem{text-align:right;font-variant-numeric:tabular-nums;font-size:9.5px;color:var(--fg-3)}
+.proc-pid{text-align:right;font-size:8px;color:var(--fg-4);font-variant-numeric:tabular-nums}
+.proc-actions{display:flex;justify-content:flex-end;gap:2px}
+.proc-action{width:17px;height:17px;padding:0;border:1px solid transparent;border-radius:3px;background:transparent;color:var(--fg-4);font-family:inherit;font-size:11px;line-height:1;cursor:pointer}
+.proc-action:hover{color:var(--accent);background:var(--accent-soft);border-color:var(--accent-line)}
+.proc-action-danger:hover{color:var(--bad);background:var(--bad-soft);border-color:rgba(255,95,116,.35)}
 .proc-header{
   font-size:8.5px;font-weight:650;color:var(--fg-4);text-transform:uppercase;letter-spacing:.5px;
   border-bottom:1px solid var(--line);border-radius:0;padding-bottom:4px;margin-bottom:2px;position:sticky;top:0;background:transparent;
@@ -379,6 +384,14 @@ body.unlocked .ic-unlocked{display:block}
 
 /* actions */
 .settings-actions{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.profile-controls{display:flex;flex-direction:column;gap:5px}
+.profile-select,.profile-name,.display-select{
+  width:100%;min-height:27px;padding:4px 7px;border-radius:var(--r-sm);
+  background:var(--bg-control);border:1px solid var(--line-2);color:var(--fg);
+  font:inherit;font-size:10px;outline:none;
+}
+.profile-select:focus,.profile-name:focus,.display-select:focus{border-color:var(--accent-line);box-shadow:0 0 0 2px var(--accent-soft)}
+.profile-actions .settings-action{flex:1;min-width:0}
 .settings-action{
   padding:7px 8px;border-radius:var(--r-sm);
   background:var(--bg-control);border:1px solid var(--line-2);color:var(--fg-2);

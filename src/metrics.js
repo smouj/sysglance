@@ -285,7 +285,8 @@ async function collectSlow(opts) {
     .slice(0, 8)
     .map((p) => ({
       name: String(p.name || '?').substring(0, 18),
-      pid: p.pid,
+      pid: Number.isInteger(p.pid) ? p.pid : null,
+      path: typeof p.path === 'string' && path.isAbsolute(p.path) ? p.path : null,
       cpu: +(p.cpu || 0).toFixed(1),
       mem: +(p.mem || 0).toFixed(1)
     }));
@@ -310,6 +311,25 @@ async function collectSlow(opts) {
   };
 }
 
+/** Fresh, main-process-only lookup used by explicit process actions. */
+async function inspectProcess(pid) {
+  if (!Number.isInteger(pid) || pid < 1 || pid > 0x7fffffff) return { ok: false, error: 'invalid process id' };
+  try {
+    const result = await si.processes();
+    const item = ((result && result.list) || []).find((entry) => entry.pid === pid);
+    if (!item) return { ok: false, error: 'process not found' };
+    return {
+      ok: true,
+      pid,
+      name: String(item.name || '?').substring(0, 80),
+      path: typeof item.path === 'string' && path.isAbsolute(item.path) ? item.path : null,
+      command: String(item.command || '').substring(0, 240)
+    };
+  } catch (err) {
+    return { ok: false, error: 'process lookup failed: ' + err.message };
+  }
+}
+
 /** Drop every cache. Used by the benchmark and the self-test. */
 function reset() {
   staticCache = null;
@@ -319,7 +339,7 @@ function reset() {
 }
 
 module.exports = {
-  collectFast, collectSlow, getStatic, reset,
+  collectFast, collectSlow, inspectProcess, getStatic, reset,
   info: {
     fastSource: 'node:os' + (IS_LINUX ? ' + /proc/meminfo' : ''),
     slowSource: 'systeminformation',

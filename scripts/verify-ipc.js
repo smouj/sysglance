@@ -4,15 +4,18 @@
 const fs = require('fs');
 const path = require('path');
 
-const file = fs.readFileSync(path.join(__dirname, '..', 'src', 'shell', 'ipc.js'), 'utf8');
-const handlers = Array.from(file.matchAll(/ipcMain\.handle\('([^']+)'/g), (m) => m[1]);
+const mainFile = fs.readFileSync(path.join(__dirname, '..', 'src', 'main.js'), 'utf8');
+const shellFile = fs.readFileSync(path.join(__dirname, '..', 'src', 'shell', 'ipc.js'), 'utf8');
+const mainHandlers = Array.from(mainFile.matchAll(/ipcMain\.handle\('([^']+)'/g), (m) => m[1]);
+const shellHandlers = Array.from(shellFile.matchAll(/ipcMain\.handle\('([^']+)'/g), (m) => m[1]);
+const handlers = mainHandlers.concat(shellHandlers);
 const duplicates = handlers.filter((channel, index) => handlers.indexOf(channel) !== index);
-const channelBlock = (file.match(/const CHANNELS = \[(.*?)\];/s) || [])[1] || '';
+const channelBlock = (shellFile.match(/const CHANNELS = \[(.*?)\];/s) || [])[1] || '';
 const listed = Array.from(channelBlock.matchAll(/'([^']+)'/g), (m) => m[1]);
 const listedDuplicates = listed.filter((channel, index) => listed.indexOf(channel) !== index);
 
 console.log('SysGlance — IPC registration verification');
-console.log('  handlers=' + handlers.length + ' listed shell channels=' + listed.length);
+console.log('  main handlers=' + mainHandlers.length + ' shell handlers=' + shellHandlers.length + ' listed shell channels=' + listed.length);
 if (duplicates.length) { console.error('  FAIL duplicate handlers: ' + duplicates.join(', ')); process.exit(1); }
 if (listedDuplicates.length) { console.error('  FAIL duplicate channel declarations: ' + listedDuplicates.join(', ')); process.exit(1); }
 if (handlers.length !== new Set(handlers).size) process.exit(1);

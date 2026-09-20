@@ -1,7 +1,7 @@
 # SysGlance commercial baseline
 
 Audit date: 2026-09-20  
-Audited commit: `1c1ddc5bcaf9408130b1423a2cf9b2a8a54996eb` (`main`)  
+Audited commit: current audited tip of `main` (see `git log -1`)
 Host used for verification: Windows 10 Pro 10.0.19045, x64, Intel Core i7-6700 (8 logical CPUs), 16 GiB RAM.
 
 This is an evidence-based baseline. A feature is listed as implemented only when it is present in executable code and was exercised by a check or by the real Electron self-test.
@@ -11,14 +11,14 @@ This is an evidence-based baseline. A feature is listed as implemented only when
 | Command | Result |
 |---|---|
 | `npm ci` | PASS; 285 packages installed. `npm audit` and production-only audit report 0 vulnerabilities. The initial Electron 33/electron-builder 25 audit found 14 findings; the toolchain was upgraded and retested. |
-| `npm run verify` | PASS; 20 syntax, 33 config, 28 shell, 32 extended shell, 14 history/health/alert and unique IPC checks. |
+| `npm run verify` | PASS; 24 syntax, 33 config, 28 shell, 32 extended shell, 14 history/health/alert, 12 profile, 7 process, 9 display and unique IPC checks. |
 | `npm run self-test` | PASS on Electron 44.4.3 after fixing duplicate Shell IPC registration. Real Electron window, preload bridge, fast/slow collection, product layer and hostile path refusal exercised. |
 | `npm run bench` | PASS as a measurement; see `PERFORMANCE_BASELINE.md`. |
 | `npm run build:win` | PASS on electron-builder 26.15.3; NSIS installer, blockmap, unpacked app and native helper were produced. |
 
 ## Verified functionality
 
-- Electron 33 overlay with tray, single-instance lock, three layouts (Sidebar, Dock, Corner), opacity, theme and compact mode.
+- Electron 44 overlay with tray, single-instance lock, three layouts (Sidebar, Dock, Corner), opacity, theme and compact mode.
 - Fast metrics use Node's `os` module; slow metrics use `systeminformation` only for GPU, storage, network, process, battery and temperature data; static identity is cached per session.
 - Section-aware slow collection: hidden sections do not issue their corresponding expensive calls.
 - Renderer is sandboxed with `contextIsolation: true`, `nodeIntegration: false`, `sandbox: true`, CSP and an explicit preload bridge.
@@ -28,18 +28,19 @@ This is an evidence-based baseline. A feature is listed as implemented only when
 - Rotating local logs and uncaught exception/unhandled rejection logging.
 - Bounded session-local history (24-hour ring-buffer ceiling), one-hour CPU/RAM sparklines and objective System Status rows.
 - Local alert state machine with duration, cooldown and recovery transitions.
+- Local desktop profiles with atomic versioned persistence, import/export and explicit shell-pending behavior.
+- Multi-monitor placement: validated display selection, work-area-aware geometry, topology metadata and display hot-plug fallback.
 - NSIS configuration, per-user install scripts, Linux/macOS targets and a Windows CI job are declared.
 
 ## Incomplete or not yet evidenced
 
-- No saved desktop profiles with import/export/rollback are present.
-- No first-class multi-monitor placement model; current geometry uses the primary display.
-- Process rows are read-only; actions such as end task, copy PID/path and open file location are not implemented in the UI.
+- Profiles now support local save/apply/duplicate/rename/delete/import/export. Shell settings are captured but require a separate explicit confirmation path; full rollback is still missing.
+- Process rows now expose PID, executable path when available, open-location and confirmed end-task actions. Copy PID/path and richer inspector details remain.
 - No complete hardware inspector/export view or user-triggered folder-size analysis.
 - Network view exposes current interface rates only; session totals, peaks, gateway/DNS/link speed are not exposed.
 - No command palette, configurable hotkey editor, diagnostics package or explicit undo journal for shell changes.
-- Windows 10/11, DPI matrix, sleep/resume, Explorer restart, GPU reset and monitor disconnect/reconnect remain NOT VERIFIED on a test matrix.
-- The native C# helper is source-only in the checkout; the audited build warned that `SysGlanceShellHelper.exe` was missing.
+- Windows 10/11, DPI matrix, sleep/resume, Explorer restart, GPU reset and monitor disconnect/reconnect remain NOT VERIFIED on a hardware test matrix; the runtime now has display topology and hot-plug handling.
+- The native C# helper is built by the Windows package workflow and was present in the packaged app at `resources/SysGlanceShellHelper.exe`.
 - Code signing uses electron-builder's current local signing path but no publisher certificate is configured; production certificate handling remains NOT IMPLEMENTED.
 
 ## Security observations
@@ -51,8 +52,7 @@ This is an evidence-based baseline. A feature is listed as implemented only when
 
 ## First commercial milestones
 
-1. Keep the current low-cost metric split and add explicit backpressure counters.
-2. Add bounded local history and a small health/status surface.
-3. Add duration/cooldown/recovery alerts with no notification spam.
-4. Add profiles and rollback only after shell changes have explicit reversible snapshots.
-5. Close the Windows build, signing, dependency and hardware-matrix gaps before calling a release candidate commercial-ready.
+1. Verify the Windows 10/11, DPI, sleep/resume, Explorer restart, GPU reset and monitor hot-plug matrix.
+2. Add an explicit shell transaction journal and rollback before applying shell fields from profiles.
+3. Add diagnostics export, richer network inspection and a command palette.
+4. Close code-signing and secure-update gaps before release-candidate distribution.

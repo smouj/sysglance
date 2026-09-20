@@ -19,10 +19,12 @@ const { app, BrowserWindow, ipcMain, screen, globalShortcut, Tray, Menu, nativeI
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
+const { execFile } = require('child_process');
 
 const log = require('./log');
 const configModule = require('./config');
 const metrics = require('./metrics');
+const profiles = require('./profiles');
 const { HistoryStore } = require('./history');
 const { AlertEngine } = require('./alerts');
 const { evaluateHealth } = require('./health');
@@ -65,6 +67,7 @@ let shuttingDown = false;
 // Live config (see src/config.js for the schema).
 let config = configModule.defaults();
 let configPath = null;
+let profilesPath = null;
 
 // Shell state cache for the tray menus (menus are built synchronously).
 let shellApi = null;
@@ -94,12 +97,43 @@ const rendererErrors = [];
 // ── config persistence ──────────────────────────────────
 function loadConfig() {
   configPath = path.join(app.getPath('userData'), 'config.json');
+  profilesPath = path.join(app.getPath('userData'), 'profiles.json');
   const res = configModule.load(configPath);
   config = res.config;
   for (const w of res.warnings) log.warn('config: ' + w);
   if (res.recovered) log.warn('config: ' + configPath + ' could not be parsed — defaults restored');
   else if (res.existed) log.info('config: loaded ' + configPath);
   else log.info('config: no file yet, defaults in use (' + configPath + ')');
+}
+
+function profileStorePath() {
+  return profilesPath || path.join(app.getPath('userData'), 'profiles.json');
+}
+
+function applySavedProfile(name) {
+  const found = profiles.get(profileStorePath(), name);
+  if (!found.ok) return found;
+  const next = configModule.normalize(found.profile.config).config;
+  const beforeFast = config.refreshInterval;
+  const beforeSlow = config.slowInterval;
+  const beforeLayout = config.layout;
+  const beforeAnchor = config.anchor;
+  const beforeDisplay = config.displayId;
+  const beforeTheme = config.theme;
+  // Shell state is captured for portability, but applying it needs explicit
+  // per-setting confirmation and Explorer restart. Keep it pending instead of
+  // silently changing the registry from a profile click.
+  const shellPending = JSON.stringify(config.shell) !== JSON.stringify(next.shell);
+  for (const key of configModule.WRITABLE_KEYS) config[key] = next[key];
+  saveConfig();
+  sendConfig();
+  if (config.layout !== beforeLayout || config.displayId !== beforeDisplay) { applyLayoutGeometry(config.layout); }
+  if (config.layout !== beforeLayout) send('layout-changed', config.layout);
+  if (config.anchor !== beforeAnchor) applyAnchorPosition(config.anchor);
+  if (config.theme !== beforeTheme) send('theme-changed', config.theme);
+  if (config.refreshInterval !== beforeFast || config.slowInterval !== beforeSlow) restartDataCollection();
+  rebuildTray();
+  return { ok: true, name: found.profile.name, shellPending, applied: configModule.WRITABLE_KEYS.slice() };
 }
 
 function saveConfig() {
@@ -127,9 +161,41 @@ function applyConfigPatch(key, value, origin) {
 }
 
 // ── layout geometry ─────────────────────────────────────
+function getTargetDisplay() {
+  const displays = screen.getAllDisplays();
+  const selected = config.displayId == null ? null : displays.find((display) => display.id === config.displayId);
+  return selected || screen.getPrimaryDisplay();
+}
+
+function displayTopology() {
+  return screen.getAllDisplays().map((display) => ({
+    id: display.id,
+    label: display.label || ('Display ' + display.id),
+    bounds: { x: display.bounds.x, y: display.bounds.y, width: display.bounds.width, height: display.bounds.height },
+    workArea: { x: display.workArea.x, y: display.workArea.y, width: display.workArea.width, height: display.workArea.height },
+    scaleFactor: display.scaleFactor,
+    rotation: display.rotation,
+    size: { width: display.size.width, height: display.size.height },
+    primary: display.id === screen.getPrimaryDisplay().id
+  }));
+}
+
+function handleDisplayTopologyChange() {
+  const displays = screen.getAllDisplays();
+  if (config.displayId != null && !displays.some((display) => display.id === config.displayId)) {
+    log.warn('selected display ' + config.displayId + ' is unavailable; falling back to primary');
+    config.displayId = null;
+    saveConfig();
+    sendConfig();
+  }
+  applyLayoutGeometry(config.layout);
+  send('display-topology-changed', displayTopology());
+  broadcastSystemData();
+}
+
 function getLayoutBounds(layout) {
-  const display = screen.getPrimaryDisplay();
-  const { width: sw, height: sh } = display.workAreaSize;
+  const display = getTargetDisplay();
+  const sw = display.workArea.width, sh = display.workArea.height;
   switch (layout) {
     case 'dock':   return { w: sw, h: 142, minW: 600, minH: 120, maxW: sw, maxH: 280 };
     case 'corner': return { w: 220, h: 260, minW: 180, minH: 200, maxW: 300, maxH: 400 };
@@ -139,14 +205,15 @@ function getLayoutBounds(layout) {
 }
 
 function getPositionForAnchor(anchor, w, h) {
-  const { width: sw, height: sh } = screen.getPrimaryDisplay().workAreaSize;
+  const display = getTargetDisplay();
+  const { x: sx, y: sy, width: sw, height: sh } = display.workArea;
   const m = 10;
   switch (anchor) {
-    case 'top-left':     return { x: m, y: m };
-    case 'bottom-left':  return { x: m, y: sh - h - m };
-    case 'bottom-right': return { x: sw - w - m, y: sh - h - m };
+    case 'top-left':     return { x: sx + m, y: sy + m };
+    case 'bottom-left':  return { x: sx + m, y: sy + sh - h - m };
+    case 'bottom-right': return { x: sx + sw - w - m, y: sy + sh - h - m };
     case 'top-right':
-    default:             return { x: sw - w - m, y: m };
+    default:             return { x: sx + sw - w - m, y: sy + m };
   }
 }
 
@@ -550,7 +617,8 @@ function composePayload() {
         fastRunning, slowRunning
       }
     },
-    config
+    config,
+    displays: displayTopology()
   };
   const gpu = Array.isArray(payload.gpu) ? payload.gpu : [];
   const gpuTemperature = gpu.reduce((max, item) => Math.max(max, Number(item && item.temp) || -Infinity), -Infinity);
@@ -630,8 +698,82 @@ ipcMain.handle('get-app-info', () => ({
   shellHost: shellApi ? safeShellHost() : 'unavailable',
   widgetRepo: shellIpc.WIDGET_REPO,
   refreshInterval: config.refreshInterval,
-  slowInterval: config.slowInterval
+  slowInterval: config.slowInterval,
+  displays: displayTopology()
 }));
+
+// ── local desktop profiles ───────────────────────────────
+ipcMain.handle('profiles:list', () => ({ ok: true, profiles: profiles.list(profileStorePath()) }));
+ipcMain.handle('profiles:save', (_e, name) => profiles.upsert(profileStorePath(), name, config));
+ipcMain.handle('profiles:apply', (_e, name) => applySavedProfile(name));
+ipcMain.handle('profiles:delete', (_e, name) => profiles.remove(profileStorePath(), name));
+ipcMain.handle('profiles:rename', (_e, oldName, newName) => profiles.rename(profileStorePath(), oldName, newName));
+ipcMain.handle('profiles:duplicate', (_e, sourceName, targetName) => profiles.duplicate(profileStorePath(), sourceName, targetName));
+ipcMain.handle('profiles:export', async (_e, name) => {
+  const check = profiles.get(profileStorePath(), name);
+  if (!check.ok) return check;
+  try {
+    const target = await dialog.showSaveDialog(mainWindow, {
+      title: 'Export SysGlance profile',
+      defaultPath: check.profile.name + '.sysglance-profile.json',
+      filters: [{ name: 'SysGlance profile', extensions: ['json'] }],
+      properties: ['createDirectory', 'showOverwriteConfirmation']
+    });
+    if (target.canceled || !target.filePath) return { ok: false, canceled: true };
+    return profiles.exportProfile(profileStorePath(), name, path.resolve(target.filePath));
+  } catch (err) { return { ok: false, error: err.message }; }
+});
+ipcMain.handle('profiles:import', async () => {
+  try {
+    const picked = await dialog.showOpenDialog(mainWindow, {
+      title: 'Import SysGlance profile', properties: ['openFile', 'dontAddToRecent'],
+      filters: [{ name: 'SysGlance profile', extensions: ['json'] }]
+    });
+    if (picked.canceled || !picked.filePaths || !picked.filePaths.length) return { ok: false, canceled: true };
+    return profiles.importProfile(profileStorePath(), path.resolve(picked.filePaths[0]));
+  } catch (err) { return { ok: false, error: err.message }; }
+});
+
+// ── explicit process actions ─────────────────────────────
+function validPid(pid) { return Number.isInteger(pid) && pid > 4 && pid <= 0x7fffffff; }
+
+ipcMain.handle('process:openLocation', async (_e, pid) => {
+  if (!validPid(pid)) return { ok: false, error: 'invalid process id' };
+  const inspected = await metrics.inspectProcess(pid);
+  if (!inspected.ok) return inspected;
+  if (!inspected.path) return { ok: false, error: 'executable path unavailable' };
+  let stat;
+  try { stat = fs.statSync(inspected.path); } catch (_) { return { ok: false, error: 'executable no longer exists' }; }
+  if (!stat.isFile()) return { ok: false, error: 'executable path is not a file' };
+  const folder = path.dirname(inspected.path);
+  const error = await shell.openPath(folder);
+  return error ? { ok: false, error } : { ok: true, pid, name: inspected.name, path: inspected.path };
+});
+
+ipcMain.handle('process:endTask', async (_e, pid) => {
+  if (process.platform !== 'win32') return { ok: false, error: 'end task is only supported on Windows' };
+  if (!validPid(pid) || pid === process.pid) return { ok: false, error: 'invalid or protected process id' };
+  const inspected = await metrics.inspectProcess(pid);
+  if (!inspected.ok) return inspected;
+  const confirm = await dialog.showMessageBox(mainWindow, {
+    type: 'warning',
+    title: 'End task?',
+    message: 'End ' + inspected.name + ' (PID ' + pid + ')?',
+    detail: 'The process and its child processes may lose unsaved work.',
+    buttons: ['Cancel', 'End task'],
+    defaultId: 0,
+    cancelId: 0,
+    noLink: true
+  });
+  if (confirm.response !== 1) return { ok: false, canceled: true };
+  return new Promise((resolve) => {
+    execFile('taskkill.exe', ['/PID', String(pid), '/T', '/F'], { windowsHide: true }, (err, stdout, stderr) => {
+      if (err) return resolve({ ok: false, error: String(stderr || stdout || err.message).trim() });
+      log.info('ended process ' + inspected.name + ' (PID ' + pid + ')');
+      resolve({ ok: true, pid, name: inspected.name });
+    });
+  });
+});
 
 function safeShellHost() {
   try { return require('./shell/taskbar').hostKind(); } catch (_) { return 'unavailable'; }
@@ -640,6 +782,7 @@ function safeShellHost() {
 ipcMain.handle('set-config', (_e, key, value) => {
   const beforeFast = config.refreshInterval, beforeSlow = config.slowInterval;
   const beforeLayout = config.layout, beforeAnchor = config.anchor;
+  const beforeDisplay = config.displayId;
   const ok = applyConfigPatch(key, value, 'renderer');
   if (!ok) return { ok: false };
   // A settings change that implies a different window shape must actually
@@ -648,6 +791,7 @@ ipcMain.handle('set-config', (_e, key, value) => {
     applyLayoutGeometry(config.layout);
     send('layout-changed', config.layout);
   }
+  if (config.displayId !== beforeDisplay) applyLayoutGeometry(config.layout);
   if (config.anchor !== beforeAnchor) applyAnchorPosition(config.anchor);
   if (config.refreshInterval !== beforeFast || config.slowInterval !== beforeSlow) restartDataCollection();
   return { ok: true };
@@ -724,6 +868,9 @@ app.whenReady().then(() => {
   log.info('SysGlance ' + APP_VERSION + ' starting — electron ' + process.versions.electron + ', node ' + process.versions.node + ', platform ' + process.platform);
   loadConfig();
   createWindow();
+  for (const event of ['display-added', 'display-removed', 'display-metrics-changed']) {
+    screen.on(event, handleDisplayTopologyChange);
+  }
   registerShell();
   createTray();
   startDataCollection();
@@ -917,14 +1064,18 @@ async function runSelfTest() {
     if (!composed.health || composed.health.rows.length < 5) fail.push('health status did not produce the expected rows');
     if (!composed.history || !composed.history.summary) fail.push('history store did not produce a snapshot');
     if (!composed.alerts || !composed.alerts.rules) fail.push('alert engine did not produce a state snapshot');
+    if (!Array.isArray(composed.displays) || !composed.displays.length) fail.push('display topology did not produce a display');
 
     const probe = await mainWindow.webContents.executeJavaScript(
-      'JSON.stringify({ api: !!window.sysglance, apiKeys: window.sysglance ? Object.keys(window.sysglance).length : 0, versionText: (document.getElementById("app-version") || {}).textContent || null, suiteFooter: ((document.getElementById("suite-footer") || {}).textContent || "").replace(/\\s+/g, " ").trim() || null, shellSection: !!document.getElementById("sec-shell"), cpu: (document.getElementById("cpu-load") || {}).textContent || null })',
+      'JSON.stringify({ api: !!window.sysglance, apiKeys: window.sysglance ? Object.keys(window.sysglance).length : 0, profilesApi: !!(window.sysglance && window.sysglance.profiles), processesApi: !!(window.sysglance && window.sysglance.processes), displayOptions: !!document.getElementById("display-options"), versionText: (document.getElementById("app-version") || {}).textContent || null, suiteFooter: ((document.getElementById("suite-footer") || {}).textContent || "").replace(/\\s+/g, " ").trim() || null, shellSection: !!document.getElementById("sec-shell"), cpu: (document.getElementById("cpu-load") || {}).textContent || null })',
       true
     );
     const state = JSON.parse(probe);
     console.log('[self-test] renderer: ' + probe);
     if (!state.api) fail.push('window.sysglance missing (preload/contextBridge not wired)');
+    if (!state.profilesApi) fail.push('profiles API missing from preload bridge');
+    if (!state.processesApi) fail.push('process actions API missing from preload bridge');
+    if (!state.displayOptions) fail.push('display selector missing from settings');
     if (!state.shellSection) fail.push('shell panel did not inject');
     if (!/^v?\d+\.\d+\.\d+/.test(String(state.versionText))) fail.push('version not rendered in the UI');
     if (!state.suiteFooter || !state.suiteFooter.includes(SUITE_FOOTER) || !state.suiteFooter.includes(APP_VERSION)) {

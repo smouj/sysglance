@@ -9,6 +9,9 @@ the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Added
 
 - Upgraded the runtime/toolchain to Electron 44.4.3 and electron-builder 26.15.3; `npm audit` is clean.
+- Added local desktop profiles with validation, atomic persistence, save/apply/duplicate/rename/delete/import/export and explicit shell-pending behavior.
+- Process rows now show PID and expose revalidated open-location and confirmed end-task actions through the main process.
+- Added validated multi-monitor placement with display topology metadata, work-area-aware geometry, a settings selector and hot-plug fallback.
 
 - **System Status** with objective health rows, bounded local history for key metrics and CPU/RAM sparklines.
 - **Local Alert Engine** with threshold, duration, cooldown and recovery state transitions.

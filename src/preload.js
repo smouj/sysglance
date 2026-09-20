@@ -23,6 +23,7 @@ const EVENTS = [
   'theme-changed',
   'layout-changed',
   'compact-mode-changed',
+  'display-topology-changed',
   'toggle-settings',
   'shell-config-changed'
 ];
@@ -79,6 +80,23 @@ contextBridge.exposeInMainWorld('sysglance', {
 
   // filesystem
   openFolder: (folderPath) => ipcRenderer.invoke('open-folder', folderPath),
+
+  // local profiles: one named wrapper per operation, no generic IPC bridge
+  profiles: {
+    list: () => ipcRenderer.invoke('profiles:list'),
+    save: (name) => ipcRenderer.invoke('profiles:save', name),
+    apply: (name) => ipcRenderer.invoke('profiles:apply', name),
+    remove: (name) => ipcRenderer.invoke('profiles:delete', name),
+    rename: (oldName, newName) => ipcRenderer.invoke('profiles:rename', oldName, newName),
+    duplicate: (sourceName, targetName) => ipcRenderer.invoke('profiles:duplicate', sourceName, targetName),
+    export: (name) => ipcRenderer.invoke('profiles:export', name),
+    import: () => ipcRenderer.invoke('profiles:import')
+  },
+
+  processes: {
+    openLocation: (pid) => ipcRenderer.invoke('process:openLocation', pid),
+    endTask: (pid) => ipcRenderer.invoke('process:endTask', pid)
+  },
 
   // Windows shell configuration (position/theme/accent/wallpaper only —
   // the resident vibrancy effect belongs to OpenClaw Widget)
