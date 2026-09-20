@@ -264,6 +264,7 @@ function displayTopology() {
     scaleFactor: display.scaleFactor,
     refreshRate: Number.isFinite(display.refreshRate) ? display.refreshRate : null,
     rotation: display.rotation,
+    hdr: typeof display.hdr === 'boolean' ? display.hdr : null,
     size: { width: display.size.width, height: display.size.height },
     primary: display.id === screen.getPrimaryDisplay().id
   }));

@@ -203,9 +203,10 @@
       var work = target.workArea && target.workArea.width && target.workArea.height ? 'work area ' + target.workArea.width + '×' + target.workArea.height : null;
       var scale = target.scaleFactor ? Math.round(target.scaleFactor * 100) + '%' : null;
       var hz = target.refreshRate ? Math.round(target.refreshRate) + ' Hz' : null;
-      var rotation = target.rotation ? 'rotation ' + target.rotation + '°' : null;
+      var rotation = Number.isFinite(Number(target.rotation)) ? 'rotation ' + Number(target.rotation) + '°' : null;
+      var hdr = typeof target.hdr === 'boolean' ? 'HDR ' + (target.hdr ? 'on' : 'off') : 'HDR unavailable';
       var primary = target.primary ? 'primary' : 'secondary';
-      setText(dom.displaySummary, [size, scale, hz, rotation, primary, work].filter(Boolean).join(' · ') || 'Display topology unavailable');
+      setText(dom.displaySummary, [size, scale, hz, rotation, hdr, primary, work].filter(Boolean).join(' · ') || 'Display topology unavailable');
     }
   }
 

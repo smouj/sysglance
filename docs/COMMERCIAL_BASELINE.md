@@ -14,7 +14,7 @@ This is an evidence-based baseline. A feature is listed as implemented only when
 | `npm run verify` | PASS; 36 syntax, 36 config, 28 shell, 34 extended shell, 17 history/health/alert, 10 metric, 7 diagnostics, 7 journal, 4 transaction, 5 profile-shell, 14 profile, 8 process, 10 display, 6 install, 18 desktop-action, 4 logging, 4 privacy and unique IPC checks. |
 | `npm run self-test` | PASS on Electron 44.4.3 after fixing duplicate Shell IPC registration. Real Electron window, preload bridge, fast/slow collection, product layer and hostile path refusal exercised. |
 | `npm run bench` | PASS as a measurement; see `PERFORMANCE_BASELINE.md`. |
-| `npm run build:win` | PASS on electron-builder 26.15.3; NSIS installer, blockmap, unpacked app and native helper were produced. Latest local artifact: 111,918,836 bytes, SHA-256 `90FAA291D8B0EE6946A20EA84198C63C02C3EDFC02F1988FBDF77153E181157A`. |
+| `npm run build:win` | PASS on electron-builder 26.15.3; NSIS installer, blockmap, unpacked app and native helper were produced. Latest local artifact: 111,918,788 bytes, SHA-256 `5ED2024BD60EF8479746D103133812F90A437135ABC8D17B3E80C1FC830E8A81`. |
 
 ## Verified functionality
 

@@ -15,6 +15,7 @@ This is an evidence ledger, not a claim that every row is supported. A row is
 | Power | Sleep/resume | NOT VERIFIED | Sleep command is confirmed and allow-listed; exercise wake/resume and timer recovery. |
 | Shell | Explorer restart | PARTIAL | Dry-run command and explicit UI path pass; no destructive restart performed in this audit. |
 | Graphics | GPU driver reset | NOT VERIFIED | Requires a real GPU test matrix. |
+| Graphics | HDR state | NOT VERIFIED | Electron's current display object does not expose HDR on this host; the UI reports `HDR unavailable` instead of guessing. |
 | Network | Adapter/address change | NOT VERIFIED | On-demand identity and session reset logic are implemented; physical reconnect pending. |
 | Packaging | Windows unpacked + NSIS artifact | VERIFIED | `dist-verify`, installer hash in `PERFORMANCE_BASELINE.md`, helper and uninstaller paths checked. |
 | Packaging | Install/uninstall on clean machine | NOT VERIFIED | Existing per-user SysGlance install was detected and deliberately not overwritten. |
