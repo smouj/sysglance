@@ -27,7 +27,7 @@
     memPct: $('mem-pct'), memBar: $('mem-bar'), memUsed: $('mem-used'), memSwap: $('mem-swap'),
     gpuLoad: $('gpu-load'), gpuName: $('gpu-name'), gpuBars: $('gpu-bars'),
     fsHome: $('fs-home'), fsFolders: $('fs-folders'), secFs: $('sec-filesystem'),
-    secHealth: $('sec-health'), healthSummary: $('health-summary'), healthList: $('health-list'),
+    secHealth: $('sec-health'), healthSummary: $('health-summary'), healthList: $('health-list'), historyWindow: $('history-window'),
     secGpu: $('sec-gpu'),
     diskList: $('disk-list'), diskActivity: $('disk-activity'), diskActivityValue: $('disk-activity-value'), storageAnalyze: $('storage-analyze'), storageAnalysis: $('storage-analysis'),
     netIface: $('net-iface'), netRx: $('net-rx'), netTx: $('net-tx'), netPeak: $('net-peak'), netSession: $('net-session'), netDetails: $('net-details'),
@@ -375,6 +375,11 @@
       setText(dom.storageAnalysis, details || ('No subfolders found' + (res.truncated ? ' · scan capped' : '')));
     }).catch(function (err) { setText(dom.storageAnalysis, err.message || 'Folder analysis unavailable'); }).finally(function () { dom.storageAnalyze.disabled = false; });
   });
+  if (dom.historyWindow && api.history) dom.historyWindow.addEventListener('change', function () {
+    api.history.setWindow(Number(dom.historyWindow.value)).then(function (res) {
+      if (!res || !res.ok) diagnosticsStatus((res && res.error) || 'History window unavailable', true);
+    }).catch(function (err) { diagnosticsStatus(err.message || 'History window unavailable', true); });
+  });
 
   // ── command palette ──────────────────────────────────
   var PALETTE_COMMANDS = [
@@ -673,6 +678,7 @@
     // Objective system status: each line is backed by a current measurement.
     renderHealth(data.health);
     if (data.history && data.history.series) {
+      if (dom.historyWindow && data.history.windowMs) dom.historyWindow.value = String(data.history.windowMs);
       renderSparkline(dom.cpuSparkline, data.history.series.cpu);
       renderSparkline(dom.memorySparkline, data.history.series.memory);
     }

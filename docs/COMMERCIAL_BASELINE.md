@@ -26,7 +26,7 @@ This is an evidence-based baseline. A feature is listed as implemented only when
 - Windows shell reads and controlled writes: taskbar position/auto-hide byte math, theme, accent, wallpaper, wallpaper gallery, special folders, Start settings and Explorer restart planning.
 - Folder opening is allow-listed to the six offered home folders; wallpaper inputs are validated before decode/registry/native-helper use.
 - Rotating local logs and uncaught exception/unhandled rejection logging.
-- Bounded session-local history (24-hour ring-buffer ceiling), one-hour CPU/RAM sparklines and objective System Status rows.
+- Bounded session-local history (24-hour ring-buffer ceiling), selectable 1m/5m/30m/1h/6h/24h CPU/RAM sparklines and objective System Status rows.
 - Local alert state machine with duration, cooldown and recovery transitions.
 - Local desktop profiles with atomic versioned persistence, import/export, configurable hotkeys and a separate confirmed shell-apply transaction.
 - Last-profile-apply undo for SysGlance-owned settings, a bounded shell-mutation undo journal, plus a narrow Ctrl+K navigation palette.

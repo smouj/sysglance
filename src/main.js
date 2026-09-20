@@ -94,6 +94,8 @@ let slowFailedTicks = 0;
 const historyStore = new HistoryStore({ intervalMs: 5000, retentionMs: 24 * 60 * 60 * 1000 });
 const alertEngine = new AlertEngine();
 let lastAnalysisAt = 0;
+let historyWindowMs = 60 * 60 * 1000;
+const HISTORY_WINDOWS = new Set([60 * 1000, 5 * 60 * 1000, 30 * 60 * 1000, 60 * 60 * 1000, 6 * 60 * 60 * 1000, 24 * 60 * 60 * 1000]);
 
 // Renderer-side errors seen in self-test mode.
 const rendererErrors = [];
@@ -755,7 +757,7 @@ function composePayload() {
   }
   payload.health = evaluateHealth(payload);
   payload.alerts = alertEngine.snapshot();
-  payload.history = historyStore.snapshot(60 * 60 * 1000, payload.timestamp);
+  payload.history = historyStore.snapshot(historyWindowMs, payload.timestamp);
   return payload;
 }
 
@@ -832,6 +834,13 @@ function restartDataCollection() {
 // ── IPC ─────────────────────────────────────────────────
 // Every handler validates its arguments: the renderer is untrusted code.
 ipcMain.handle('get-system-data', () => composePayload());
+ipcMain.handle('history:setWindow', (_event, windowMs) => {
+  const value = Number(windowMs);
+  if (!HISTORY_WINDOWS.has(value)) return { ok: false, error: 'unsupported history window' };
+  historyWindowMs = value;
+  broadcastSystemData();
+  return { ok: true, windowMs: historyWindowMs };
+});
 ipcMain.handle('storage:analyzeHome', () => metrics.analyzeFolder(os.homedir(), { maxDepth: 2, maxEntries: 20000 }));
 ipcMain.handle('network:inspect', (_event, force) => metrics.getNetworkDetails(force === true));
 ipcMain.handle('get-app-info', () => ({
@@ -1303,7 +1312,7 @@ async function runSelfTest() {
     if (!Array.isArray(composed.displays) || !composed.displays.length) fail.push('display topology did not produce a display');
 
     const probe = await mainWindow.webContents.executeJavaScript(
-      'JSON.stringify({ api: !!window.sysglance, apiKeys: window.sysglance ? Object.keys(window.sysglance).length : 0, profilesApi: !!(window.sysglance && window.sysglance.profiles), processesApi: !!(window.sysglance && window.sysglance.processes), diagnosticsApi: !!(window.sysglance && window.sysglance.diagnostics), displayOptions: !!document.getElementById("display-options"), palette: !!document.getElementById("command-palette"), versionText: (document.getElementById("app-version") || {}).textContent || null, suiteFooter: ((document.getElementById("suite-footer") || {}).textContent || "").replace(/\\s+/g, " ").trim() || null, shellSection: !!document.getElementById("sec-shell"), cpu: (document.getElementById("cpu-load") || {}).textContent || null })',
+      'JSON.stringify({ api: !!window.sysglance, apiKeys: window.sysglance ? Object.keys(window.sysglance).length : 0, profilesApi: !!(window.sysglance && window.sysglance.profiles), processesApi: !!(window.sysglance && window.sysglance.processes), diagnosticsApi: !!(window.sysglance && window.sysglance.diagnostics), displayOptions: !!document.getElementById("display-options"), historyWindow: !!document.getElementById("history-window"), palette: !!document.getElementById("command-palette"), versionText: (document.getElementById("app-version") || {}).textContent || null, suiteFooter: ((document.getElementById("suite-footer") || {}).textContent || "").replace(/\\s+/g, " ").trim() || null, shellSection: !!document.getElementById("sec-shell"), cpu: (document.getElementById("cpu-load") || {}).textContent || null })',
       true
     );
     const state = JSON.parse(probe);
@@ -1313,6 +1322,7 @@ async function runSelfTest() {
     if (!state.processesApi) fail.push('process actions API missing from preload bridge');
     if (!state.diagnosticsApi) fail.push('diagnostics API missing from preload bridge');
     if (!state.displayOptions) fail.push('display selector missing from settings');
+    if (!state.historyWindow) fail.push('history window selector missing from status');
     if (!state.palette) fail.push('command palette missing from renderer');
     if (!state.shellSection) fail.push('shell panel did not inject');
     if (!/^v?\d+\.\d+\.\d+/.test(String(state.versionText))) fail.push('version not rendered in the UI');

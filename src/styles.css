@@ -221,6 +221,7 @@ body.unlocked .ic-unlocked{display:block}
 .info-row-secondary{margin-top:3px}
 .info-subtitle{font-size:10px;color:var(--fg-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
 .info-small{font-size:9px;color:var(--fg-4);font-variant-numeric:tabular-nums;white-space:nowrap}
+.history-window{margin-left:auto;min-width:42px;padding:2px 2px;border:1px solid var(--line);border-radius:3px;background:var(--panel-2);color:var(--fg-3);font:inherit;font-size:9px}
 .storage-action{margin-top:6px;padding:4px 7px;border:1px solid var(--line);border-radius:5px;background:var(--panel-2);color:var(--fg-4);font:inherit;font-size:9px;cursor:pointer}
 .storage-action:hover{border-color:var(--accent-line);color:var(--accent)}
 .storage-action:disabled{opacity:.55;cursor:wait}

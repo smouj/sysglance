@@ -110,6 +110,10 @@ contextBridge.exposeInMainWorld('sysglance', {
     analyzeHome: () => ipcRenderer.invoke('storage:analyzeHome')
   },
 
+  history: {
+    setWindow: (windowMs) => ipcRenderer.invoke('history:setWindow', windowMs)
+  },
+
   network: {
     inspect: (force) => ipcRenderer.invoke('network:inspect', force === true)
   },
