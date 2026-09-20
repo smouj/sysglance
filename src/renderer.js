@@ -27,7 +27,7 @@
     memPct: $('mem-pct'), memBar: $('mem-bar'), memUsed: $('mem-used'), memSwap: $('mem-swap'),
     gpuLoad: $('gpu-load'), gpuName: $('gpu-name'), gpuBars: $('gpu-bars'),
     fsHome: $('fs-home'), fsFolders: $('fs-folders'), secFs: $('sec-filesystem'),
-    secHealth: $('sec-health'), healthSummary: $('health-summary'), healthList: $('health-list'), healthAlerts: $('health-alerts'), historyWindow: $('history-window'),
+    secHealth: $('sec-health'), healthSummary: $('health-summary'), healthList: $('health-list'), healthLifecycle: $('health-lifecycle'), healthAlerts: $('health-alerts'), historyWindow: $('history-window'),
     secGpu: $('sec-gpu'),
     diskList: $('disk-list'), diskActivity: $('disk-activity'), diskActivityValue: $('disk-activity-value'), storageAnalyze: $('storage-analyze'), storageAnalysis: $('storage-analysis'),
     netIface: $('net-iface'), netRx: $('net-rx'), netTx: $('net-tx'), netPeak: $('net-peak'), netSession: $('net-session'), netDetails: $('net-details'),
@@ -749,6 +749,13 @@
     if (dom.healthAlerts.innerHTML !== alertHtml) dom.healthAlerts.innerHTML = alertHtml;
   }
 
+  function renderLifecycle(state) {
+    if (!dom.healthLifecycle) return;
+    var suspended = state && state.state === 'suspended';
+    dom.healthLifecycle.hidden = !suspended;
+    setText(dom.healthLifecycle, suspended ? 'Monitoring paused while Windows is suspended; baselines will refresh on resume.' : '');
+  }
+
   function applyUpdate() {
     rafScheduled = false;
     var data = pendingData;
@@ -759,6 +766,7 @@
 
     // Objective system status: each line is backed by a current measurement.
     renderHealth(data.health, data.alerts);
+    renderLifecycle(data.lifecycle);
     if (data.history && data.history.series) {
       if (dom.historyWindow && data.history.windowMs) dom.historyWindow.value = String(data.history.windowMs);
       renderSparkline(dom.cpuSparkline, data.history.series.cpu);
@@ -985,6 +993,7 @@
   api.on('toggle-settings', function () { toggleSettings(); });
   api.on('toggle-palette', openPalette);
   api.on('hotkeys-status', renderHotkeyStatus);
+  api.on('lifecycle-status', renderLifecycle);
   api.on('app-version', function (info) {
     if (info && info.version) {
       dom.appVersion.textContent = 'v' + info.version;
@@ -1003,6 +1012,7 @@
     }
     if (info.displays) renderDisplays(info.displays);
     renderHotkeyStatus(info.hotkeys);
+    renderLifecycle(info.lifecycle);
   }).catch(function () { /* version is cosmetic */ });
 
   api.getSystemData().then(function (data) {

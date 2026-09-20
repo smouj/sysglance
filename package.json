@@ -48,6 +48,7 @@
     "verify:shell": "node scripts/verify-shell.js",
     "verify:shell-extended": "node scripts/verify-shell-extended.js",
     "verify:health": "node scripts/verify-health.js",
+    "verify:lifecycle": "node scripts/verify-lifecycle.js",
     "verify:metrics": "node scripts/verify-metrics.js",
     "verify:diagnostics": "node scripts/verify-diagnostics.js",
     "verify:profile-shell": "node scripts/verify-profile-shell.js",

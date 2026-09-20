@@ -27,6 +27,7 @@ const EVENTS = [
   'toggle-settings',
   'toggle-palette',
   'hotkeys-status',
+  'lifecycle-status',
   'shell-config-changed'
 ];
 

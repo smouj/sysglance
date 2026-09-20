@@ -40,6 +40,9 @@ jobs:
       - name: Full verification suite
         run: npm run verify
 
+      - name: Lifecycle recovery gate
+        run: npm run verify:lifecycle
+
       - name: Tag must match package.json
         shell: bash
         run: |

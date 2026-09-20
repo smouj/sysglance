@@ -34,6 +34,9 @@ jobs:
       - name: Full verification suite
         run: npm run verify
 
+      - name: Lifecycle recovery gate
+        run: npm run verify:lifecycle
+
       - name: Refresh-cycle benchmark
         run: npm run bench -- --iterations=5
 

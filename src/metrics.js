@@ -557,8 +557,26 @@ function reset() {
   networkSession = { iface: null, lastAt: 0, lastRxBytes: null, lastTxBytes: null, downloaded: 0, uploaded: 0, peakRx: 0, peakTx: 0 };
 }
 
+/**
+ * Drop time-sensitive baselines after Windows resumes. Session totals and
+ * peaks remain meaningful, but the next network sample must not turn the
+ * sleep gap into a fake transfer rate.
+ */
+function resume() {
+  cpuPrev = null;
+  inspectorCache = null;
+  inspectorPromise = null;
+  networkDetailsCache = null;
+  networkDetailsPromise = null;
+  networkSession = {
+    iface: null, lastAt: 0, lastRxBytes: null, lastTxBytes: null,
+    downloaded: networkSession.downloaded, uploaded: networkSession.uploaded,
+    peakRx: networkSession.peakRx, peakTx: networkSession.peakTx
+  };
+}
+
 module.exports = {
-  collectFast, collectSlow, analyzeFolder, inspectProcess, getStatic, getInspector, getNetworkDetails, reset,
+  collectFast, collectSlow, analyzeFolder, inspectProcess, getStatic, getInspector, getNetworkDetails, reset, resume,
   info: {
     fastSource: 'node:os' + (IS_LINUX ? ' + /proc/meminfo' : ''),
     slowSource: 'systeminformation',

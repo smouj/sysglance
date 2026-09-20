@@ -15,7 +15,7 @@
 //   src/shell/*     Windows shell configuration (position, theme, accent, wallpaper)
 // ═══════════════════════════════════════════════════════
 
-const { app, BrowserWindow, ipcMain, screen, globalShortcut, Tray, Menu, nativeImage, shell, dialog, clipboard } = require('electron');
+const { app, BrowserWindow, ipcMain, screen, powerMonitor, globalShortcut, Tray, Menu, nativeImage, shell, dialog, clipboard } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
@@ -28,6 +28,7 @@ const profiles = require('./profiles');
 const { HistoryStore } = require('./history');
 const { AlertEngine } = require('./alerts');
 const { evaluateHealth } = require('./health');
+const { LifecycleState } = require('./lifecycle');
 const shellIpc = require('./shell/ipc');
 const { ShellJournal } = require('./shell/journal');
 const diagnostics = require('./diagnostics');
@@ -94,6 +95,7 @@ let fastSkippedTicks = 0;
 let slowSkippedTicks = 0;
 let fastFailedTicks = 0;
 let slowFailedTicks = 0;
+let collectionEpoch = 0;
 const historyStore = new HistoryStore({ intervalMs: 5000, retentionMs: 24 * 60 * 60 * 1000 });
 const alertEngine = new AlertEngine();
 let lastAnalysisAt = 0;
@@ -104,6 +106,7 @@ const HISTORY_WINDOWS = new Set([60 * 1000, 5 * 60 * 1000, 30 * 60 * 1000, 60 * 
 const rendererErrors = [];
 let runtimeBenchStarted = false;
 let runtimeBenchReadyMs = null;
+const lifecycle = new LifecycleState();
 
 // ── config persistence ──────────────────────────────────
 function loadConfig() {
@@ -666,17 +669,22 @@ function registerShortcuts() {
 const msSince = (t0) => Math.round(Number(process.hrtime.bigint() - t0) / 1e5) / 10;
 
 async function runFastCycle() {
+  if (lifecycle.isSuspended()) return;
   if (fastRunning) { fastSkippedTicks++; return; }
   fastRunning = true;
+  const epoch = collectionEpoch;
   const t0 = process.hrtime.bigint();
   try {
-    lastFast = await metrics.collectFast();
+    const result = await metrics.collectFast();
+    if (epoch !== collectionEpoch || lifecycle.isSuspended()) return;
+    lastFast = result;
     fastMs = msSince(t0);
     if (lastFast.cpu && lastFast.cpu.load === 0 && fastMs > 50) {
       log.debug('fast cycle unusually slow: ' + fastMs + ' ms');
     }
     broadcastSystemData();
   } catch (err) {
+    if (epoch !== collectionEpoch || lifecycle.isSuspended()) return;
     fastFailedTicks++;
     log.exception('fast metrics cycle', err);
   } finally {
@@ -685,14 +693,19 @@ async function runFastCycle() {
 }
 
 async function runSlowCycle() {
+  if (lifecycle.isSuspended()) return;
   if (slowRunning) { slowSkippedTicks++; return; }
   slowRunning = true;
+  const epoch = collectionEpoch;
   const t0 = process.hrtime.bigint();
   try {
-    lastSlow = await metrics.collectSlow({ sections: config.showSections });
+    const result = await metrics.collectSlow({ sections: config.showSections });
+    if (epoch !== collectionEpoch || lifecycle.isSuspended()) return;
+    lastSlow = result;
     slowMs = msSince(t0);
     broadcastSystemData();
   } catch (err) {
+    if (epoch !== collectionEpoch || lifecycle.isSuspended()) return;
     slowFailedTicks++;
     log.exception('slow metrics cycle', err);
   } finally {
@@ -755,7 +768,8 @@ function composePayload() {
       }
     },
     config,
-    displays: displayTopology()
+    displays: displayTopology(),
+    lifecycle: lifecycle.snapshot()
   };
   const gpu = Array.isArray(payload.gpu) ? payload.gpu : [];
   const gpuTemperature = gpu.reduce((max, item) => Math.max(max, Number(item && item.temp) || -Infinity), -Infinity);
@@ -834,6 +848,7 @@ async function diagnosticsSnapshot() {
 }
 
 function startDataCollection() {
+  if (lifecycle.isSuspended()) return;
   stopDataCollection();
   staticData = null;
   fastTimer = setInterval(runFastCycle, config.refreshInterval);
@@ -848,12 +863,14 @@ function startDataCollection() {
 }
 
 function stopDataCollection() {
+  collectionEpoch++;
   if (fastTimer) { clearInterval(fastTimer); fastTimer = null; }
   if (slowTimer) { clearInterval(slowTimer); slowTimer = null; }
 }
 
 /** Re-arm the timers after a cadence change. */
 function restartDataCollection() {
+  if (lifecycle.isSuspended()) return;
   stopDataCollection();
   fastTimer = setInterval(runFastCycle, config.refreshInterval);
   slowTimer = setInterval(runSlowCycle, config.slowInterval);
@@ -884,7 +901,8 @@ ipcMain.handle('get-app-info', () => ({
   hotkeys: shortcutStatus,
   refreshInterval: config.refreshInterval,
   slowInterval: config.slowInterval,
-  displays: displayTopology()
+  displays: displayTopology(),
+  lifecycle: lifecycle.snapshot()
 }));
 
 // ── local desktop profiles ───────────────────────────────
@@ -1139,6 +1157,27 @@ process.on('unhandledRejection', (reason) => {
   log.exception('main process (unhandledRejection)', reason instanceof Error ? reason : new Error(String(reason)));
 });
 
+function handleSystemSuspend() {
+  if (!lifecycle.suspend()) return;
+  stopDataCollection();
+  log.info('system suspend: metric polling paused');
+  send('lifecycle-status', lifecycle.snapshot());
+}
+
+function handleSystemResume() {
+  if (!lifecycle.resume()) return;
+  metrics.resume();
+  lastFast = null;
+  lastSlow = null;
+  fastMs = null;
+  slowMs = null;
+  lastAnalysisAt = 0;
+  alertEngine.reset();
+  log.info('system resume: metric baselines reset and polling re-armed');
+  startDataCollection();
+  send('lifecycle-status', lifecycle.snapshot());
+}
+
 app.whenReady().then(() => {
   log.prime(path.join(app.getPath('userData'), 'logs'));
   log.info('SysGlance ' + APP_VERSION + ' starting — electron ' + process.versions.electron + ', node ' + process.versions.node + ', platform ' + process.platform);
@@ -1147,6 +1186,8 @@ app.whenReady().then(() => {
   for (const event of ['display-added', 'display-removed', 'display-metrics-changed']) {
     screen.on(event, handleDisplayTopologyChange);
   }
+  powerMonitor.on('suspend', handleSystemSuspend);
+  powerMonitor.on('resume', handleSystemResume);
   registerShell();
   createTray();
   startDataCollection();
@@ -1430,7 +1471,7 @@ async function runSelfTest() {
     if (!Array.isArray(composed.displays) || !composed.displays.length) fail.push('display topology did not produce a display');
 
     const probe = await mainWindow.webContents.executeJavaScript(
-      'JSON.stringify({ api: !!window.sysglance, apiKeys: window.sysglance ? Object.keys(window.sysglance).length : 0, profilesApi: !!(window.sysglance && window.sysglance.profiles), processesApi: !!(window.sysglance && window.sysglance.processes), diagnosticsApi: !!(window.sysglance && window.sysglance.diagnostics), displayOptions: !!document.getElementById("display-options"), displaySummary: !!document.getElementById("display-summary"), historyWindow: !!document.getElementById("history-window"), palette: !!document.getElementById("command-palette"), alertSurface: !!document.getElementById("health-alerts"), hotkeyStatus: !!document.getElementById("hotkey-status"), versionText: (document.getElementById("app-version") || {}).textContent || null, suiteFooter: ((document.getElementById("suite-footer") || {}).textContent || "").replace(/\\s+/g, " ").trim() || null, shellSection: !!document.getElementById("sec-shell"), cpu: (document.getElementById("cpu-load") || {}).textContent || null })',
+      'JSON.stringify({ api: !!window.sysglance, apiKeys: window.sysglance ? Object.keys(window.sysglance).length : 0, profilesApi: !!(window.sysglance && window.sysglance.profiles), processesApi: !!(window.sysglance && window.sysglance.processes), diagnosticsApi: !!(window.sysglance && window.sysglance.diagnostics), displayOptions: !!document.getElementById("display-options"), displaySummary: !!document.getElementById("display-summary"), historyWindow: !!document.getElementById("history-window"), palette: !!document.getElementById("command-palette"), alertSurface: !!document.getElementById("health-alerts"), lifecycleStatus: !!document.getElementById("health-lifecycle"), hotkeyStatus: !!document.getElementById("hotkey-status"), versionText: (document.getElementById("app-version") || {}).textContent || null, suiteFooter: ((document.getElementById("suite-footer") || {}).textContent || "").replace(/\\s+/g, " ").trim() || null, shellSection: !!document.getElementById("sec-shell"), cpu: (document.getElementById("cpu-load") || {}).textContent || null })',
       true
     );
     const state = JSON.parse(probe);
@@ -1443,6 +1484,7 @@ async function runSelfTest() {
     if (!state.displaySummary) fail.push('display topology summary missing from settings');
     if (!state.historyWindow) fail.push('history window selector missing from status');
     if (!state.alertSurface) fail.push('alert surface missing from system status');
+    if (!state.lifecycleStatus) fail.push('lifecycle status missing from system status');
     if (!state.hotkeyStatus) fail.push('hotkey status missing from settings');
     if (!state.palette) fail.push('command palette missing from renderer');
     if (!state.shellSection) fail.push('shell panel did not inject');

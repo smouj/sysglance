@@ -66,6 +66,7 @@ clientes analíticos ni dependencias runtime directas innecesarias.
 - Hotkeys toggle/lock/palette persistentes con rechazo de duplicados y estado visible cuando Windows no puede registrar un acelerador ocupado.
 - Selección de display con work area, resolución, escala, Hz, rotación, primario y
   estado HDR honesto (`HDR unavailable` cuando Electron no lo expone).
+- Sleep/resume lifecycle: el polling se pausa durante suspend, los baselines transitorios se reinician al volver y el estado se muestra en System status.
 - Acciones allow-listed: Settings, red, display, apps, Task Manager, Services,
   lock, sleep y restart con confirmación cuando son destructivas.
 - Logs estructurados locales con rotación, diagnósticos y bundle ZIP redacted.
@@ -92,8 +93,9 @@ clientes analíticos ni dependencias runtime directas innecesarias.
 |---|---|
 | `npm ci` | PASS; 285 paquetes instalados. |
 | `npm audit --audit-level=high` | PASS; 0 vulnerabilidades reportadas. |
-| `npm run verify` | PASS; 37 sintaxis, 36 config, 28 shell, 43 shell extendido, 17 histórico/alertas, 10 métricas, 7 diagnostics, 7 journal, 4 transaction, 5 profile-shell, 14 profiles, 8 processes, 10 displays, 6 install, 20 actions, 4 logging, 4 privacy e IPC único. |
+| `npm run verify` | PASS; 40 sintaxis, 36 config, 28 shell, 43 shell extendido, 17 histórico/alertas, 10 métricas, 7 diagnostics, 7 journal, 4 transaction, 5 profile-shell, 14 profiles, 8 processes, 10 displays, 6 install, 20 actions, 4 logging, 4 privacy e IPC único. |
 | `npm run self-test` | PASS con Electron 44.4.3, ventana real, preload, tiers, inspector, displays, alert surface y rechazo de paths hostiles. |
+| `npm run verify:lifecycle` | PASS 13/13; pausa/reanudación idempotente, reset de baselines, descarte de resultados tardíos, preservación de totales y estado visible de polling cubiertos por gate determinista. |
 | `npm run bench -- --iterations=3 --new` | PASS; fast 0.69 ms mediana, slow 3149.01 ms mediana, 166.33 ms CPU/ciclo, 19.33 procesos hijos/ciclo. |
 | `npm run bench:runtime` (PowerShell env: 2 iterations) | PASS; ready-to-show 1195.85 ms, fast 0.78 ms mediana, slow 3639.49 ms mediana, IPC 0.98 ms mediana, renderer patch 4.63 ms mediana, 385.0 MB RSS agregado y 4 procesos Electron. |
 | `npm run screenshot` | PASS; sidebar, settings, dock, mini, shell y minimum-size capturados y revisados. |
@@ -127,7 +129,7 @@ optimización.
 | 2/3 monitores físicos | NOT VERIFIED. |
 | display disconnect/reconnect | NOT VERIFIED físicamente; fallback primario probado por código/gate. |
 | lock/unlock | PARTIAL; acción allow-listed, transición física no ejecutada. |
-| sleep/resume | NOT VERIFIED. |
+| sleep/resume | PARTIAL; lifecycle y recuperación de polling verificadas por código/gate, transición física no ejecutada. |
 | Explorer restart | PARTIAL; dry-run y UI, sin reinicio destructivo. |
 | GPU reset / network hot-plug | NOT VERIFIED. |
 | unpacked + NSIS + portable | VERIFIED en `dist-verify` y `dist-portable`. |
@@ -135,10 +137,10 @@ optimización.
 | GitHub Actions remoto | NOT VERIFIED en este checkout; el workflow está preparado. |
 | firma de código / auto-update seguro | NOT IMPLEMENTED. |
 
-El instalador actual mide 111,920,748 bytes y tiene SHA-256
-`9B4016EDF13B51358A78F737B51A1ED3B968D76432BB4F14CB8BAB1496961A10`.
-El portable mide 100,605,729 bytes y tiene SHA-256
-`07B0E13A33687281DEE987F4BCFD7632DCE92C113C0AD4DD7804DA749A8195AF`.
+El instalador actual mide 111,921,621 bytes y tiene SHA-256
+`C38EF06C5C6B53D5EF99A2A2962BDE25FD5253664957D3196390CFD693DF7580`.
+El portable mide 100,606,314 bytes y tiene SHA-256
+`73B8E2F8F21D9339DBA7853FD8B9EE0B5BD6CD6FE727D1495F68153BD365B29B`.
 
 ## Riesgos y deuda restante
 

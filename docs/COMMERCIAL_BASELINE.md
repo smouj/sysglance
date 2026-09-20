@@ -11,13 +11,14 @@ This is an evidence-based baseline. A feature is listed as implemented only when
 | Command | Result |
 |---|---|
 | `npm ci` | PASS; 285 packages installed. `npm audit` and production-only audit report 0 vulnerabilities. The initial Electron 33/electron-builder 25 audit found 14 findings; the toolchain was upgraded and retested. |
-| `npm run verify` | PASS; 37 syntax, 36 config, 28 shell, 43 extended shell, 17 history/health/alert, 10 metric, 7 diagnostics, 7 journal, 4 transaction, 5 profile-shell, 14 profile, 8 process, 10 display, 6 install, 20 desktop-action, 4 logging, 4 privacy and unique IPC checks. |
+| `npm run verify` | PASS; 40 syntax, 36 config, 28 shell, 43 extended shell, 17 history/health/alert, 10 metric, 7 diagnostics, 7 journal, 4 transaction, 5 profile-shell, 14 profile, 8 process, 10 display, 6 install, 20 desktop-action, 4 logging, 4 privacy and unique IPC checks. |
 | `npm run self-test` | PASS on Electron 44.4.3 after fixing duplicate Shell IPC registration. Real Electron window, preload bridge, fast/slow collection, product layer and hostile path refusal exercised. |
+| `npm run verify:lifecycle` | PASS 13/13; suspend/resume state transitions, idempotence, polling re-arm, late-result discard, rate-baseline preservation and renderer status surface are covered without triggering real sleep. |
 | `npm run bench` | PASS as a measurement; see `PERFORMANCE_BASELINE.md`. |
 | `npm run bench:runtime` | PASS with 2 iterations; ready-to-show 1,195.85 ms, IPC median 0.98 ms, renderer patch median 4.63 ms, app-metrics RSS 385.0 MB across 4 Electron processes. |
 | `npm run verify:portable` | PASS 3/3; portable executable and native helper were found in `dist-portable`. |
 | `npm run verify:release` | PASS locally against the versioned NSIS/portable artifacts; exact filenames, PE headers, packaged helper/uninstaller and SHA-256 evidence are checked. Release tags additionally require valid Authenticode signatures for packaged PE files and the native helper. |
-| `npm run build:win` / `npm run build:win:portable` | PASS on electron-builder 26.15.3; NSIS and portable artifacts plus native helper were produced. NSIS: 111,920,748 bytes, SHA-256 `9B4016EDF13B51358A78F737B51A1ED3B968D76432BB4F14CB8BAB1496961A10`; portable: 100,605,729 bytes, SHA-256 `07B0E13A33687281DEE987F4BCFD7632DCE92C113C0AD4DD7804DA749A8195AF`. |
+| `npm run build:win` / `npm run build:win:portable` | PASS on electron-builder 26.15.3; NSIS and portable artifacts plus native helper were produced. NSIS: 111,921,621 bytes, SHA-256 `C38EF06C5C6B53D5EF99A2A2962BDE25FD5253664957D3196390CFD693DF7580`; portable: 100,606,314 bytes, SHA-256 `73B8E2F8F21D9339DBA7853FD8B9EE0B5BD6CD6FE727D1495F68153BD365B29B`. |
 
 ## Verified functionality
 
@@ -41,6 +42,7 @@ This is an evidence-based baseline. A feature is listed as implemented only when
 - Configurable toggle/lock/palette shortcuts with duplicate refusal, live OS-registration conflict status and reduced-motion/forced-colour CSS fallbacks.
 - Allow-listed Windows command-center actions for Settings, network, display, apps, Task Manager, Services, workstation lock, sleep and restart; state-changing power actions require confirmation and no arbitrary URI or command input crosses IPC.
 - Multi-monitor placement: validated display selection, work-area-aware geometry, topology metadata and display hot-plug fallback.
+- Suspend/resume recovery: `powerMonitor` pauses metric polling, resets time-sensitive baselines on resume and exposes the state in System status.
 - NSIS configuration, per-user install scripts, Linux/macOS targets and a Windows CI job are declared.
 
 ## Incomplete or not yet evidenced

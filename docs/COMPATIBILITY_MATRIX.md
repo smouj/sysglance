@@ -12,7 +12,7 @@ This is an evidence ledger, not a claim that every row is supported. A row is
 | Displays | Two or three monitors | NOT VERIFIED | Exercise placement on each monitor and topology changes on physical hardware. |
 | Displays | Disconnect/reconnect | NOT VERIFIED | Code falls back to primary on `display-removed`; physical hot-plug remains pending. |
 | Power | Lock/unlock | PARTIAL | Lock action is allow-listed; no physical lock/unlock cycle was performed. |
-| Power | Sleep/resume | NOT VERIFIED | Sleep command is confirmed and allow-listed; exercise wake/resume and timer recovery. |
+| Power | Sleep/resume | PARTIAL | `powerMonitor` pauses polling, resets transient baselines and re-arms on resume (`npm run verify:lifecycle`); physical wake/resume remains pending. |
 | Shell | Explorer restart | PARTIAL | Dry-run command and explicit UI path pass; no destructive restart performed in this audit. |
 | Graphics | GPU driver reset | NOT VERIFIED | Requires a real GPU test matrix. |
 | Graphics | HDR state | NOT VERIFIED | Electron's current display object does not expose HDR on this host; the UI reports `HDR unavailable` instead of guessing. |
