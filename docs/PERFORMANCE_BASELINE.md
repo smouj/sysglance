@@ -24,6 +24,13 @@ The benchmark's systeminformation calls are intentionally measured in isolation 
 
 Follow-up after the profile/process/display integration (`npm run bench -- --iterations=5`) measured a 0.79 ms median fast cycle, 3,204.02 ms median slow cycle, 3.01× lower compute estimate and 2.21× fewer child processes versus the legacy path in that run. These are host-specific measurements, not release guarantees.
 
+After adding adapter diagnostics, the first `--new --iterations=3` sample
+measured a 0.73 ms median fast tier, 3,988.13 ms median slow tier and 25.67
+child processes per slow cycle. Gateway/DNS lookup was then moved out of the
+slow loop into a cached on-demand bridge. The follow-up measured 0.72 ms fast,
+3,330.59 ms slow and 19.33 child processes per slow cycle. This is an explicit
+guard against silently turning network identity into a 7-second polling cost.
+
 ## Runtime smoke measurement
 
 One normal launch on the same Windows 10 host (20 September 2026, current
@@ -37,8 +44,8 @@ the app is idle between polls. A second shorter sample measured 1,512 ms to
 window and 396.9 MB RSS; the spread shows why these are baselines, not release
 guarantees. The process tree was closed after each run.
 
-The final Windows installer from this audit is **111,912,928 bytes** with
-SHA-256 `FED616F6CEDDD339D8502B37B9A9BA0EE30BFA182EFCC048CA2F4100C893E589`.
+The final Windows installer from this audit is **111,914,275 bytes** with
+SHA-256 `8710B2050FA12204331FD2015575230A3D0DB2EDA0C7366CEF0EBF5758C126D1`.
 It was
 built in `dist-verify` with electron-builder 26.15.3 and includes the packaged
 native helper.

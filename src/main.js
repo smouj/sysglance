@@ -675,7 +675,7 @@ function composePayload() {
     gpu: slow ? slow.gpu : null,
     disks: slow && sections.disks !== false ? slow.disks : [],
     diskIO: slow && sections.disks !== false ? slow.diskIO : null,
-    network: slow ? slow.network : { iface: '—', rx_sec: 0, tx_sec: 0 },
+    network: slow ? slow.network : { iface: '—', rx_sec: 0, tx_sec: 0, adapter: null, ip4: null, gateway: null, dns: [], linkSpeed: null },
     processes: slow ? slow.processes : [],
     os: fast ? {
       distro: st ? st.os.distro : '—',
@@ -810,6 +810,8 @@ function restartDataCollection() {
 // ── IPC ─────────────────────────────────────────────────
 // Every handler validates its arguments: the renderer is untrusted code.
 ipcMain.handle('get-system-data', () => composePayload());
+ipcMain.handle('storage:analyzeHome', () => metrics.analyzeFolder(os.homedir(), { maxDepth: 2, maxEntries: 20000 }));
+ipcMain.handle('network:inspect', (_event, force) => metrics.getNetworkDetails(force === true));
 ipcMain.handle('get-app-info', () => ({
   name: 'SysGlance',
   version: APP_VERSION,

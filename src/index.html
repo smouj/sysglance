@@ -251,6 +251,8 @@
       <div class="section-header"><span class="section-icon"><svg class="ic" viewBox="0 0 24 24"><use href="#i-disks"/></svg></span><span class="section-title">Storage</span></div>
       <div id="disk-list"></div>
       <div id="disk-activity" class="info-row info-row-secondary" style="display:none"><span class="info-small">I/O</span><span id="disk-activity-value" class="info-small"></span></div>
+      <button id="storage-analyze" class="storage-action">Analyze home folders</button>
+      <div id="storage-analysis" class="info-small" aria-live="polite">No folder scan running.</div>
     </div>
 
     <div class="section" id="sec-network">
@@ -260,6 +262,7 @@
         <div class="net-cell"><span class="net-arrow up" aria-hidden="true">↑</span><span id="net-tx" class="net-value">—</span><span class="net-caption">up</span></div>
       </div>
       <div class="info-row info-row-secondary"><span id="net-peak" class="info-small">Peak —</span><span id="net-session" class="info-small">Session —</span></div>
+      <div id="net-details" class="info-small">Adapter details loading…</div>
     </div>
 
     <div class="section" id="sec-processes">

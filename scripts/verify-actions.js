@@ -18,6 +18,7 @@ const config = fs.readFileSync(path.join(root, 'src', 'config.js'), 'utf8');
 const preload = fs.readFileSync(path.join(root, 'src', 'preload.js'), 'utf8');
 const html = fs.readFileSync(path.join(root, 'src', 'index.html'), 'utf8');
 const renderer = fs.readFileSync(path.join(root, 'src', 'renderer.js'), 'utf8');
+const metricsSource = fs.readFileSync(path.join(root, 'src', 'metrics.js'), 'utf8');
 
 check('profile apply has an explicit undo path', main.includes("ipcMain.handle('profiles:undo'") && main.includes('profileUndo = null'));
 check('diagnostics copy/export/open-logs are explicit IPC handlers', main.includes("ipcMain.handle('diagnostics:copy'") && main.includes("ipcMain.handle('diagnostics:export'") && main.includes("ipcMain.handle('diagnostics:openLogs'") && preload.includes('openLogs'));
@@ -31,6 +32,8 @@ check('control actions are allow-listed and argument-safe', main.includes("ms-se
 check('processes expose local filter and copy actions', html.includes('id="process-filter"') && renderer.includes('data-action="path"') && renderer.includes('PID copied'));
 check('shell mutations expose a journal-backed undo channel', shellIpc.includes("ipcMain.handle('shell:undo'") && preload.includes("undo: 'shell:undo'") && shellIpc.includes('restoreShellState'));
 check('profile shell apply is explicit and transactional', main.includes("ipcMain.handle('profiles:applyShell'") && main.includes('showMessageBox') && shellIpc.includes('applyProfileShell') && shellIpc.includes('runShellTransaction'));
+check('folder analysis is explicit and bounded', main.includes("ipcMain.handle('storage:analyzeHome'") && html.includes('id="storage-analyze"') && metricsSource.includes('maxEntries') && metricsSource.includes('isSymbolicLink'));
+check('network identity is an explicit on-demand bridge', main.includes("ipcMain.handle('network:inspect'") && preload.includes('network: {') && metricsSource.includes('getNetworkDetails'));
 
 console.log('\n' + passed + ' passed, ' + failed + ' failed');
 process.exit(failed ? 1 : 0);

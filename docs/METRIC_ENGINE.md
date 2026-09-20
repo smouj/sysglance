@@ -5,7 +5,8 @@ The metric engine has three cost tiers.
 | Tier | Source | Default cadence | Examples |
 |---|---|---:|---|
 | Fast | Node `os` and small in-process reads | 1.5 s | CPU deltas, memory, uptime, load average |
-| Hardware/slow | `systeminformation` | 7 s | GPU, temperatures, disks, network, processes, battery |
+| Hardware/slow | `systeminformation` | 7 s | GPU, temperatures, disks, network counters, processes, battery |
+| On-demand network | `systeminformation` + local DNS lookup | user-triggered/cache | Adapter, IPv4, gateway, DNS and link speed |
 | Static | cached provider calls | once/session | CPU model, OS identity, core count |
 
 Every result carries an `at` timestamp. The composed payload carries the measured cycle costs, provider calls and backpressure counters. A slow provider failure degrades only its own fields.

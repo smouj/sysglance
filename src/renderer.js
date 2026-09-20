@@ -29,8 +29,8 @@
     fsHome: $('fs-home'), fsFolders: $('fs-folders'), secFs: $('sec-filesystem'),
     secHealth: $('sec-health'), healthSummary: $('health-summary'), healthList: $('health-list'),
     secGpu: $('sec-gpu'),
-    diskList: $('disk-list'), diskActivity: $('disk-activity'), diskActivityValue: $('disk-activity-value'),
-    netIface: $('net-iface'), netRx: $('net-rx'), netTx: $('net-tx'), netPeak: $('net-peak'), netSession: $('net-session'),
+    diskList: $('disk-list'), diskActivity: $('disk-activity'), diskActivityValue: $('disk-activity-value'), storageAnalyze: $('storage-analyze'), storageAnalysis: $('storage-analysis'),
+    netIface: $('net-iface'), netRx: $('net-rx'), netTx: $('net-tx'), netPeak: $('net-peak'), netSession: $('net-session'), netDetails: $('net-details'),
     procList: $('proc-list'), processStatus: $('process-status'), processFilter: $('process-filter'),
     batPct: $('bat-pct'), batBar: $('bat-bar'), batStatus: $('bat-status'), secBattery: $('sec-battery'),
     osDistro: $('os-distro'), osUptime: $('os-uptime'),
@@ -58,6 +58,7 @@
   var positionLocked = true;
   var currentConfig = {};
   var inspectorLoaded = false;
+  var networkDetailsLoaded = false;
   var lastProcessData = [];
 
   var SECTION_IDS = ['cpu', 'memory', 'gpu', 'filesystem', 'disks', 'network', 'processes', 'battery'];
@@ -359,6 +360,15 @@
     }).catch(function (err) { diagnosticsStatus(err.message || 'Could not open logs', true); });
   });
   if (dom.inspectorRefresh) dom.inspectorRefresh.addEventListener('click', refreshInspector);
+  if (dom.storageAnalyze && api.storage) dom.storageAnalyze.addEventListener('click', function () {
+    dom.storageAnalyze.disabled = true;
+    setText(dom.storageAnalysis, 'Scanning home folders on request…');
+    api.storage.analyzeHome().then(function (res) {
+      if (!res || !res.ok) { setText(dom.storageAnalysis, (res && res.error) || 'Folder analysis unavailable'); return; }
+      var details = (res.entries || []).slice(0, 5).map(function (item) { return item.name + ' ' + fmtBytes(item.size); }).join(' · ');
+      setText(dom.storageAnalysis, details || ('No subfolders found' + (res.truncated ? ' · scan capped' : '')));
+    }).catch(function (err) { setText(dom.storageAnalysis, err.message || 'Folder analysis unavailable'); }).finally(function () { dom.storageAnalyze.disabled = false; });
+  });
 
   // ── command palette ──────────────────────────────────
   var PALETTE_COMMANDS = [
@@ -754,6 +764,16 @@
       setText(dom.netTx, fmtSpeed(data.network.tx_sec));
       setText(dom.netPeak, 'Peak ' + fmtSpeed(Math.max(data.network.peakRx || 0, data.network.peakTx || 0)));
       setText(dom.netSession, 'Session ↓' + fmtBytes(data.network.sessionDownloaded || 0) + ' ↑' + fmtBytes(data.network.sessionUploaded || 0));
+      var networkDetails = [data.network.adapter || data.network.iface || null, data.network.ip4 ? 'IPv4 ' + data.network.ip4 : null, data.network.gateway ? 'GW ' + data.network.gateway : null, Array.isArray(data.network.dns) && data.network.dns.length ? 'DNS ' + data.network.dns.join(', ') : null, data.network.linkSpeed ? Math.round(data.network.linkSpeed) + ' Mbps' : null].filter(Boolean).join(' · ');
+      setText(dom.netDetails, networkDetails || 'Adapter details unavailable');
+      if (!networkDetailsLoaded && api.network && api.network.inspect) {
+        networkDetailsLoaded = true;
+        api.network.inspect(false).then(function (details) {
+          if (!details || details.ok === false) { networkDetailsLoaded = false; return; }
+          var detailText = [details.adapter, details.ip4 ? 'IPv4 ' + details.ip4 : null, details.gateway ? 'GW ' + details.gateway : null, Array.isArray(details.dns) && details.dns.length ? 'DNS ' + details.dns.join(', ') : null, details.linkSpeed ? Math.round(details.linkSpeed) + ' Mbps' : null].filter(Boolean).join(' · ');
+          setText(dom.netDetails, detailText || 'Adapter details unavailable');
+        }).catch(function () { networkDetailsLoaded = false; });
+      }
     }
 
     // Processes

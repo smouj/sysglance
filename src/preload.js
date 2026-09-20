@@ -106,6 +106,14 @@ contextBridge.exposeInMainWorld('sysglance', {
     endTask: (pid) => ipcRenderer.invoke('process:endTask', pid)
   },
 
+  storage: {
+    analyzeHome: () => ipcRenderer.invoke('storage:analyzeHome')
+  },
+
+  network: {
+    inspect: (force) => ipcRenderer.invoke('network:inspect', force === true)
+  },
+
   diagnostics: {
     inspect: (force) => ipcRenderer.invoke('diagnostics:inspect', force === true),
     copy: () => ipcRenderer.invoke('diagnostics:copy'),

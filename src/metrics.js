@@ -25,6 +25,7 @@
 // ═══════════════════════════════════════════════════════
 
 const os = require('os');
+const dns = require('node:dns');
 const fs = require('fs');
 const path = require('path');
 const si = require('systeminformation');
@@ -39,6 +40,8 @@ let staticCache = null;
 let staticPromise = null;
 let inspectorCache = null;
 let inspectorPromise = null;
+let networkDetailsCache = null;
+let networkDetailsPromise = null;
 
 async function safe(fn, fallback) {
   try {
@@ -177,6 +180,32 @@ async function getInspector(force) {
     throw err;
   }
   return inspectorCache;
+}
+
+/** Adapter identity/routing details are expensive and change rarely. */
+async function getNetworkDetails(force) {
+  if (force) { networkDetailsCache = null; networkDetailsPromise = null; }
+  if (networkDetailsCache && !force) return networkDetailsCache;
+  if (!networkDetailsPromise) {
+    networkDetailsPromise = Promise.all([
+      safe(() => si.networkInterfaces(), []),
+      safe(() => si.networkGatewayDefault(), null),
+      Promise.resolve(dns.getServers())
+    ]).then(([interfaces, gateway, servers]) => {
+      const list = Array.isArray(interfaces) ? interfaces : [];
+      const active = list.find((item) => item.default) || list[0] || {};
+      return {
+        adapter: active.ifaceName || active.iface || null,
+        ip4: active.ip4 || null,
+        gateway: gateway || null,
+        dns: Array.isArray(servers) ? servers : [],
+        linkSpeed: Number.isFinite(active.speed) ? active.speed : null,
+        at: Date.now()
+      };
+    });
+  }
+  try { networkDetailsCache = await networkDetailsPromise; return networkDetailsCache; }
+  catch (err) { networkDetailsPromise = null; throw err; }
 }
 
 // ── fast tier (no child processes) ──────────────────────
@@ -330,6 +359,56 @@ function listFolders() {
   return { home, folders: out };
 }
 
+/**
+ * Explicit, bounded folder-size analysis. It is never part of collectSlow:
+ * callers opt in, the scan is capped, and symlinks are not followed.
+ */
+async function analyzeFolder(root, options) {
+  if (typeof root !== 'string' || !path.isAbsolute(root)) return { ok: false, error: 'folder path must be absolute' };
+  try {
+    const rootStat = await fs.promises.stat(root);
+    if (!rootStat.isDirectory()) return { ok: false, error: 'not a directory' };
+  } catch (err) { return { ok: false, error: 'folder not found' }; }
+  const opts = options || {};
+  const maxEntries = Math.max(100, Math.min(50000, Number(opts.maxEntries) || 20000));
+  const maxDepth = Math.max(0, Math.min(3, Number(opts.maxDepth) || 2));
+  let visited = 0;
+  let truncated = false;
+  async function measure(dir, depth) {
+    let total = 0, files = 0, folders = 0;
+    let entries;
+    try { entries = await fs.promises.readdir(dir, { withFileTypes: true }); } catch (_) { return { total, files, folders }; }
+    for (const entry of entries) {
+      if (++visited > maxEntries) { truncated = true; break; }
+      if (entry.isSymbolicLink()) continue;
+      const target = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        folders++;
+        if (depth < maxDepth) {
+          const child = await measure(target, depth + 1);
+          total += child.total; files += child.files; folders += child.folders;
+        }
+      } else if (entry.isFile()) {
+        try { total += (await fs.promises.stat(target)).size; } catch (_) {}
+        files++;
+      }
+    }
+    return { total, files, folders };
+  }
+  const started = Date.now();
+  let top;
+  try { top = await fs.promises.readdir(root, { withFileTypes: true }); } catch (err) { return { ok: false, error: err.message }; }
+  const results = [];
+  for (const entry of top) {
+    if (visited >= maxEntries) { truncated = true; break; }
+    if (!entry.isDirectory() || entry.isSymbolicLink()) continue;
+    const child = await measure(path.join(root, entry.name), 1);
+    results.push({ name: entry.name, size: child.total, files: child.files, folders: child.folders });
+  }
+  results.sort((a, b) => b.size - a.size);
+  return { ok: true, root, entries: results.slice(0, 12), truncated, visited, elapsedMs: Date.now() - started };
+}
+
 const want = (sections, key) => !sections || sections[key] !== false;
 
 /**
@@ -471,11 +550,13 @@ function reset() {
   meminfoWarned = false;
   inspectorCache = null;
   inspectorPromise = null;
+  networkDetailsCache = null;
+  networkDetailsPromise = null;
   networkSession = { iface: null, lastAt: 0, lastRxBytes: null, lastTxBytes: null, downloaded: 0, uploaded: 0, peakRx: 0, peakTx: 0 };
 }
 
 module.exports = {
-  collectFast, collectSlow, inspectProcess, getStatic, getInspector, reset,
+  collectFast, collectSlow, analyzeFolder, inspectProcess, getStatic, getInspector, getNetworkDetails, reset,
   info: {
     fastSource: 'node:os' + (IS_LINUX ? ' + /proc/meminfo' : ''),
     slowSource: 'systeminformation',
