@@ -16,7 +16,7 @@ webPreferences: {
   sandbox: true,
   webSecurity: true,
   spellcheck: false,
-  backgroundThrottling: false
+  backgroundThrottling: true
 }
 ```
 
@@ -37,6 +37,11 @@ window.sysglance = {
   setConfig, setOpacity,
   togglePositionLock, toggleVisibility, toggleCompact, quit,
   openFolder,
+  control: { open },
+  storage: { analyzeHome },
+  network: { inspect },
+  profiles: { list, save, apply, applyShell, undo, delete, rename, duplicate, export, import },
+  diagnostics: { inspect, copy, export, bundle, openLogs },
   shell: {
     getState, setPosition, setAutoHide, restartExplorer, setDark,
     accentFromWallpaper, accentAuto, applyWallpaper, pickWallpaper,
@@ -66,6 +71,9 @@ be called with anything. Each handler re-checks its input:
 | `shell:accent:fromWallpaper` | path must exist before it is decoded |
 | `shell:taskbar:setPosition` | `'left'\|'top'\|'right'\|'bottom'` or an integer 0–3 |
 | `shell:widget:open` | no argument; opens a hard-coded URL |
+| `control:open` | action must be one of the main-process allow-list; sleep/restart show a confirmation dialog |
+| `storage:analyzeHome` | no path accepted; scans only the current user's home with fixed depth/entry caps |
+| `network:inspect` | boolean force flag only; returns adapter identity/routing details collected on demand |
 
 Settings also pass through `src/config.js` on the way *to disk*, so a rejected
 value cannot be persisted even if a handler were bypassed. `normalize()`

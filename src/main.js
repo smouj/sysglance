@@ -942,6 +942,7 @@ const CONTROL_ACTIONS = {
   display: () => shell.openExternal('ms-settings:display'),
   apps: () => shell.openExternal('ms-settings:appsfeatures'),
   taskManager: () => new Promise((resolve) => execFile('taskmgr.exe', [], { windowsHide: true }, (err) => resolve(err ? { ok: false, error: err.message } : { ok: true }))),
+  services: () => new Promise((resolve) => execFile('services.msc', [], { windowsHide: true }, (err) => resolve(err ? { ok: false, error: err.message } : { ok: true }))),
   lock: () => new Promise((resolve) => execFile('rundll32.exe', ['user32.dll,LockWorkStation'], { windowsHide: true }, (err) => resolve(err ? { ok: false, error: err.message } : { ok: true }))),
   sleep: () => new Promise((resolve) => execFile('rundll32.exe', ['powrprof.dll,SetSuspendState', '0,1,0'], { windowsHide: true }, (err) => resolve(err ? { ok: false, error: err.message } : { ok: true }))),
   restart: () => new Promise((resolve) => execFile('shutdown.exe', ['/r', '/t', '0'], { windowsHide: true }, (err) => resolve(err ? { ok: false, error: err.message } : { ok: true })))

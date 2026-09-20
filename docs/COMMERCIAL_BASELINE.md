@@ -34,7 +34,7 @@ This is an evidence-based baseline. A feature is listed as implemented only when
 - On-demand hardware inspector covering system/BIOS/baseboard, memory, storage, graphics, adapters and displays.
 - Network session totals/peak rates, nullable disk-I/O activity, process filtering and PID/path clipboard actions.
 - Configurable toggle/lock/palette shortcuts with duplicate refusal and reduced-motion/forced-colour CSS fallbacks.
-- Allow-listed Windows command-center actions for Settings, network, display, apps, Task Manager, workstation lock, sleep and restart; state-changing power actions require confirmation and no arbitrary URI or command input crosses IPC.
+- Allow-listed Windows command-center actions for Settings, network, display, apps, Task Manager, Services, workstation lock, sleep and restart; state-changing power actions require confirmation and no arbitrary URI or command input crosses IPC.
 - Multi-monitor placement: validated display selection, work-area-aware geometry, topology metadata and display hot-plug fallback.
 - NSIS configuration, per-user install scripts, Linux/macOS targets and a Windows CI job are declared.
 

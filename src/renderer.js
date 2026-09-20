@@ -384,6 +384,7 @@
     { label: 'Open display settings', terms: 'display monitor screen dpi', action: 'display' },
     { label: 'Open Apps settings', terms: 'apps applications uninstall', action: 'apps' },
     { label: 'Open Task Manager', terms: 'task manager processes cpu', action: 'taskManager' },
+    { label: 'Open Windows Services', terms: 'services background service manager', action: 'services' },
     { label: 'Lock PC', terms: 'lock workstation security', action: 'lock' },
     { label: 'Sleep PC', terms: 'sleep suspend standby power', action: 'sleep' },
     { label: 'Restart PC', terms: 'restart reboot power', action: 'restart' },
