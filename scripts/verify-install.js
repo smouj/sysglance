@@ -21,8 +21,11 @@ check('uninstaller removes both shortcuts', uninstall.includes('Start Menu\\Prog
 check('uninstaller removes only the SysGlance uninstall key', uninstall.includes("HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\SysGlance"));
 check('uninstaller targets only the named per-user install directory', uninstall.includes("$env:LOCALAPPDATA 'Programs\\SysGlance'") && !uninstall.match(/Remove-Item\s+['"](?:C:\\|[A-Za-z]:\\?['"]|\$env:SystemRoot)/i));
 
-const unpackedUninstaller = path.join(root, 'dist-verify', 'win-unpacked', 'resources', 'uninstall-user.ps1');
+const packageDirArg = (process.argv.find((arg) => arg.startsWith('--package-dir=')) || '').split('=')[1];
+const packageDir = process.env.SYSGLANCE_PACKAGE_DIR || packageDirArg || 'dist-verify';
+const unpackedUninstaller = path.join(root, packageDir, 'win-unpacked', 'resources', 'uninstall-user.ps1');
 if (fs.existsSync(unpackedUninstaller)) check('current packaged app contains the uninstaller at the registered path', fs.statSync(unpackedUninstaller).size > 0);
+else console.log('  INFO  packaged app check skipped — no unpacked artifact at ' + packageDir);
 
 console.log('\n' + passed + ' passed, ' + failed + ' failed');
 process.exit(failed ? 1 : 0);

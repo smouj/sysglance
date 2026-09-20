@@ -61,6 +61,12 @@ jobs:
       - name: Build NSIS installer
         run: npm run build:win
 
+      - name: Verify packaged uninstaller path
+        shell: powershell
+        env:
+          SYSGLANCE_PACKAGE_DIR: dist
+        run: npm run verify:install
+
       - name: Checksums
         shell: bash
         run: |
