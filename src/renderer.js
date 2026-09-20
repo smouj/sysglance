@@ -403,13 +403,31 @@
     { label: 'Hide SysGlance', terms: 'hide tray minimize', run: function () { api.toggleVisibility(); } }
   ];
   var paletteMatches = [];
+  var paletteIndex = -1;
+  function updatePaletteSelection() {
+    if (!dom.paletteList) return;
+    var buttons = dom.paletteList.querySelectorAll('.palette-item');
+    for (var i = 0; i < buttons.length; i++) {
+      var active = i === paletteIndex;
+      buttons[i].classList.toggle('is-active', active);
+      buttons[i].setAttribute('aria-selected', active ? 'true' : 'false');
+    }
+    if (dom.paletteInput) {
+      dom.paletteInput.setAttribute('aria-activedescendant', paletteIndex >= 0 ? 'palette-option-' + paletteIndex : '');
+    }
+    if (paletteIndex >= 0 && buttons[paletteIndex] && buttons[paletteIndex].scrollIntoView) {
+      buttons[paletteIndex].scrollIntoView({ block: 'nearest' });
+    }
+  }
   function renderPalette(query) {
     if (!dom.paletteList) return;
     var q = String(query || '').toLowerCase().trim();
     paletteMatches = PALETTE_COMMANDS.filter(function (item) { return !q || (item.label + ' ' + item.terms).toLowerCase().indexOf(q) !== -1; });
+    paletteIndex = paletteMatches.length ? 0 : -1;
     dom.paletteList.innerHTML = paletteMatches.length ? paletteMatches.map(function (item, i) {
-      return '<button class="palette-item" data-index="' + i + '" role="option"><span>' + esc(item.label) + '</span><span class="palette-arrow">↵</span></button>';
+      return '<button id="palette-option-' + i + '" class="palette-item' + (i === paletteIndex ? ' is-active' : '') + '" data-index="' + i + '" role="option" aria-selected="' + (i === paletteIndex ? 'true' : 'false') + '"><span>' + esc(item.label) + '</span><span class="palette-arrow">↵</span></button>';
     }).join('') : '<div class="palette-empty">No matching SysGlance command</div>';
+    updatePaletteSelection();
   }
   function closePalette() {
     if (dom.commandPalette) dom.commandPalette.classList.add('hidden');
@@ -439,7 +457,20 @@
   }
   if (dom.paletteInput) dom.paletteInput.addEventListener('input', function (event) { renderPalette(event.target.value); });
   if (dom.paletteInput) dom.paletteInput.addEventListener('keydown', function (event) {
-    if (event.key === 'Enter') { event.preventDefault(); runPalette(0); }
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      if (!paletteMatches.length) return;
+      var delta = event.key === 'ArrowDown' ? 1 : -1;
+      paletteIndex = (paletteIndex + delta + paletteMatches.length) % paletteMatches.length;
+      updatePaletteSelection();
+    }
+    if (event.key === 'Home' || event.key === 'End') {
+      event.preventDefault();
+      if (!paletteMatches.length) return;
+      paletteIndex = event.key === 'Home' ? 0 : paletteMatches.length - 1;
+      updatePaletteSelection();
+    }
+    if (event.key === 'Enter') { event.preventDefault(); runPalette(paletteIndex >= 0 ? paletteIndex : 0); }
     if (event.key === 'Escape') { event.preventDefault(); closePalette(); }
   });
   if (dom.paletteList) dom.paletteList.addEventListener('click', function (event) {

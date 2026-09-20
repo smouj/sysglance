@@ -435,7 +435,7 @@ body.unlocked .ic-unlocked{display:block}
 #palette-input{min-width:0;flex:1 1 auto;padding:5px 2px;border:0;outline:0;background:transparent;color:var(--fg);font:inherit;font-size:11px}
 .palette-list{display:flex;flex-direction:column;padding:5px;max-height:300px;overflow-y:auto}
 .palette-item{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 9px;border:1px solid transparent;border-radius:var(--r-sm);background:transparent;color:var(--fg-2);font:inherit;font-size:10px;text-align:left;cursor:pointer}
-.palette-item:hover,.palette-item:focus{outline:0;background:var(--accent-soft);border-color:var(--accent-line);color:var(--fg)}
+.palette-item:hover,.palette-item:focus,.palette-item.is-active{outline:0;background:var(--accent-soft);border-color:var(--accent-line);color:var(--fg)}
 .palette-arrow{color:var(--fg-4);font-size:12px}
 .palette-empty{padding:12px 9px;color:var(--fg-4);font-size:10px}
 .palette-hint{padding:7px 10px;border-top:1px solid var(--line);color:var(--fg-4);font-size:8px}

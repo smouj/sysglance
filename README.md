@@ -114,7 +114,7 @@ The command palette is a small in-app control center: it navigates health,
 metrics, processes and profiles, and can open the allow-listed Windows Settings,
 network, display, apps, Task Manager and Windows Services surfaces, lock the PC,
 or request sleep and restart with confirmation. It is intentionally not a
-general launcher.
+general launcher. Results are keyboard-selectable with ↑/↓, Home/End and Enter.
 
 The settings panel also provides a sanitized system summary for clipboard copy,
 JSON export, a ZIP support bundle and an explicit Open logs action. It excludes

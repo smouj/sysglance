@@ -181,12 +181,12 @@
     <div class="palette-card">
       <div class="palette-search-row">
         <span id="palette-prefix" class="palette-prefix">Ctrl+K</span>
-        <input id="palette-input" type="search" autocomplete="off" spellcheck="false" placeholder="Search SysGlance" aria-label="Search SysGlance commands">
+        <input id="palette-input" type="search" autocomplete="off" spellcheck="false" placeholder="Search SysGlance" aria-label="Search SysGlance commands" aria-controls="palette-list" aria-activedescendant="">
         <button id="palette-close" class="settings-close" title="Close command palette" aria-label="Close command palette">
           <svg class="ic" viewBox="0 0 24 24"><use href="#i-close"/></svg>
         </button>
       </div>
-      <div id="palette-list" class="palette-list" role="listbox"></div>
+      <div id="palette-list" class="palette-list" role="listbox" aria-label="SysGlance commands"></div>
       <div class="palette-hint">Enter to run · Esc to close · Ctrl+K to open</div>
     </div>
   </div>
