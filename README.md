@@ -187,6 +187,7 @@ shortcuts, registers it in *Apps & features* with its own uninstaller
 ### Build it yourself
 ```bash
 npm run build:win      # -> dist/SysGlance-Setup-1.2.0.exe   (NSIS)
+npm run build:win:portable # -> dist-portable/SysGlance-1.3.0-x64-portable.exe
 npm run build:linux    # -> dist/SysGlance-1.2.0-x64.AppImage + .deb
 npm run build:mac      # -> dist/*.dmg
 ```
@@ -209,8 +210,8 @@ sudo dpkg --add-architecture i386 && sudo apt-get update
 sudo apt-get install wine32:i386
 ```
 
-CI does not need any of this: `.github/workflows/ci.yml` builds the NSIS
-installer on `windows-latest`.
+CI does not need any of this: `.github/workflows/ci.yml` builds both the NSIS
+installer and the portable executable on `windows-latest`.
 
 ## 🛠️ Development
 

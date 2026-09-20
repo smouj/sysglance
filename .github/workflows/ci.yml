@@ -89,6 +89,15 @@ jobs:
           SYSGLANCE_PACKAGE_DIR: dist
         run: npm run verify:install
 
+      - name: Build portable package
+        run: npm run build:win:portable
+
+      - name: Verify portable package
+        shell: powershell
+        env:
+          SYSGLANCE_PORTABLE_DIR: dist-portable
+        run: npm run verify:portable
+
       - name: Upload installer artifact
         uses: actions/upload-artifact@v4
         with:
@@ -96,6 +105,7 @@ jobs:
           path: |
             dist/*.exe
             dist/*.blockmap
+            dist-portable/*.exe
           if-no-files-found: error
           retention-days: 30
 

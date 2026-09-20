@@ -89,12 +89,13 @@ clientes analíticos ni dependencias runtime directas innecesarias.
 |---|---|
 | `npm ci` | PASS; 285 paquetes instalados. |
 | `npm audit --audit-level=high` | PASS; 0 vulnerabilidades reportadas. |
-| `npm run verify` | PASS; 36 sintaxis, 36 config, 28 shell, 34 shell extendido, 17 histórico/alertas, 10 métricas, 7 diagnostics, 7 journal, 4 transaction, 5 profile-shell, 14 profiles, 8 processes, 10 displays, 6 install, 18 actions, 4 logging, 4 privacy e IPC único. |
+| `npm run verify` | PASS; 37 sintaxis, 36 config, 28 shell, 34 shell extendido, 17 histórico/alertas, 10 métricas, 7 diagnostics, 7 journal, 4 transaction, 5 profile-shell, 14 profiles, 8 processes, 10 displays, 6 install, 18 actions, 4 logging, 4 privacy e IPC único. |
 | `npm run self-test` | PASS con Electron 44.4.3, ventana real, preload, tiers, inspector, displays, alert surface y rechazo de paths hostiles. |
 | `npm run bench -- --iterations=3 --new` | PASS; fast 0.69 ms mediana, slow 3149.01 ms mediana, 166.33 ms CPU/ciclo, 19.33 procesos hijos/ciclo. |
 | `npm run screenshot` | PASS; sidebar, settings, dock, mini, shell y minimum-size capturados y revisados. |
 | `npm run build:win -- --config.directories.output=dist-verify` | PASS con electron-builder 26.15.3. |
 | `npm run verify:install` | PASS 6/6; helper 6144 bytes, uninstaller 600 bytes. |
+| `npm run verify:portable` | PASS 3/3; portable executable and native helper were found in `dist-portable`. |
 
 ## Rendimiento observado
 
@@ -124,13 +125,15 @@ optimización.
 | sleep/resume | NOT VERIFIED. |
 | Explorer restart | PARTIAL; dry-run y UI, sin reinicio destructivo. |
 | GPU reset / network hot-plug | NOT VERIFIED. |
-| unpacked + NSIS | VERIFIED en `dist-verify`. |
+| unpacked + NSIS + portable | VERIFIED en `dist-verify` y `dist-portable`. |
 | instalación/desinstalación limpia | NOT VERIFIED; había una instalación existente y no se sobrescribió. |
 | GitHub Actions remoto | NOT VERIFIED en este checkout; el workflow está preparado. |
 | firma de código / auto-update seguro | NOT IMPLEMENTED. |
 
 El instalador actual mide 111,918,788 bytes y tiene SHA-256
 `5ED2024BD60EF8479746D103133812F90A437135ABC8D17B3E80C1FC830E8A81`.
+El portable mide 100,605,230 bytes y tiene SHA-256
+`A37F2B9C0DB591C5C679A04EC6B5C1FB8754CCF71B6960740DDC65D9036CAEDC`.
 
 ## Riesgos y deuda restante
 

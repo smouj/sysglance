@@ -57,6 +57,10 @@ It was
 built in `dist-verify` with electron-builder 26.15.3 and includes the packaged
 native helper.
 
+The matching portable Windows artifact is **100,605,230 bytes** with SHA-256
+`A37F2B9C0DB591C5C679A04EC6B5C1FB8754CCF71B6960740DDC65D9036CAEDC`.
+It was built in `dist-portable` and passed `npm run verify:portable`.
+
 ## Current performance controls
 
 - Fast and slow cadences are independently configurable and clamped.

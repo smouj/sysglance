@@ -67,10 +67,22 @@ jobs:
           SYSGLANCE_PACKAGE_DIR: dist
         run: npm run verify:install
 
+      - name: Build portable package
+        run: npm run build:win:portable
+
+      - name: Verify portable package
+        shell: powershell
+        env:
+          SYSGLANCE_PORTABLE_DIR: dist-portable
+        run: npm run verify:portable
+
       - name: Checksums
         shell: bash
         run: |
           cd dist
+          sha256sum *.exe > SHA256SUMS.txt || certutil -hashfile *.exe SHA256
+          cat SHA256SUMS.txt
+          cd ../dist-portable
           sha256sum *.exe > SHA256SUMS.txt || certutil -hashfile *.exe SHA256
           cat SHA256SUMS.txt
 
@@ -85,4 +97,6 @@ jobs:
             dist/*.exe
             dist/*.blockmap
             dist/SHA256SUMS.txt
+            dist-portable/*.exe
+            dist-portable/SHA256SUMS.txt
           fail_on_unmatched_files: true

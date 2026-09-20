@@ -11,10 +11,11 @@ This is an evidence-based baseline. A feature is listed as implemented only when
 | Command | Result |
 |---|---|
 | `npm ci` | PASS; 285 packages installed. `npm audit` and production-only audit report 0 vulnerabilities. The initial Electron 33/electron-builder 25 audit found 14 findings; the toolchain was upgraded and retested. |
-| `npm run verify` | PASS; 36 syntax, 36 config, 28 shell, 34 extended shell, 17 history/health/alert, 10 metric, 7 diagnostics, 7 journal, 4 transaction, 5 profile-shell, 14 profile, 8 process, 10 display, 6 install, 18 desktop-action, 4 logging, 4 privacy and unique IPC checks. |
+| `npm run verify` | PASS; 37 syntax, 36 config, 28 shell, 34 extended shell, 17 history/health/alert, 10 metric, 7 diagnostics, 7 journal, 4 transaction, 5 profile-shell, 14 profile, 8 process, 10 display, 6 install, 18 desktop-action, 4 logging, 4 privacy and unique IPC checks. |
 | `npm run self-test` | PASS on Electron 44.4.3 after fixing duplicate Shell IPC registration. Real Electron window, preload bridge, fast/slow collection, product layer and hostile path refusal exercised. |
 | `npm run bench` | PASS as a measurement; see `PERFORMANCE_BASELINE.md`. |
-| `npm run build:win` | PASS on electron-builder 26.15.3; NSIS installer, blockmap, unpacked app and native helper were produced. Latest local artifact: 111,918,788 bytes, SHA-256 `5ED2024BD60EF8479746D103133812F90A437135ABC8D17B3E80C1FC830E8A81`. |
+| `npm run verify:portable` | PASS 3/3; portable executable and native helper were found in `dist-portable`. |
+| `npm run build:win` / `npm run build:win:portable` | PASS on electron-builder 26.15.3; NSIS and portable artifacts plus native helper were produced. NSIS: 111,918,788 bytes, SHA-256 `5ED2024BD60EF8479746D103133812F90A437135ABC8D17B3E80C1FC830E8A81`; portable: 100,605,230 bytes, SHA-256 `A37F2B9C0DB591C5C679A04EC6B5C1FB8754CCF71B6960740DDC65D9036CAEDC`. |
 
 ## Verified functionality
 
