@@ -11,7 +11,7 @@ This is an evidence-based baseline. A feature is listed as implemented only when
 | Command | Result |
 |---|---|
 | `npm ci` | PASS; 285 packages installed. `npm audit` and production-only audit report 0 vulnerabilities. The initial Electron 33/electron-builder 25 audit found 14 findings; the toolchain was upgraded and retested. |
-| `npm run verify` | PASS; 25 syntax, 33 config, 28 shell, 32 extended shell, 14 history/health/alert, 12 profile, 7 process, 9 display, 7 desktop-action and unique IPC checks. |
+| `npm run verify` | PASS; 28 syntax, 36 config, 28 shell, 32 extended shell, 14 history/health/alert, 6 metric, 7 journal, 12 profile, 7 process, 9 display, 10 desktop-action and unique IPC checks. |
 | `npm run self-test` | PASS on Electron 44.4.3 after fixing duplicate Shell IPC registration. Real Electron window, preload bridge, fast/slow collection, product layer and hostile path refusal exercised. |
 | `npm run bench` | PASS as a measurement; see `PERFORMANCE_BASELINE.md`. |
 | `npm run build:win` | PASS on electron-builder 26.15.3; NSIS installer, blockmap, unpacked app and native helper were produced. |
@@ -29,18 +29,20 @@ This is an evidence-based baseline. A feature is listed as implemented only when
 - Bounded session-local history (24-hour ring-buffer ceiling), one-hour CPU/RAM sparklines and objective System Status rows.
 - Local alert state machine with duration, cooldown and recovery transitions.
 - Local desktop profiles with atomic versioned persistence, import/export and explicit shell-pending behavior.
-- Last-profile-apply undo for SysGlance-owned settings, plus a narrow Ctrl+K navigation palette.
-- Sanitized diagnostics summary copy/export with private wallpaper paths redacted.
+- Last-profile-apply undo for SysGlance-owned settings, a bounded shell-mutation undo journal, plus a narrow Ctrl+K navigation palette.
+- Sanitized diagnostics summary copy/export with private wallpaper paths, serials, MACs and IPs redacted or excluded.
+- On-demand hardware inspector covering system/BIOS/baseboard, memory, storage, graphics, adapters and displays.
+- Network session totals/peak rates, nullable disk-I/O activity, process filtering and PID/path clipboard actions.
+- Configurable toggle/lock/palette shortcuts with duplicate refusal and reduced-motion/forced-colour CSS fallbacks.
 - Multi-monitor placement: validated display selection, work-area-aware geometry, topology metadata and display hot-plug fallback.
 - NSIS configuration, per-user install scripts, Linux/macOS targets and a Windows CI job are declared.
 
 ## Incomplete or not yet evidenced
 
-- Profiles now support local save/apply/duplicate/rename/delete/import/export. Shell settings are captured but require a separate explicit confirmation path; full rollback is still missing.
-- Process rows now expose PID, executable path when available, open-location and confirmed end-task actions. Copy PID/path and richer inspector details remain.
-- No complete hardware inspector/export view or user-triggered folder-size analysis.
-- Network view exposes current interface rates only; session totals, peaks, gateway/DNS/link speed are not exposed.
-- No configurable hotkey editor, log bundle/open-logs action or explicit undo journal for shell changes; diagnostics currently exports a sanitized snapshot rather than a full support bundle.
+- Profiles now support local save/apply/duplicate/rename/delete/import/export. Shell settings are captured but require a separate explicit confirmation path; transactional shell application from profiles is still pending.
+- The inspector and sanitized export are implemented, but user-triggered folder-size analysis, gateway/DNS details and a full support bundle/open-logs action are not.
+- Disk-I/O/temperature fields remain provider-dependent and may be unavailable; the UI preserves null rather than fabricating values.
+- Direct shell changes have a bounded undo journal, but folder customization rollback is best-effort and a multi-setting transaction journal for profile application is not yet implemented.
 - Windows 10/11, DPI matrix, sleep/resume, Explorer restart, GPU reset and monitor disconnect/reconnect remain NOT VERIFIED on a hardware test matrix; the runtime now has display topology and hot-plug handling.
 - The native C# helper is built by the Windows package workflow and was present in the packaged app at `resources/SysGlanceShellHelper.exe`.
 - Code signing uses electron-builder's current local signing path but no publisher certificate is configured; production certificate handling remains NOT IMPLEMENTED.
@@ -49,12 +51,12 @@ This is an evidence-based baseline. A feature is listed as implemented only when
 
 - No generic renderer IPC invoke/send surface was found.
 - `shell.openPath` is reached only after an allow-list check for home folders; null bytes and path canonicalization should remain regression-tested when Electron is upgraded.
-- Registry writes are concentrated in `src/shell/taskbar.js`, but a formal per-setting backup/undo journal is not yet present.
+- Registry writes are concentrated in `src/shell/taskbar.js`; direct shell mutations are recorded in a bounded local journal without executable commands. Full transaction coverage and live destructive-action verification remain outstanding.
 - Code signing and secure update are documentation/design work only; auto-update is not implemented.
 
 ## First commercial milestones
 
 1. Verify the Windows 10/11, DPI, sleep/resume, Explorer restart, GPU reset and monitor hot-plug matrix.
-2. Add an explicit shell transaction journal and rollback before applying shell fields from profiles.
-3. Add diagnostics export, richer network inspection and a command palette.
+2. Add transactional shell application/rollback for profiles, including complete folder-customization restoration.
+3. Add a full support bundle/open-logs action plus gateway/DNS and storage diagnostics.
 4. Close code-signing and secure-update gaps before release-candidate distribution.

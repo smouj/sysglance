@@ -31,6 +31,7 @@ const EVENTS = [
 
 const SHELL_CHANNELS = {
   getState: 'shell:taskbar:getState',
+  undo: 'shell:undo',
   setPosition: 'shell:taskbar:setPosition',
   setAutoHide: 'shell:taskbar:setAutoHide',
   restartExplorer: 'shell:taskbar:restartExplorer',
@@ -81,6 +82,7 @@ contextBridge.exposeInMainWorld('sysglance', {
 
   // filesystem
   openFolder: (folderPath) => ipcRenderer.invoke('open-folder', folderPath),
+  copyText: (value) => ipcRenderer.invoke('copy-text', value),
 
   // local profiles: one named wrapper per operation, no generic IPC bridge
   profiles: {
@@ -101,6 +103,7 @@ contextBridge.exposeInMainWorld('sysglance', {
   },
 
   diagnostics: {
+    inspect: (force) => ipcRenderer.invoke('diagnostics:inspect', force === true),
     copy: () => ipcRenderer.invoke('diagnostics:copy'),
     export: () => ipcRenderer.invoke('diagnostics:export')
   },

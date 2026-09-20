@@ -53,6 +53,7 @@
         '<span class="section-value" id="shell-summary">\u2014</span>' +
         '<button class="status-btn shell-refresh" id="shell-refresh" title="Re-read Windows state">' +
           '<svg class="ic" viewBox="0 0 24 24"><use href="#i-refresh"/></svg></button>' +
+        '<button class="shell-mini-btn shell-undo" id="shell-undo" title="Undo the last shell change">Undo</button>' +
       '</div>' +
 
       // ── Desktop preview (live wallpaper + taskbar bar) ──
@@ -184,6 +185,7 @@
     section: document.getElementById('sec-shell'),
     summary: document.getElementById('shell-summary'),
     refresh: document.getElementById('shell-refresh'),
+    undo: document.getElementById('shell-undo'),
     // Desktop preview
     desktopPreview: document.getElementById('shell-desktop-preview'),
     // Taskbar position
@@ -545,6 +547,12 @@
     startMenuCache = null;
     folderCache = null;
     refresh();
+  });
+  el.undo.addEventListener('click', async function () {
+    say('Undoing last shell change…');
+    var r = await call('undo');
+    if (!r) return;
+    say(r.ok ? 'Last shell change undone.' : '✖ ' + r.error, r.ok ? 'ok' : 'err');
   });
 
   // Taskbar position

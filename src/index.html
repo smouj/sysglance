@@ -79,6 +79,15 @@
         <div class="settings-hint">The overlay follows this monitor’s work area and scale.</div>
       </div>
       <div class="settings-group">
+        <div class="settings-label">Shortcuts</div>
+        <div class="hotkey-grid">
+          <label class="hotkey-row"><span>Toggle</span><select id="hotkey-toggle" class="hotkey-select" aria-label="Toggle shortcut"><option value="CommandOrControl+Shift+S">Ctrl+Shift+S</option><option value="CommandOrControl+Alt+S">Ctrl+Alt+S</option><option value="CommandOrControl+Shift+G">Ctrl+Shift+G</option><option value="">Off</option></select></label>
+          <label class="hotkey-row"><span>Lock</span><select id="hotkey-lock" class="hotkey-select" aria-label="Lock shortcut"><option value="CommandOrControl+Shift+L">Ctrl+Shift+L</option><option value="CommandOrControl+Alt+L">Ctrl+Alt+L</option><option value="CommandOrControl+Shift+G">Ctrl+Shift+G</option><option value="">Off</option></select></label>
+          <label class="hotkey-row"><span>Palette</span><select id="hotkey-palette" class="hotkey-select" aria-label="Command palette shortcut"><option value="CommandOrControl+K">Ctrl+K</option><option value="CommandOrControl+Alt+K">Ctrl+Alt+K</option><option value="CommandOrControl+Shift+P">Ctrl+Shift+P</option><option value="">Off</option></select></label>
+        </div>
+        <div class="settings-hint">Shortcuts are local and are released when SysGlance exits.</div>
+      </div>
+      <div class="settings-group">
         <div class="settings-label">Appearance</div>
         <div class="settings-options" id="theme-options" role="group" aria-label="Theme">
           <button class="settings-opt" data-theme="dark">Dark</button>
@@ -142,6 +151,8 @@
 
       <div class="settings-group">
         <div class="settings-label">System inspector</div>
+        <div id="inspector-summary" class="inspector-summary">Hardware identity loads on demand.</div>
+        <button id="inspector-refresh" class="settings-action">Refresh hardware details</button>
         <div class="settings-actions">
           <button id="diagnostics-copy" class="settings-action">Copy summary</button>
           <button id="diagnostics-export" class="settings-action">Export JSON</button>
@@ -166,7 +177,7 @@
   <div id="command-palette" class="command-palette hidden" role="dialog" aria-label="Command palette">
     <div class="palette-card">
       <div class="palette-search-row">
-        <span class="palette-prefix">⌘K</span>
+        <span id="palette-prefix" class="palette-prefix">Ctrl+K</span>
         <input id="palette-input" type="search" autocomplete="off" spellcheck="false" placeholder="Search SysGlance" aria-label="Search SysGlance commands">
         <button id="palette-close" class="settings-close" title="Close command palette" aria-label="Close command palette">
           <svg class="ic" viewBox="0 0 24 24"><use href="#i-close"/></svg>
@@ -237,6 +248,7 @@
     <div class="section" id="sec-disks">
       <div class="section-header"><span class="section-icon"><svg class="ic" viewBox="0 0 24 24"><use href="#i-disks"/></svg></span><span class="section-title">Storage</span></div>
       <div id="disk-list"></div>
+      <div id="disk-activity" class="info-row info-row-secondary" style="display:none"><span class="info-small">I/O</span><span id="disk-activity-value" class="info-small"></span></div>
     </div>
 
     <div class="section" id="sec-network">
@@ -245,10 +257,11 @@
         <div class="net-cell"><span class="net-arrow down" aria-hidden="true">↓</span><span id="net-rx" class="net-value">—</span><span class="net-caption">down</span></div>
         <div class="net-cell"><span class="net-arrow up" aria-hidden="true">↑</span><span id="net-tx" class="net-value">—</span><span class="net-caption">up</span></div>
       </div>
+      <div class="info-row info-row-secondary"><span id="net-peak" class="info-small">Peak —</span><span id="net-session" class="info-small">Session —</span></div>
     </div>
 
     <div class="section" id="sec-processes">
-      <div class="section-header"><span class="section-icon"><svg class="ic" viewBox="0 0 24 24"><use href="#i-processes"/></svg></span><span class="section-title">Top processes</span><span id="process-status" class="section-note"></span></div>
+      <div class="section-header"><span class="section-icon"><svg class="ic" viewBox="0 0 24 24"><use href="#i-processes"/></svg></span><span class="section-title">Top processes</span><input id="process-filter" class="process-filter" type="search" placeholder="filter" aria-label="Filter processes"><span id="process-status" class="section-note"></span></div>
       <div id="proc-list" class="proc-list"></div>
     </div>
 

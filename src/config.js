@@ -35,7 +35,7 @@ const LIMITS = {
 };
 
 // Keys a renderer is allowed to write through `set-config`.
-const WRITABLE_KEYS = ['opacity', 'refreshInterval', 'slowInterval', 'fontSize', 'compactMode', 'showFilesystem', 'theme', 'layout', 'anchor', 'displayId', 'showSections', 'collapsedSections'];
+const WRITABLE_KEYS = ['opacity', 'refreshInterval', 'slowInterval', 'fontSize', 'compactMode', 'showFilesystem', 'theme', 'layout', 'anchor', 'displayId', 'showSections', 'collapsedSections', 'hotkeys'];
 
 // Shell state. SysGlance *configures* Windows and remembers what it wrote;
 // it never keeps a resident effect alive (that is OpenClaw Widget's job — see
@@ -49,6 +49,14 @@ function defaultShell() {
     accent: null,            // { r, g, b, hex }
     wallpaperPath: null,
     restartRequired: false
+  };
+}
+
+function defaultHotkeys() {
+  return {
+    toggle: 'CommandOrControl+Shift+S',
+    lock: 'CommandOrControl+Shift+L',
+    palette: 'CommandOrControl+K'
   };
 }
 
@@ -67,6 +75,7 @@ function defaults() {
     fontSize: 13,
     showSections: { cpu: true, memory: true, gpu: true, filesystem: true, disks: true, network: true, processes: true, battery: true },
     collapsedSections: [],
+    hotkeys: defaultHotkeys(),
     shell: defaultShell()
   };
 }
@@ -135,6 +144,20 @@ function validateKey(key, value, fallback) {
       for (const k of value) {
         if (typeof k === 'string' && COLLAPSIBLE_KEYS.includes(k) && !out.includes(k)) out.push(k);
       }
+      return { ok: true, value: out };
+    }
+    case 'hotkeys': {
+      if (!isPlainObject(value)) return { ok: false, value: fallback };
+      const out = defaultHotkeys();
+      const valid = (v) => v === null || (typeof v === 'string' && /^[A-Za-z][A-Za-z0-9+ ]{2,63}$/.test(v) && v.includes('+'));
+      for (const key of Object.keys(out)) {
+        if (value[key] !== undefined) {
+          if (!valid(value[key])) return { ok: false, value: fallback };
+          out[key] = value[key];
+        } else if (fallback && fallback[key] !== undefined) out[key] = fallback[key];
+      }
+      const active = Object.values(out).filter(Boolean);
+      if (new Set(active).size !== active.length) return { ok: false, value: fallback };
       return { ok: true, value: out };
     }
     default:

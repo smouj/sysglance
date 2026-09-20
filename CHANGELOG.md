@@ -13,6 +13,9 @@ the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Process rows now show PID and expose revalidated open-location and confirmed end-task actions through the main process.
 - Added validated multi-monitor placement with display topology metadata, work-area-aware geometry, a settings selector and hot-plug fallback.
 - Added a Ctrl+K in-app navigation palette, sanitized diagnostics copy/export and undo for the last profile apply.
+- Added an on-demand hardware inspector with sanitized system, BIOS, board, memory, storage, graphics, adapter and display data.
+- Added network session totals/peak rates, nullable disk-I/O reporting, process filtering and PID/path clipboard actions.
+- Added configurable toggle/lock/palette shortcuts, reduced-motion/forced-colour CSS fallbacks and a bounded journal-backed undo action for direct shell mutations.
 
 - **System Status** with objective health rows, bounded local history for key metrics and CPU/RAM sparklines.
 - **Local Alert Engine** with threshold, duration, cooldown and recovery state transitions.

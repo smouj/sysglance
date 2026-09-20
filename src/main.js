@@ -29,6 +29,7 @@ const { HistoryStore } = require('./history');
 const { AlertEngine } = require('./alerts');
 const { evaluateHealth } = require('./health');
 const shellIpc = require('./shell/ipc');
+const { ShellJournal } = require('./shell/journal');
 
 const SELF_TEST = process.argv.includes('--self-test');
 // --screenshot[=dir] boots the real app, captures the panel (sidebar, settings,
@@ -73,6 +74,7 @@ let profileUndo = null;
 // Shell state cache for the tray menus (menus are built synchronously).
 let shellApi = null;
 let shellState = null;
+let shellJournal = null;
 
 // Metrics state: one fast snapshot, one slow snapshot, composed per broadcast.
 let lastFast = null;
@@ -99,6 +101,7 @@ const rendererErrors = [];
 function loadConfig() {
   configPath = path.join(app.getPath('userData'), 'config.json');
   profilesPath = path.join(app.getPath('userData'), 'profiles.json');
+  shellJournal = new ShellJournal(path.join(app.getPath('userData'), 'shell-journal.json'));
   const res = configModule.load(configPath);
   config = res.config;
   for (const w of res.warnings) log.warn('config: ' + w);
@@ -121,6 +124,7 @@ function applySavedProfile(name) {
   const beforeAnchor = config.anchor;
   const beforeDisplay = config.displayId;
   const beforeTheme = config.theme;
+  const beforeHotkeys = JSON.stringify(config.hotkeys);
   // Shell state is captured for portability, but applying it needs explicit
   // per-setting confirmation and Explorer restart. Keep it pending instead of
   // silently changing the registry from a profile click.
@@ -134,6 +138,7 @@ function applySavedProfile(name) {
   if (config.anchor !== beforeAnchor) applyAnchorPosition(config.anchor);
   if (config.theme !== beforeTheme) send('theme-changed', config.theme);
   if (config.refreshInterval !== beforeFast || config.slowInterval !== beforeSlow) restartDataCollection();
+  if (JSON.stringify(config.hotkeys) !== beforeHotkeys) registerShortcuts();
   rebuildTray();
   return { ok: true, name: found.profile.name, shellPending, applied: configModule.WRITABLE_KEYS.slice() };
 }
@@ -148,6 +153,7 @@ function undoSavedProfile() {
   const beforeAnchor = config.anchor;
   const beforeDisplay = config.displayId;
   const beforeTheme = config.theme;
+  const beforeHotkeys = JSON.stringify(config.hotkeys);
   for (const key of configModule.WRITABLE_KEYS) config[key] = previous[key];
   saveConfig();
   sendConfig();
@@ -156,6 +162,7 @@ function undoSavedProfile() {
   if (config.anchor !== beforeAnchor) applyAnchorPosition(config.anchor);
   if (config.theme !== beforeTheme) send('theme-changed', config.theme);
   if (config.refreshInterval !== beforeFast || config.slowInterval !== beforeSlow) restartDataCollection();
+  if (JSON.stringify(config.hotkeys) !== beforeHotkeys) registerShortcuts();
   rebuildTray();
   return { ok: true, undone: true };
 }
@@ -434,7 +441,8 @@ function registerShell() {
       saveConfig,
       log: (m) => log.info('[shell] ' + m),
       openExternal: (url) => shell.openExternal(url),
-      appVersion: APP_VERSION
+      appVersion: APP_VERSION,
+      journal: shellJournal
     });
   } catch (err) {
     log.exception('shell registration', err);
@@ -551,6 +559,23 @@ function setLayout(layout) {
   send('layout-changed', config.layout);
 }
 
+function registerShortcuts() {
+  globalShortcut.unregisterAll();
+  const hotkeys = config.hotkeys || {};
+  const bindings = [
+    ['toggle', toggleVisibility],
+    ['lock', togglePositionLock],
+    ['palette', () => send('toggle-palette')]
+  ];
+  for (const [name, action] of bindings) {
+    const accelerator = hotkeys[name];
+    if (!accelerator) continue;
+    try {
+      if (!globalShortcut.register(accelerator, action)) log.warn('hotkey unavailable: ' + name + ' (' + accelerator + ')');
+    } catch (err) { log.warn('hotkey refused: ' + name + ' (' + err.message + ')'); }
+  }
+}
+
 // ── metrics loop ────────────────────────────────────────
 const msSince = (t0) => Math.round(Number(process.hrtime.bigint() - t0) / 1e5) / 10;
 
@@ -616,6 +641,7 @@ function composePayload() {
     memory,
     gpu: slow ? slow.gpu : null,
     disks: slow && sections.disks !== false ? slow.disks : [],
+    diskIO: slow && sections.disks !== false ? slow.diskIO : null,
     network: slow ? slow.network : { iface: '—', rx_sec: 0, tx_sec: 0 },
     processes: slow ? slow.processes : [],
     os: fast ? {
@@ -704,11 +730,17 @@ async function diagnosticsSnapshot() {
       memory: payload.memory ? { total: payload.memory.total, used: payload.memory.used, percentage: payload.memory.percentage } : null,
       gpu: (payload.gpu || []).map((item) => ({ name: item.name, utilization: item.utilization, vram: item.vram, vramUsed: item.vramUsed, temp: item.temp })),
       disks: (payload.disks || []).map((item) => ({ fs: item.fs, mount: item.mount, size: item.size, used: item.used, available: item.available, use: item.use, type: item.type })),
-      network: payload.network ? { iface: payload.network.iface, rx_sec: payload.network.rx_sec, tx_sec: payload.network.tx_sec } : null,
+      network: payload.network ? {
+        iface: payload.network.iface, rx_sec: payload.network.rx_sec, tx_sec: payload.network.tx_sec,
+        sessionDownloaded: payload.network.sessionDownloaded, sessionUploaded: payload.network.sessionUploaded,
+        peakRx: payload.network.peakRx, peakTx: payload.network.peakTx
+      } : null,
+      diskIO: payload.diskIO,
       health: payload.health,
       alerts: payload.alerts,
       performance: { fastMs: payload.metrics.fastMs, slowMs: payload.metrics.slowMs, backpressure: payload.metrics.backpressure, sources: payload.metrics.sources }
     },
+    hardware: await metrics.getInspector(),
     config: diagnosticsConfig(),
     rendererErrors: rendererErrors.slice(-20)
   };
@@ -797,6 +829,10 @@ ipcMain.handle('diagnostics:copy', async () => {
     return { ok: true };
   } catch (err) { return { ok: false, error: err.message }; }
 });
+ipcMain.handle('diagnostics:inspect', async (_event, force) => {
+  try { return { ok: true, hardware: await metrics.getInspector(force === true), displays: displayTopology() }; }
+  catch (err) { return { ok: false, error: err.message }; }
+});
 ipcMain.handle('diagnostics:export', async () => {
   try {
     const target = await dialog.showSaveDialog(mainWindow, {
@@ -808,6 +844,13 @@ ipcMain.handle('diagnostics:export', async () => {
     fs.writeFileSync(path.resolve(target.filePath), JSON.stringify(await diagnosticsSnapshot(), null, 2) + '\n', 'utf8');
     return { ok: true, filePath: path.resolve(target.filePath) };
   } catch (err) { return { ok: false, error: err.message }; }
+});
+ipcMain.handle('copy-text', (_e, value) => {
+  if (typeof value !== 'string' || value.length > 2048 || /[\u0000-\u0008\u000B\u000C\u000E-\u001F]/.test(value)) {
+    return { ok: false, error: 'invalid clipboard text' };
+  }
+  clipboard.writeText(value);
+  return { ok: true };
 });
 
 // ── explicit process actions ─────────────────────────────
@@ -859,6 +902,7 @@ ipcMain.handle('set-config', (_e, key, value) => {
   const beforeFast = config.refreshInterval, beforeSlow = config.slowInterval;
   const beforeLayout = config.layout, beforeAnchor = config.anchor;
   const beforeDisplay = config.displayId;
+  const beforeHotkeys = JSON.stringify(config.hotkeys);
   const ok = applyConfigPatch(key, value, 'renderer');
   if (!ok) return { ok: false };
   // A settings change that implies a different window shape must actually
@@ -870,6 +914,7 @@ ipcMain.handle('set-config', (_e, key, value) => {
   if (config.displayId !== beforeDisplay) applyLayoutGeometry(config.layout);
   if (config.anchor !== beforeAnchor) applyAnchorPosition(config.anchor);
   if (config.refreshInterval !== beforeFast || config.slowInterval !== beforeSlow) restartDataCollection();
+  if (JSON.stringify(config.hotkeys) !== beforeHotkeys) registerShortcuts();
   return { ok: true };
 });
 
@@ -951,9 +996,7 @@ app.whenReady().then(() => {
   createTray();
   startDataCollection();
   refreshShellState();
-  globalShortcut.register('CommandOrControl+Shift+S', toggleVisibility);
-  globalShortcut.register('CommandOrControl+Shift+L', togglePositionLock);
-  globalShortcut.register('CommandOrControl+K', () => send('toggle-palette'));
+  registerShortcuts();
   send('app-version', { version: APP_VERSION, electron: process.versions.electron });
   if (SELF_TEST) runSelfTest();
   if (SCREENSHOT) runScreenshot();
@@ -1160,6 +1203,11 @@ async function runSelfTest() {
     if (!state.suiteFooter || !state.suiteFooter.includes(SUITE_FOOTER) || !state.suiteFooter.includes(APP_VERSION)) {
       fail.push('shared suite footer missing or wrong: ' + state.suiteFooter);
     }
+    const inspectorProbe = await mainWindow.webContents.executeJavaScript(
+      'window.sysglance.diagnostics.inspect().then(function (r) { return JSON.stringify({ ok: !!(r && r.ok), system: !!(r && r.hardware && r.hardware.system), storage: !!(r && r.hardware && r.hardware.storage) }); })', true);
+    console.log('[self-test] inspector: ' + inspectorProbe);
+    const inspectorState = JSON.parse(inspectorProbe);
+    if (!inspectorState.ok || !inspectorState.system || !inspectorState.storage) fail.push('system inspector did not return hardware data');
 
     // Collapsing is a full round trip: renderer -> IPC -> config validation ->
     // disk. Toggled twice so the user's saved layout is left as it was found.

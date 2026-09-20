@@ -28,16 +28,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Syntax gate (node --check)
-        run: npm run verify:syntax
-
-      - name: Settings validation
-        run: npm run verify:config
-
-      # On a host without the Windows registry (as here) the harness self-skips
-      # its live checks instead of failing, so it is safe in CI.
-      - name: Shell harness
-        run: npm run verify:shell
+      # On a host without the Windows registry the shell harness self-skips its
+      # live checks; the same command also exercises metrics, profiles,
+      # displays, IPC and the desktop-action security gates.
+      - name: Full verification suite
+        run: npm run verify
 
       - name: Refresh-cycle benchmark
         run: npm run bench -- --iterations=5
@@ -74,6 +69,9 @@ jobs:
 
       - name: Settings validation
         run: npm run verify:config
+
+      - name: Product action and persistence gates
+        run: npm run verify:actions && npm run verify:journal && npm run verify:displays
 
       - name: Build native shell helper
         shell: powershell

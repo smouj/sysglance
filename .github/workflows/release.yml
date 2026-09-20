@@ -54,6 +54,10 @@ jobs:
       - name: Settings validation
         run: npm run verify:config
 
+      - name: Build native shell helper
+        shell: powershell
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-native.ps1
+
       - name: Build NSIS installer
         run: npm run build:win
 

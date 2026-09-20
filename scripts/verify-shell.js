@@ -72,7 +72,7 @@ function diffBytes(a, b) {
   check('exports the documented API', [
     'getTaskbarState', 'setPosition', 'setAutoHide', 'restartExplorer',
     'getTheme', 'setDark', 'getAccent', 'setAccent', 'averageAccentRgb',
-    'extractAccentFromWallpaper', 'getWallpaper', 'applyWallpaper', 'refreshThemeChange'
+    'extractAccentFromWallpaper', 'getWallpaper', 'applyWallpaper', 'refreshThemeChange', 'restoreShellState'
   ].every((k) => typeof taskbar[k] === 'function'));
 
   if (!taskbar.supported()) {

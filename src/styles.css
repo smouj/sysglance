@@ -275,6 +275,9 @@ body.unlocked .ic-unlocked{display:block}
   border-bottom:1px solid var(--line);border-radius:0;padding-bottom:4px;margin-bottom:2px;position:sticky;top:0;background:transparent;
 }
 .proc-header:hover{background:transparent}
+.process-filter{width:58px;min-width:0;margin-left:auto;padding:2px 5px;border:1px solid var(--line-2);border-radius:var(--r-sm);background:var(--bg-inset);color:var(--fg-2);font:inherit;font-size:8px;outline:none}
+.process-filter:focus{border-color:var(--accent-line);box-shadow:0 0 0 1px var(--accent-soft)}
+.proc-empty{padding:8px 5px;color:var(--fg-4);font-size:9px;text-align:center}
 
 /* ═══ Home folders ════════════════════════════════════ */
 .fs-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(102px,1fr));gap:5px}
@@ -391,6 +394,10 @@ body.unlocked .ic-unlocked{display:block}
   font:inherit;font-size:10px;outline:none;
 }
 .profile-select:focus,.profile-name:focus,.display-select:focus{border-color:var(--accent-line);box-shadow:0 0 0 2px var(--accent-soft)}
+.hotkey-grid{display:flex;flex-direction:column;gap:4px}
+.hotkey-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:3px 0;color:var(--fg-2);font-size:9px}
+.hotkey-select{min-width:142px;min-height:24px;padding:3px 6px;border-radius:var(--r-sm);background:var(--bg-control);border:1px solid var(--line-2);color:var(--fg);font:inherit;font-size:9px;outline:none}
+.hotkey-select:focus{border-color:var(--accent-line);box-shadow:0 0 0 2px var(--accent-soft)}
 .profile-actions .settings-action{flex:1;min-width:0}
 .settings-action{
   padding:7px 8px;border-radius:var(--r-sm);
@@ -399,6 +406,8 @@ body.unlocked .ic-unlocked{display:block}
   transition:background .15s,color .15s,border-color .15s;
 }
 .settings-action:hover{background:var(--accent-soft);border-color:var(--accent-line);color:var(--accent)}
+.inspector-summary{padding:7px 8px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--bg-inset);color:var(--fg-3);font-size:8.5px;line-height:1.55;overflow-wrap:anywhere}
+.inspector-summary strong{color:var(--fg-2);font-weight:650}
 
 /* command palette — deliberately small and local: navigation inside SysGlance,
    not a general launcher or shell. */
@@ -428,6 +437,14 @@ body.unlocked .ic-unlocked{display:block}
 }
 #suite-version{font-variant-numeric:tabular-nums;color:var(--fg-3)}
 body.locked .suite-footer{opacity:.55}
+
+@media (prefers-reduced-motion: reduce) {
+  *,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;scroll-behavior:auto !important;transition-duration:.01ms !important}
+}
+@media (forced-colors: active) {
+  .settings-opt.active,.settings-action:hover,.palette-item:hover,.palette-item:focus{border:1px solid Highlight;color:HighlightText;background:Highlight}
+  .progress-fill{forced-color-adjust:none}
+}
 
 /* ═══ Layouts ═════════════════════════════════════════ */
 

@@ -29,9 +29,9 @@
     fsHome: $('fs-home'), fsFolders: $('fs-folders'), secFs: $('sec-filesystem'),
     secHealth: $('sec-health'), healthSummary: $('health-summary'), healthList: $('health-list'),
     secGpu: $('sec-gpu'),
-    diskList: $('disk-list'),
-    netIface: $('net-iface'), netRx: $('net-rx'), netTx: $('net-tx'),
-    procList: $('proc-list'), processStatus: $('process-status'),
+    diskList: $('disk-list'), diskActivity: $('disk-activity'), diskActivityValue: $('disk-activity-value'),
+    netIface: $('net-iface'), netRx: $('net-rx'), netTx: $('net-tx'), netPeak: $('net-peak'), netSession: $('net-session'),
+    procList: $('proc-list'), processStatus: $('process-status'), processFilter: $('process-filter'),
     batPct: $('bat-pct'), batBar: $('bat-bar'), batStatus: $('bat-status'), secBattery: $('sec-battery'),
     osDistro: $('os-distro'), osUptime: $('os-uptime'),
     btnLock: $('btn-lock'), btnSettings: $('btn-settings'), btnMinimize: $('btn-minimize'),
@@ -44,18 +44,21 @@
     opacityVal: $('opacity-val'), refreshVal: $('refresh-val'), slowVal: $('slow-val'),
     btnLockSettings: $('btn-lock-settings'), btnCompactSettings: $('btn-compact-settings'),
     layoutOptions: $('layout-options'), anchorOptions: $('anchor-options'),
-    themeOptions: $('theme-options'), displayOptions: $('display-options'), sectionToggles: $('section-toggles'),
+    themeOptions: $('theme-options'), displayOptions: $('display-options'), hotkeyToggle: $('hotkey-toggle'), hotkeyLock: $('hotkey-lock'), hotkeyPalette: $('hotkey-palette'), sectionToggles: $('section-toggles'),
     profileSelect: $('profile-select'), profileName: $('profile-name'), profileSave: $('profile-save'),
     profileApply: $('profile-apply'), profileDelete: $('profile-delete'), profileDuplicate: $('profile-duplicate'),
     profileExport: $('profile-export'), profileImport: $('profile-import'), profileUndo: $('profile-undo'), profileStatus: $('profile-status'),
+    inspectorSummary: $('inspector-summary'), inspectorRefresh: $('inspector-refresh'),
     diagnosticsCopy: $('diagnostics-copy'), diagnosticsExport: $('diagnostics-export'), diagnosticsStatus: $('diagnostics-status'),
-    commandPalette: $('command-palette'), paletteInput: $('palette-input'), paletteList: $('palette-list'), paletteClose: $('palette-close'),
+    commandPalette: $('command-palette'), palettePrefix: $('palette-prefix'), paletteInput: $('palette-input'), paletteList: $('palette-list'), paletteClose: $('palette-close'),
     appInfo: $('app-info'), metricInfo: $('metric-info')
   };
 
   // ── state ─────────────────────────────────────────────
   var positionLocked = true;
   var currentConfig = {};
+  var inspectorLoaded = false;
+  var lastProcessData = [];
 
   var SECTION_IDS = ['cpu', 'memory', 'gpu', 'filesystem', 'disks', 'network', 'processes', 'battery'];
 
@@ -156,7 +159,7 @@
     if (!ev.target || !ev.target.closest) return null;
     var header = ev.target.closest('.section-header');
     if (!header) return null;
-    if (ev.target.closest('button')) return null;   // the Shell card has one
+    if (ev.target.closest('button, input, select, textarea')) return null;   // controls inside a header are not collapse toggles
     return header.parentElement;
   }
 
@@ -174,6 +177,7 @@
   function toggleSettings(show) {
     if (show === undefined) show = dom.settingsPanel.classList.contains('hidden');
     dom.settingsPanel.classList.toggle('hidden', !show);
+    if (show && !inspectorLoaded) refreshInspector();
   }
 
   function renderDisplays(displays) {
@@ -204,6 +208,11 @@
       btn.classList.toggle('active', btn.dataset.theme === cfg.theme);
     });
     if (dom.displayOptions) dom.displayOptions.value = cfg.displayId == null ? '' : String(cfg.displayId);
+    var hotkeys = cfg.hotkeys || {};
+    if (dom.hotkeyToggle) dom.hotkeyToggle.value = hotkeys.toggle || '';
+    if (dom.hotkeyLock) dom.hotkeyLock.value = hotkeys.lock || '';
+    if (dom.hotkeyPalette) dom.hotkeyPalette.value = hotkeys.palette || '';
+    if (dom.palettePrefix) dom.palettePrefix.textContent = String(hotkeys.palette || 'Off').replace('CommandOrControl', 'Ctrl');
     dom.settingsOpacity.value = Math.round((cfg.opacity || 0.9) * 100);
     dom.opacityVal.textContent = Math.round((cfg.opacity || 0.9) * 100) + '%';
     dom.settingsRefresh.value = cfg.refreshInterval || 1500;
@@ -264,6 +273,30 @@
     dom.diagnosticsStatus.classList.toggle('is-alert', !!bad);
   }
 
+  function renderInspector(result) {
+    if (!dom.inspectorSummary || !result || !result.hardware) return;
+    var h = result.hardware;
+    var lines = [];
+    if (h.system && (h.system.manufacturer || h.system.model)) lines.push('<strong>System</strong> ' + esc([h.system.manufacturer, h.system.model].filter(Boolean).join(' ')));
+    if (h.baseboard && (h.baseboard.manufacturer || h.baseboard.model)) lines.push('<strong>Board</strong> ' + esc([h.baseboard.manufacturer, h.baseboard.model].filter(Boolean).join(' ')));
+    if (h.bios && (h.bios.vendor || h.bios.version)) lines.push('<strong>BIOS</strong> ' + esc([h.bios.vendor, h.bios.version].filter(Boolean).join(' ')));
+    if (h.graphics && h.graphics.controllers && h.graphics.controllers.length) lines.push('<strong>GPU</strong> ' + esc(h.graphics.controllers.map(function (item) { return item.model; }).filter(Boolean).join(', ')));
+    if (h.storage && h.storage.length) lines.push('<strong>Storage</strong> ' + esc(h.storage.map(function (item) { return item.name; }).filter(Boolean).join(', ')));
+    if (h.memory && h.memory.length) lines.push('<strong>Memory</strong> ' + h.memory.length + ' module' + (h.memory.length === 1 ? '' : 's'));
+    if (h.network && h.network.length) lines.push('<strong>Network</strong> ' + esc(h.network.map(function (item) { return item.ifaceName || item.iface; }).filter(Boolean).join(', ')));
+    if (result.displays && result.displays.length) lines.push('<strong>Displays</strong> ' + result.displays.length + ' · ' + esc(result.displays.map(function (item) { return item.label; }).join(', ')));
+    dom.inspectorSummary.innerHTML = lines.length ? lines.join('<br>') : 'No hardware identity data reported.';
+  }
+  function refreshInspector() {
+    if (!api.diagnostics || !api.diagnostics.inspect) return;
+    if (dom.inspectorSummary) dom.inspectorSummary.textContent = 'Reading hardware identity…';
+    api.diagnostics.inspect(true).then(function (res) {
+      if (!res || !res.ok) { if (dom.inspectorSummary) dom.inspectorSummary.textContent = (res && res.error) || 'Hardware identity unavailable.'; return; }
+      inspectorLoaded = true;
+      renderInspector(res);
+    }).catch(function (err) { if (dom.inspectorSummary) dom.inspectorSummary.textContent = err.message || 'Hardware identity unavailable.'; });
+  }
+
   if (dom.profileSelect) dom.profileSelect.addEventListener('change', function () {
     if (dom.profileName) dom.profileName.value = dom.profileSelect.value;
   });
@@ -312,6 +345,7 @@
       else diagnosticsStatus('Diagnostics exported.');
     }).catch(function (err) { diagnosticsStatus(err.message || 'Could not export diagnostics', true); });
   });
+  if (dom.inspectorRefresh) dom.inspectorRefresh.addEventListener('click', refreshInspector);
 
   // ── command palette ──────────────────────────────────
   var PALETTE_COMMANDS = [
@@ -405,6 +439,14 @@
     var value = e.target.value;
     api.setConfig('displayId', value ? Number(value) : null);
   });
+  function setHotkey(name, value) {
+    var next = Object.assign({}, currentConfig.hotkeys || {});
+    next[name] = value || null;
+    api.setConfig('hotkeys', next);
+  }
+  if (dom.hotkeyToggle) dom.hotkeyToggle.addEventListener('change', function (e) { setHotkey('toggle', e.target.value); });
+  if (dom.hotkeyLock) dom.hotkeyLock.addEventListener('change', function (e) { setHotkey('lock', e.target.value); });
+  if (dom.hotkeyPalette) dom.hotkeyPalette.addEventListener('change', function (e) { setHotkey('palette', e.target.value); });
   dom.settingsOpacity.addEventListener('input', function (e) {
     setSliderFill(e.target);
     dom.opacityVal.textContent = e.target.value + '%';
@@ -448,13 +490,27 @@
     var button = event.target.closest('.proc-action');
     if (!button) return;
     var pid = Number(button.dataset.pid);
-    if (!Number.isInteger(pid)) return;
     var action = button.dataset.action;
-    var call = action === 'location' && api.processes ? api.processes.openLocation(pid) : action === 'end' && api.processes ? api.processes.endTask(pid) : Promise.resolve({ ok: false, error: 'process action unavailable' });
+    if (action === 'path' && api.copyText) {
+      api.copyText(button.dataset.path || '').then(function (result) {
+        if (result && result.ok) processMessage('Path copied');
+        else processMessage((result && result.error) || 'Could not copy path', true);
+      });
+      return;
+    }
+    if (!Number.isInteger(pid)) return;
+    var call = action === 'location' && api.processes ? api.processes.openLocation(pid) :
+      action === 'end' && api.processes ? api.processes.endTask(pid) :
+      action === 'pid' && api.copyText ? api.copyText(String(pid)) :
+      Promise.resolve({ ok: false, error: 'process action unavailable' });
     call.then(function (result) {
-      if (result && result.ok) processMessage(action === 'end' ? 'Task ended' : 'Location opened');
+      if (result && result.ok) processMessage(action === 'end' ? 'Task ended' : action === 'pid' ? 'PID copied' : 'Location opened');
       else if (result && !result.canceled) processMessage((result && result.error) || 'Process action failed', true);
     }).catch(function (err) { processMessage(err.message || 'Process action failed', true); });
+  });
+  if (dom.processFilter) dom.processFilter.addEventListener('input', function () {
+    procSignature = '';
+    scheduleUpdate({ processes: lastProcessData, config: currentConfig, layout: currentConfig.layout, timestamp: Date.now() });
   });
 
   var fsSignature = '';   // avoids rebuilding the folder grid (and losing focus)
@@ -660,22 +716,36 @@
         dom.diskList.innerHTML = dhtml;
       }
     }
+    if (dom.diskActivity) {
+      var io = data.diskIO;
+      var read = io && io.readBytesSec != null ? fmtSpeed(io.readBytesSec) : '';
+      var write = io && io.writeBytesSec != null ? fmtSpeed(io.writeBytesSec) : '';
+      dom.diskActivity.style.display = read || write ? '' : 'none';
+      setText(dom.diskActivityValue, read || write ? 'R ' + (read || '—') + ' · W ' + (write || '—') : '');
+    }
 
     // Network
     if (data.network) {
       setText(dom.netIface, data.network.iface);
       setText(dom.netRx, fmtSpeed(data.network.rx_sec));
       setText(dom.netTx, fmtSpeed(data.network.tx_sec));
+      setText(dom.netPeak, 'Peak ' + fmtSpeed(Math.max(data.network.peakRx || 0, data.network.peakTx || 0)));
+      setText(dom.netSession, 'Session ↓' + fmtBytes(data.network.sessionDownloaded || 0) + ' ↑' + fmtBytes(data.network.sessionUploaded || 0));
     }
 
     // Processes
     if (data.processes && data.processes.length) {
-      var pSig = data.processes.map(function(p) { return p.name + ':' + p.pid + ':' + p.cpu + ':' + p.path; }).join('|');
+      lastProcessData = data.processes;
+      var processQuery = dom.processFilter ? dom.processFilter.value.toLowerCase().trim() : '';
+      var visibleProcesses = data.processes.filter(function (p) {
+        return !processQuery || (String(p.name) + ' ' + String(p.pid == null ? '' : p.pid) + ' ' + String(p.path || '')).toLowerCase().indexOf(processQuery) !== -1;
+      });
+      var pSig = processQuery + '|' + visibleProcesses.map(function(p) { return p.name + ':' + p.pid + ':' + p.cpu + ':' + p.path; }).join('|');
       if (pSig !== procSignature) {
         procSignature = pSig;
         var phtml = '<div class="proc-row proc-header"><span></span><span>Process</span><span style="text-align:right">CPU</span><span style="text-align:right">MEM</span><span style="text-align:right">PID</span><span></span></div>';
-        for (var p = 0; p < data.processes.length; p++) {
-          var proc = data.processes[p];
+        for (var p = 0; p < visibleProcesses.length; p++) {
+          var proc = visibleProcesses[p];
           var colour = proc.cpu >= 10 ? 'var(--bad)' : proc.cpu >= 5 ? 'var(--warn)' : 'var(--fg-3)';
           phtml += '<div class="proc-row"><span class="proc-rank">' + (p + 1) + '</span>' +
             '<span class="proc-name">' + esc(proc.name) + '</span>' +
@@ -683,10 +753,13 @@
             '<span class="proc-mem">' + proc.mem + '%</span>' +
             '<span class="proc-pid">' + (proc.pid == null ? '—' : proc.pid) + '</span>' +
             '<span class="proc-actions">' +
+              (proc.pid != null ? '<button class="proc-action" data-action="pid" data-pid="' + proc.pid + '" title="Copy PID" aria-label="Copy PID">#</button>' : '') +
+              (proc.path ? '<button class="proc-action" data-action="path" data-pid="' + proc.pid + '" data-path="' + esc(proc.path) + '" title="Copy executable path" aria-label="Copy executable path">⌘</button>' : '') +
               (proc.path ? '<button class="proc-action" data-action="location" data-pid="' + proc.pid + '" title="Open file location" aria-label="Open file location">↗</button>' : '') +
               (proc.pid != null && proc.pid > 4 ? '<button class="proc-action proc-action-danger" data-action="end" data-pid="' + proc.pid + '" title="End task" aria-label="End task">×</button>' : '') +
             '</span></div>';
         }
+        if (!visibleProcesses.length) phtml += '<div class="proc-empty">No matching process</div>';
         dom.procList.innerHTML = phtml;
       }
     }

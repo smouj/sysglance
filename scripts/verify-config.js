@@ -35,6 +35,7 @@ check('hardware refresh default is inside 5–10 s', d.slowInterval >= 5000 && d
 check('every section key defaults to true', config.SECTION_KEYS.every((k) => d.showSections[k] === true), config.SECTION_KEYS.join(','));
 check('shell defaults carry no resident-effect field',
   !('taskbarBlur' in d.shell) && !('resident' in d.shell), JSON.stringify(d.shell));
+check('shortcut defaults are distinct and local', d.hotkeys && new Set(Object.values(d.hotkeys)).size === 3, JSON.stringify(d.hotkeys));
 
 // ── 2. clamping and enums ───────────────────────────────
 section('2. Clamping and enums');
@@ -68,6 +69,8 @@ check('normalize("string") returns usable defaults', config.normalize('nope').co
 // ── 4. patch gate (what the renderer may write) ─────────
 section('4. Renderer patch gate');
 check('a writable key is accepted', config.validatePatch('refreshInterval', 2000).ok === true);
+check('valid shortcut map is accepted', config.validatePatch('hotkeys', { toggle: 'CommandOrControl+Shift+S', lock: null, palette: 'CommandOrControl+K' }).ok === true);
+check('duplicate shortcuts are refused', config.validatePatch('hotkeys', { toggle: 'CommandOrControl+K', lock: 'CommandOrControl+K', palette: 'CommandOrControl+P' }).ok === false);
 check('a read-only key is refused', config.validatePatch('configVersion', 99).ok === false, config.validatePatch('configVersion', 99).reason);
 check('an unknown key is refused', config.validatePatch('lastX', 10).ok === false, config.validatePatch('lastX', 10).reason);
 check('a wrong type is refused', config.validatePatch('theme', 42).ok === false, config.validatePatch('theme', 42).reason);

@@ -52,8 +52,8 @@ to tray. `Ctrl+Shift+S` toggles it. Everything is configurable from the built-in
 - **Memory** — usage, swap, formatted readout
 - **GPU** — model, utilization, VRAM, temperature
 - **Disks** — multi-volume usage with colour-coded bars
-- **Network** — live download/upload per interface
-- **Processes** — top 8 by CPU with PID, executable path when available, open-location and confirmed end-task actions
+- **Network** — live download/upload per interface, session totals and peak rates
+- **Processes** — top 8 by CPU with PID, RAM, local filtering, copy-PID/path, open-location and confirmed end-task actions
 - **Battery** — percentage and charging state (laptops only)
 - **System Status** — objective CPU, RAM, GPU temperature, storage and network status rows; no scareware scores
 - **Local history** — bounded CPU/RAM/GPU/temperature/network ring buffers with one-hour sparklines and a 24-hour retention ceiling
@@ -61,6 +61,9 @@ to tray. `Ctrl+Shift+S` toggles it. Everything is configurable from the built-in
 - **Filesystem** — Desktop, Documents, Downloads, Pictures, Videos, Music as real
   tiles: item counts, a hover/focus affordance, Enter/Space activation, and a
   status message when a folder cannot be opened
+- **Hardware inspector** — on-demand CPU/OS identity, BIOS/baseboard, memory
+  modules, storage devices, graphics, adapters and display topology; sensitive
+  serial, MAC and IP fields are excluded from the exported summary
 
 ### Windows shell configuration
 - **Taskbar position** — left / top / right / bottom (`StuckRects3`, exactly one
@@ -95,7 +98,9 @@ to tray. `Ctrl+Shift+S` toggles it. Everything is configurable from the built-in
 ### Settings panel
 Layout · position · theme · opacity (30–100%) · **fast refresh (0.5–5 s)** ·
 **hardware refresh (5–10 s)** · per-section toggles · lock/drag mode ·
-compact mode. Every value is persisted, validated and clamped.
+compact mode · configurable toggle/lock/palette shortcuts. Every value is
+persisted, validated and clamped; reduced-motion and forced-colour preferences
+are respected by the UI.
 
 Desktop profiles are local and versioned: save, apply, duplicate, rename,
 delete, import and export. Applying a profile changes the SysGlance layout,
@@ -107,7 +112,10 @@ Ctrl+K opens a small in-app command palette for navigating the health, metric,
 process and profile sections; it is intentionally not a general launcher.
 
 The settings panel also provides a sanitized system summary for clipboard copy
-or JSON export. It excludes document contents and redacts the saved wallpaper path.
+or JSON export. It excludes document contents, serials, network addresses and
+redacts the saved wallpaper path. Direct shell changes have a bounded local
+undo journal; profile application continues to keep shell changes pending until
+an explicit transactional profile path is available.
 
 ### Performance, measured
 The hot path uses **Node's own `os` module in process** — no `wmic`, no

@@ -37,6 +37,8 @@ const CPU_MODEL_FALLBACK = 'CPU';
 // ── static tier ─────────────────────────────────────────
 let staticCache = null;
 let staticPromise = null;
+let inspectorCache = null;
+let inspectorPromise = null;
 
 async function safe(fn, fallback) {
   try {
@@ -82,6 +84,81 @@ async function getStatic(force) {
     throw err;
   }
   return staticCache;
+}
+
+/**
+ * On-demand hardware inspector data. This is intentionally not part of the
+ * seven-second loop: motherboard, BIOS, disk-layout and adapter identity are
+ * useful when requested, but they are not live dashboard metrics.
+ * Serial numbers and MAC addresses are excluded at the boundary.
+ */
+async function getInspector(force) {
+  if (force) {
+    inspectorCache = null;
+    inspectorPromise = null;
+  }
+  if (inspectorCache && !force) return inspectorCache;
+  if (!inspectorPromise) {
+    inspectorPromise = Promise.all([
+      safe(() => si.system(), {}),
+      safe(() => si.bios(), {}),
+      safe(() => si.baseboard(), {}),
+      safe(() => si.memLayout(), []),
+      safe(() => si.diskLayout(), []),
+      safe(() => si.graphics(), { controllers: [], displays: [] }),
+      safe(() => si.networkInterfaces(), [])
+    ]).then(([system, bios, baseboard, memory, disks, graphics, network]) => ({
+      system: {
+        manufacturer: system.manufacturer || null, model: system.model || null,
+        version: system.version || null, sku: system.sku || null, virtual: !!system.virtual
+      },
+      bios: {
+        vendor: bios.vendor || null, version: bios.version || null,
+        releaseDate: bios.releaseDate || null, revision: bios.revision || null
+      },
+      baseboard: {
+        manufacturer: baseboard.manufacturer || null, model: baseboard.model || null,
+        version: baseboard.version || null, memMax: baseboard.memMax || null, memSlots: baseboard.memSlots || null
+      },
+      memory: (Array.isArray(memory) ? memory : []).map((item) => ({
+        size: item.size || 0, bank: item.bank || null, type: item.type || null,
+        clockSpeed: item.clockSpeed || null, formFactor: item.formFactor || null,
+        manufacturer: item.manufacturer || null, partNum: item.partNum || null
+      })),
+      storage: (Array.isArray(disks) ? disks : []).map((item) => ({
+        device: item.device || null, type: item.type || null, name: item.name || null,
+        vendor: item.vendor || null, size: item.size || 0, interfaceType: item.interfaceType || null,
+        firmwareRevision: item.firmwareRevision || null, smartStatus: item.smartStatus || null,
+        temperature: Number.isFinite(item.temperature) ? item.temperature : null
+      })),
+      graphics: {
+        controllers: (graphics && Array.isArray(graphics.controllers) ? graphics.controllers : []).map((item) => ({
+          vendor: item.vendor || null, model: item.model || item.name || null,
+          vram: item.vram || item.memoryTotal || null, driverVersion: item.driverVersion || null,
+          utilization: item.utilizationGpu != null ? item.utilizationGpu : item.utilization,
+          temperature: item.temperatureGpu != null ? item.temperatureGpu : item.temperature
+        })),
+        displays: (graphics && Array.isArray(graphics.displays) ? graphics.displays : []).map((item) => ({
+          vendor: item.vendor || null, model: item.model || null, connection: item.connection || null,
+          resolutionX: item.currentResX || item.resolutionX || null, resolutionY: item.currentResY || item.resolutionY || null,
+          refreshRate: item.currentRefreshRate || null, positionX: item.positionX || 0, positionY: item.positionY || 0,
+          main: !!item.main
+        }))
+      },
+      network: (Array.isArray(network) ? network : []).map((item) => ({
+        iface: item.iface || null, ifaceName: item.ifaceName || null, default: !!item.default,
+        type: item.type || null,
+        operstate: item.operstate || null, speed: item.speed || null
+      }))
+    }));
+  }
+  try {
+    inspectorCache = await inspectorPromise;
+  } catch (err) {
+    inspectorPromise = null;
+    throw err;
+  }
+  return inspectorCache;
 }
 
 // ── fast tier (no child processes) ──────────────────────
@@ -199,6 +276,10 @@ async function collectFast() {
 
 // ── slow tier (systeminformation, 5–10 s) ───────────────
 const HOME_FOLDERS = ['Desktop', 'Documents', 'Downloads', 'Pictures', 'Videos', 'Music'];
+let networkSession = {
+  iface: null, lastAt: 0, lastRxBytes: null, lastTxBytes: null,
+  downloaded: 0, uploaded: 0, peakRx: 0, peakTx: 0
+};
 
 // Filesystems that are not storage a user thinks about. `si.fsSize()` reports
 // every mount, so an unfiltered list on Linux/WSL is eight lines of squashfs
@@ -244,6 +325,7 @@ async function collectSlow(opts) {
   const jobs = {};
   if (want(sections, 'gpu')) jobs.gpu = safe(() => si.graphics(), { controllers: [] });
   if (want(sections, 'disks')) jobs.disks = safe(() => si.fsSize(), []);
+  if (want(sections, 'disks')) jobs.io = safe(() => si.disksIO(), null);
   if (want(sections, 'network')) jobs.net = safe(() => si.networkStats(), []);
   if (want(sections, 'processes')) jobs.procs = safe(() => si.processes(), { list: [] });
   if (want(sections, 'battery')) jobs.battery = safe(() => si.battery(), {});
@@ -278,7 +360,28 @@ async function collectSlow(opts) {
     .slice(0, 6);
 
   const netList = r.net || [];
-  const activeNet = netList.find((n) => n.rx_sec > 0 || n.tx_sec > 0) || netList[0] || {};
+  const activeNet = netList.find((n) => n.rx_sec > 0 || n.tx_sec > 0 || n.rx_bytes > 0 || n.tx_bytes > 0) || netList[0] || {};
+  const networkNow = Date.now();
+  const rxBytes = Number.isFinite(activeNet.rx_bytes) ? activeNet.rx_bytes : null;
+  const txBytes = Number.isFinite(activeNet.tx_bytes) ? activeNet.tx_bytes : null;
+  const sameInterface = networkSession.iface === (activeNet.iface || '?');
+  const elapsed = sameInterface && networkSession.lastAt ? Math.max(1, networkNow - networkSession.lastAt) : 0;
+  const rxDelta = sameInterface && rxBytes != null && networkSession.lastRxBytes != null && rxBytes >= networkSession.lastRxBytes ? rxBytes - networkSession.lastRxBytes : 0;
+  const txDelta = sameInterface && txBytes != null && networkSession.lastTxBytes != null && txBytes >= networkSession.lastTxBytes ? txBytes - networkSession.lastTxBytes : 0;
+  const rxSec = Number.isFinite(activeNet.rx_sec) ? Math.max(0, activeNet.rx_sec) : (elapsed ? (rxDelta * 1000) / elapsed : 0);
+  const txSec = Number.isFinite(activeNet.tx_sec) ? Math.max(0, activeNet.tx_sec) : (elapsed ? (txDelta * 1000) / elapsed : 0);
+  if (!sameInterface) {
+    networkSession = { iface: activeNet.iface || '?', lastAt: networkNow, lastRxBytes: rxBytes, lastTxBytes: txBytes, downloaded: 0, uploaded: 0, peakRx: 0, peakTx: 0 };
+  } else {
+    networkSession.iface = activeNet.iface || '?';
+    networkSession.lastAt = networkNow;
+    networkSession.lastRxBytes = rxBytes;
+    networkSession.lastTxBytes = txBytes;
+    networkSession.downloaded += rxDelta;
+    networkSession.uploaded += txDelta;
+    networkSession.peakRx = Math.max(networkSession.peakRx, rxSec);
+    networkSession.peakTx = Math.max(networkSession.peakTx, txSec);
+  }
 
   const processes = ((r.procs || {}).list || [])
     .sort((a, b) => (b.cpu || 0) - (a.cpu || 0))
@@ -292,11 +395,23 @@ async function collectSlow(opts) {
     }));
 
   const bat = r.battery || {};
+  const io = r.io && typeof r.io === 'object' ? {
+    readBytes: Number.isFinite(r.io.rIO) ? r.io.rIO : null,
+    writeBytes: Number.isFinite(r.io.wIO) ? r.io.wIO : null,
+    readBytesSec: Number.isFinite(r.io.rIO_sec) ? r.io.rIO_sec : null,
+    writeBytesSec: Number.isFinite(r.io.wIO_sec) ? r.io.wIO_sec : null
+  } : null;
   return {
     at: Date.now(),
     gpu: gpus.length ? gpus : null,
     disks,
-    network: { iface: activeNet.iface || '?', rx_sec: activeNet.rx_sec || 0, tx_sec: activeNet.tx_sec || 0 },
+    network: {
+      iface: activeNet.iface || '?', operstate: activeNet.operstate || null,
+      rx_sec: rxSec, tx_sec: txSec, rx_bytes: rxBytes, tx_bytes: txBytes,
+      sessionDownloaded: networkSession.downloaded, sessionUploaded: networkSession.uploaded,
+      peakRx: networkSession.peakRx, peakTx: networkSession.peakTx
+    },
+    diskIO: io,
     processes,
     battery: bat.hasBattery ? { percent: bat.percent || 0, charging: !!bat.charging, acConnected: !!bat.acConnected } : null,
     memory: r.mem ? { swapTotal: r.mem.swaptotal || 0, swapUsed: r.mem.swapused || 0 } : null,
@@ -307,7 +422,7 @@ async function collectSlow(opts) {
     filesystem: r.fs || null,
     // Which systeminformation calls this cycle actually made — surfaced in the
     // UI so the split is visible instead of a claim in a README.
-    calls: keys.map((k) => ({ gpu: 'graphics', disks: 'fsSize', net: 'networkStats', procs: 'processes', battery: 'battery', temps: 'cpuTemperature', mem: 'mem', fs: 'local readdir' }[k] || k))
+    calls: keys.map((k) => ({ gpu: 'graphics', disks: 'fsSize', io: 'disksIO', net: 'networkStats', procs: 'processes', battery: 'battery', temps: 'cpuTemperature', mem: 'mem', fs: 'local readdir' }[k] || k))
   };
 }
 
@@ -336,10 +451,13 @@ function reset() {
   staticPromise = null;
   cpuPrev = null;
   meminfoWarned = false;
+  inspectorCache = null;
+  inspectorPromise = null;
+  networkSession = { iface: null, lastAt: 0, lastRxBytes: null, lastTxBytes: null, downloaded: 0, uploaded: 0, peakRx: 0, peakTx: 0 };
 }
 
 module.exports = {
-  collectFast, collectSlow, inspectProcess, getStatic, reset,
+  collectFast, collectSlow, inspectProcess, getStatic, getInspector, reset,
   info: {
     fastSource: 'node:os' + (IS_LINUX ? ' + /proc/meminfo' : ''),
     slowSource: 'systeminformation',

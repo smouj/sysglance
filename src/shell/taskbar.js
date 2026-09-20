@@ -578,6 +578,38 @@ async function getState() {
   };
 }
 
+/** Restore the shell portions captured by the local undo journal. */
+async function restoreShellState(snapshot) {
+  if (!snapshot || typeof snapshot !== 'object') return { ok: false, error: 'invalid shell snapshot' };
+  const results = [];
+  if (snapshot.taskbar && snapshot.taskbar.ok) {
+    if (Number.isInteger(snapshot.taskbar.positionIndex)) results.push(await setPosition(snapshot.taskbar.positionIndex));
+    if (typeof snapshot.taskbar.autoHide === 'boolean') results.push(await setAutoHide(snapshot.taskbar.autoHide));
+  }
+  if (snapshot.theme && snapshot.theme.ok && typeof snapshot.theme.dark === 'boolean') {
+    results.push(await setDark(snapshot.theme.dark));
+  }
+  if (snapshot.accent && snapshot.accent.ok && snapshot.accent.accentRgb) {
+    results.push(await setAccent(snapshot.accent.accentRgb, { auto: snapshot.accent.autoColorization === 1 }));
+  }
+  if (snapshot.wallpaper && snapshot.wallpaper.ok) {
+    const wp = snapshot.wallpaper;
+    const previousPath = typeof wp.path === 'string' ? wp.path : '';
+    if (previousPath && !validateImagePath(previousPath).ok) {
+      return { ok: false, error: 'previous wallpaper is no longer available: ' + previousPath, partial: results };
+    }
+    const writes = await Promise.all([
+      writeString(DESKTOP_KEY, 'Wallpaper', previousPath),
+      writeString(DESKTOP_KEY, 'WallpaperStyle', wp.style || '10'),
+      writeString(DESKTOP_KEY, 'TileWallpaper', wp.tile || '0')
+    ]);
+    if (writes.some((item) => !item.ok)) return { ok: false, error: 'could not restore wallpaper registry values', partial: results };
+    if (previousPath) results.push(await systemParametersInfoWallpaper(previousPath));
+  }
+  const failed = results.find((item) => item && item.ok === false);
+  return failed ? { ok: false, error: failed.error || 'shell restore failed', partial: results } : { ok: true, restored: results.length };
+}
+
 /** Accent derived from the current (or given) wallpaper. Pure read. */
 async function accentFromWallpaper(filePath) {
   let wp = filePath;
@@ -595,7 +627,7 @@ module.exports = {
   // taskbar
   getTaskbarState, setPosition, setAutoHide, restartExplorer,
   applyPositionToBlob, applyAutoHideToBlob,
-  getState, accentFromWallpaper,
+  getState, restoreShellState, accentFromWallpaper,
   // theme
   getTheme, setDark,
   // accent
@@ -1022,7 +1054,8 @@ async function setAccentHex(hex) {
   const r = parseInt(clean.slice(0, 2), 16);
   const g = parseInt(clean.slice(2, 4), 16);
   const b = parseInt(clean.slice(4, 6), 16);
-  return setAccent({ r, g, b }, { auto: false });
+  const result = await setAccent({ r, g, b }, { auto: false });
+  return Object.assign(result, { r, g, b, hex: rgbToHex(r, g, b) });
 }
 
 // ── Extended getState (includes new data) ────────────────
@@ -1043,4 +1076,3 @@ async function getExtendedState() {
     specialFolders
   });
 }
-

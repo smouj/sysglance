@@ -229,6 +229,12 @@ rather than a dead end.
 
 The renderer additionally receives `shell-config-changed` whenever anything is
 persisted, so tray-menu actions and the panel stay in sync without polling.
+Direct shell mutations are recorded in a bounded local journal at the Electron
+user-data path. The Shell panel exposes `shell:undo`; entries contain validated
+before/after state, never executable command strings. This covers taskbar/theme/
+accent/wallpaper, folder customization metadata and Start-menu toggles. Profile
+application intentionally keeps shell fields pending until a complete
+transactional profile path exists.
 
 ## 6. Verification
 

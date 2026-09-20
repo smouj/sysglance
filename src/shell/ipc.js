@@ -47,6 +47,7 @@ try {
 
 const CHANNELS = [
   'shell:taskbar:getState',
+  'shell:undo',
   'shell:taskbar:setPosition',
   'shell:taskbar:setAutoHide',
   'shell:taskbar:restartExplorer',
@@ -91,6 +92,7 @@ function register(ctx) {
     throw new Error('src/shell/ipc.js must be loaded inside Electron (ipcMain unavailable)');
   }
   const log = ctx.log || ((m) => console.log('[shell]', m));
+  const journal = ctx.journal || null;
   const shellConfig = () => {
     const cfg = ctx.getConfig() || {};
     if (!cfg.shell) cfg.shell = {};
@@ -123,6 +125,45 @@ function register(ctx) {
 
   const answer = async (result) => ({ result, state: await state() });
 
+  async function runShellMutation(action, meta) {
+    const before = journal ? await taskbar.getState() : null;
+    const result = await action();
+    if (journal && result && result.ok && result.changed !== false) {
+      const after = await taskbar.getState();
+      journal.record('shell', before, after, meta || null);
+    }
+    return result;
+  }
+
+  async function undo() {
+    if (!journal) return { ok: false, error: 'shell undo journal unavailable' };
+    const entry = journal.latest();
+    if (!entry) return { ok: false, error: 'no shell change to undo' };
+    let result;
+    if (entry.kind === 'shell') {
+      result = await taskbar.restoreShellState(entry.before);
+    } else if (entry.kind === 'folder') {
+      const before = entry.before || {};
+      const icon = before.ok ? (before.iconResource || before.iconFile || null) : null;
+      result = await taskbar.writeFolderCustomization(entry.meta && entry.meta.folderPath, icon);
+    } else if (entry.kind === 'start-menu') {
+      const before = entry.before || {};
+      const pairs = [['showRecentApps', before.showRecentApps], ['showSuggestions', before.showSuggestions], ['fullScreenStart', before.fullScreenStart]];
+      const results = [];
+      for (const [name, value] of pairs) if (typeof value === 'boolean') results.push(await taskbar.setStartMenuToggle(name, value));
+      const failed = results.find((item) => !item.ok);
+      result = failed ? { ok: false, error: failed.error || 'start menu restore failed' } : { ok: true, restored: results.length };
+    } else {
+      result = { ok: false, error: 'unknown journal entry' };
+    }
+    if (result && result.ok) {
+      journal.remove(entry.id);
+      kickThemeBroadcast('undo');
+      result.undone = entry.kind;
+    }
+    return result;
+  }
+
   // The ImmersiveColorSet broadcast can take tens of seconds on a busy desktop
   // (one SendMessageTimeout per top-level window), so it never blocks a reply.
   function kickThemeBroadcast(why) {
@@ -133,14 +174,14 @@ function register(ctx) {
 
   // ── taskbar geometry ───────────────────────────────────
   async function setPosition(pos) {
-    const res = await taskbar.setPosition(pos);
+    const res = await runShellMutation(() => taskbar.setPosition(pos), { action: 'taskbar position' });
     if (res.ok) persist({ taskbarPosition: typeof pos === 'number' ? pos : res.positionIndex });
     if (res.ok && res.changed) log('taskbar position -> ' + res.position + ' (explorer.exe restart required to apply)');
     return res;
   }
 
   async function setAutoHide(enabled) {
-    const res = await taskbar.setAutoHide(enabled);
+    const res = await runShellMutation(() => taskbar.setAutoHide(enabled), { action: 'taskbar auto-hide' });
     if (res.ok) persist({ autoHide: !!enabled });
     if (res.ok && res.changed) log('taskbar auto-hide -> ' + (enabled ? 'on' : 'off') + ' (explorer.exe restart required to apply)');
     return res;
@@ -154,7 +195,7 @@ function register(ctx) {
 
   // ── theme / accent / wallpaper ─────────────────────────
   async function setDark(enabled) {
-    const res = await taskbar.setDark(enabled);
+    const res = await runShellMutation(() => taskbar.setDark(enabled), { action: 'dark mode' });
     if (res.ok) {
       persist({ darkMode: !!enabled });
       res.refresh = 'sent (async broadcast)';
@@ -173,7 +214,7 @@ function register(ctx) {
     const derived = await taskbar.accentFromWallpaper();
     if (!derived.ok) return derived;
     const color = { r: derived.r, g: derived.g, b: derived.b };
-    const res = await taskbar.setAccent(color, { auto: true });
+    const res = await runShellMutation(() => taskbar.setAccent(color, { auto: true }), { action: 'accent auto' });
     if (!res.ok) return res;
     persist({
       accentAuto: true,
@@ -188,7 +229,7 @@ function register(ctx) {
   }
 
   async function applyWallpaper(filePath) {
-    const res = await taskbar.applyWallpaper(filePath);
+    const res = await runShellMutation(() => taskbar.applyWallpaper(filePath), { action: 'wallpaper' });
     if (res.ok) persist({ wallpaperPath: filePath });
     return res;
   }
@@ -227,7 +268,7 @@ function register(ctx) {
 
   // ── accent hex picker ──────────────────────────────────
   async function accentSetHex(hex) {
-    const res = await taskbar.setAccentHex(hex);
+    const res = await runShellMutation(() => taskbar.setAccentHex(hex), { action: 'accent color' });
     if (res.ok) {
       persist({ accentAuto: false, accent: { r: res.r, g: res.g, b: res.b, hex: res.hex } });
       kickThemeBroadcast('accentSetHex');
@@ -256,8 +297,12 @@ function register(ctx) {
   }
 
   async function writeFolderCustomization(folderPath, iconSpec) {
+    const before = journal ? await taskbar.readFolderCustomization(folderPath) : null;
     const res = await taskbar.writeFolderCustomization(folderPath, iconSpec);
-    if (res.ok) kickThemeBroadcast('folderCustomization');
+    if (res.ok) {
+      if (journal) journal.record('folder', before, await taskbar.readFolderCustomization(folderPath), { action: 'folder icon', folderPath });
+      kickThemeBroadcast('folderCustomization');
+    }
     return res;
   }
 
@@ -266,7 +311,10 @@ function register(ctx) {
   }
 
   async function restoreFolderDefault(folderPath) {
-    return taskbar.writeFolderCustomization(folderPath, null);
+    const before = journal ? await taskbar.readFolderCustomization(folderPath) : null;
+    const res = await taskbar.writeFolderCustomization(folderPath, null);
+    if (res.ok && journal) journal.record('folder', before, await taskbar.readFolderCustomization(folderPath), { action: 'folder icon reset', folderPath });
+    return res;
   }
 
   // ── start menu ─────────────────────────────────────────
@@ -275,7 +323,10 @@ function register(ctx) {
   }
 
   async function setStartMenuToggle(name, enabled) {
-    return taskbar.setStartMenuToggle(name, enabled);
+    const before = journal ? await taskbar.getStartMenuState() : null;
+    const res = await taskbar.setStartMenuToggle(name, enabled);
+    if (res.ok && journal) journal.record('start-menu', before, await taskbar.getStartMenuState(), { action: 'start menu', name });
+    return res;
   }
 
   async function openWindowsPersonalization() {
@@ -305,6 +356,7 @@ function register(ctx) {
 
   // ── channel registration ───────────────────────────────
   ipcMain.handle('shell:taskbar:getState', () => state());
+  ipcMain.handle('shell:undo', () => undo().then(answer));
   ipcMain.handle('shell:taskbar:setPosition', (_e, pos) => setPosition(pos).then(answer));
   ipcMain.handle('shell:taskbar:setAutoHide', (_e, on) => setAutoHide(on).then(answer));
   ipcMain.handle('shell:taskbar:restartExplorer', () => restartExplorer().then(answer));
@@ -332,7 +384,7 @@ function register(ctx) {
   log('registered ' + CHANNELS.length + ' channels (host: ' + taskbar.hostKind() + ')');
 
   return {
-    state, setPosition, setAutoHide, setDark, accentFromWallpaper, accentAuto,
+    state, undo, setPosition, setAutoHide, setDark, accentFromWallpaper, accentAuto,
     applyWallpaper, pickWallpaper, wallpaperPreview, restartExplorer, widgetInfo, openWidget,
     listWallpapers, wallpaperGalleryPreview, openWallpaperFolder,
     readFolderCustomization, writeFolderCustomization, listSpecialFolders, restoreFolderDefault,
