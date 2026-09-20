@@ -61,6 +61,23 @@ function summarize(points) {
   };
 }
 
+// The store keeps every bounded sample for accurate summaries, but SVG
+// sparklines should never receive tens of thousands of vertices after a 24h
+// selection. Average buckets preserve the trend while keeping renderer work
+// predictable on low-end Windows machines.
+function downsample(points, maxPoints) {
+  const limit = Math.max(2, Math.floor(maxPoints || 240));
+  if (points.length <= limit) return points.slice();
+  const bucketSize = Math.ceil(points.length / limit);
+  const out = [];
+  for (let start = 0; start < points.length; start += bucketSize) {
+    const bucket = points.slice(start, start + bucketSize);
+    const value = bucket.reduce((sum, point) => sum + point.value, 0) / bucket.length;
+    out.push({ at: bucket[bucket.length - 1].at, value: +value.toFixed(2) });
+  }
+  return out;
+}
+
 class HistoryStore {
   constructor(options) {
     const opts = options || {};
@@ -111,8 +128,9 @@ class HistoryStore {
     const series = {};
     const summary = {};
     for (const name of SERIES) {
-      series[name] = this.series(name, window, current);
-      summary[name] = summarize(series[name]);
+      const full = this.series(name, window, current);
+      series[name] = downsample(full, 240);
+      summary[name] = summarize(full);
     }
     return { intervalMs: this.intervalMs, retentionMs: this.retentionMs, windowMs: window, series, summary };
   }
@@ -123,4 +141,4 @@ class HistoryStore {
   }
 }
 
-module.exports = { HistoryStore, RingBuffer, SERIES, summarize };
+module.exports = { HistoryStore, RingBuffer, SERIES, summarize, downsample };

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 'use strict';
 
-const { HistoryStore } = require('../src/history');
+const { HistoryStore, downsample } = require('../src/history');
 const { AlertEngine } = require('../src/alerts');
 const { evaluateHealth, GB } = require('../src/health');
 const fs = require('fs');
@@ -26,6 +26,11 @@ history.record({ cpu: 90 }, 5000);
 check('ring buffer remains bounded', history.buffers.cpu.size <= history.capacity, history.buffers.cpu.size + '/' + history.capacity);
 check('window filters old points', history.series('cpu', 1500, 5000).length === 2);
 check('summary exposes latest average and peak', history.snapshot(5000, 5000).summary.cpu.peak === 90);
+const dense = Array.from({ length: 1000 }, (_, i) => ({ at: i * 1000, value: i % 100 }));
+const denseStore = new HistoryStore({ intervalMs: 1000, retentionMs: 2000000 });
+dense.forEach((point) => denseStore.record({ cpu: point.value }, point.at));
+const denseSnapshot = denseStore.snapshot(2000000, 999000);
+check('history display series are bounded while summaries retain all samples', denseSnapshot.series.cpu.length <= 240 && denseSnapshot.summary.cpu.count === 1000);
 const mainSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'main.js'), 'utf8');
 const rendererSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'renderer.js'), 'utf8');
 check('history exposes the six product windows through a validated bridge', mainSource.includes("history:setWindow") && mainSource.includes('HISTORY_WINDOWS') && rendererSource.includes('history-window'));
