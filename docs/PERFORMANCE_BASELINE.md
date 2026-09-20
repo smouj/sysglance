@@ -51,14 +51,14 @@ the app is idle between polls. A second shorter sample measured 1,512 ms to
 window and 396.9 MB RSS; the spread shows why these are baselines, not release
 guarantees. The process tree was closed after each run.
 
-The final Windows installer from this audit is **111,918,788 bytes** with
-SHA-256 `5ED2024BD60EF8479746D103133812F90A437135ABC8D17B3E80C1FC830E8A81`.
+The final Windows installer from this audit is **111,919,208 bytes** with
+SHA-256 `EB68780CA7814D1A324FEC3430B557293CD7E34260C1D729A7008EB2D3705BCC`.
 It was
 built in `dist-verify` with electron-builder 26.15.3 and includes the packaged
 native helper.
 
-The matching portable Windows artifact is **100,605,230 bytes** with SHA-256
-`A37F2B9C0DB591C5C679A04EC6B5C1FB8754CCF71B6960740DDC65D9036CAEDC`.
+The matching portable Windows artifact is **100,602,529 bytes** with SHA-256
+`2D8C60B5FE7B4430996FBAB0CD140C6B064F848C59612419BA0AE86A43CFFF8D`.
 It was built in `dist-portable` and passed `npm run verify:portable`.
 
 ## Current performance controls

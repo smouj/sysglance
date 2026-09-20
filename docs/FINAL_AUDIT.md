@@ -76,6 +76,7 @@ clientes analíticos ni dependencias runtime directas innecesarias.
 - Identidad de red retirada del loop lento y convertida en bridge cacheado bajo demanda.
 - I/O de disco mantenido nullable en vez de fabricar valores.
 - Paths, clipboard, PID, wallpaper y controles shell revalidados en main process.
+- La galería de wallpapers dejó de aceptar rutas arbitrarias: lista, preview y Explorer quedan limitados a `Pictures\\Wallpaper`, con canonicalización para evitar escapes por junction/symlink.
 - Aplicación de perfiles shell convertida en transacción con rollback.
 - Histórico separado entre resumen completo y serie renderizada para evitar coste
   creciente en la ventana de 24 horas.
@@ -89,7 +90,7 @@ clientes analíticos ni dependencias runtime directas innecesarias.
 |---|---|
 | `npm ci` | PASS; 285 paquetes instalados. |
 | `npm audit --audit-level=high` | PASS; 0 vulnerabilidades reportadas. |
-| `npm run verify` | PASS; 37 sintaxis, 36 config, 28 shell, 34 shell extendido, 17 histórico/alertas, 10 métricas, 7 diagnostics, 7 journal, 4 transaction, 5 profile-shell, 14 profiles, 8 processes, 10 displays, 6 install, 18 actions, 4 logging, 4 privacy e IPC único. |
+| `npm run verify` | PASS; 37 sintaxis, 36 config, 28 shell, 43 shell extendido, 17 histórico/alertas, 10 métricas, 7 diagnostics, 7 journal, 4 transaction, 5 profile-shell, 14 profiles, 8 processes, 10 displays, 6 install, 18 actions, 4 logging, 4 privacy e IPC único. |
 | `npm run self-test` | PASS con Electron 44.4.3, ventana real, preload, tiers, inspector, displays, alert surface y rechazo de paths hostiles. |
 | `npm run bench -- --iterations=3 --new` | PASS; fast 0.69 ms mediana, slow 3149.01 ms mediana, 166.33 ms CPU/ciclo, 19.33 procesos hijos/ciclo. |
 | `npm run screenshot` | PASS; sidebar, settings, dock, mini, shell y minimum-size capturados y revisados. |
@@ -130,10 +131,10 @@ optimización.
 | GitHub Actions remoto | NOT VERIFIED en este checkout; el workflow está preparado. |
 | firma de código / auto-update seguro | NOT IMPLEMENTED. |
 
-El instalador actual mide 111,918,788 bytes y tiene SHA-256
-`5ED2024BD60EF8479746D103133812F90A437135ABC8D17B3E80C1FC830E8A81`.
-El portable mide 100,605,230 bytes y tiene SHA-256
-`A37F2B9C0DB591C5C679A04EC6B5C1FB8754CCF71B6960740DDC65D9036CAEDC`.
+El instalador actual mide 111,919,208 bytes y tiene SHA-256
+`EB68780CA7814D1A324FEC3430B557293CD7E34260C1D729A7008EB2D3705BCC`.
+El portable mide 100,602,529 bytes y tiene SHA-256
+`2D8C60B5FE7B4430996FBAB0CD140C6B064F848C59612419BA0AE86A43CFFF8D`.
 
 ## Riesgos y deuda restante
 

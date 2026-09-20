@@ -637,7 +637,7 @@ module.exports = {
   // wallpaper
   getWallpaper, applyWallpaper, systemParametersInfoWallpaper, refreshThemeChange, helperPath,
   // wallpaper gallery
-  listWallpapers, wallpaperGalleryPreview, openInExplorer,
+  listWallpapers, wallpaperGalleryPreview, openInExplorer, wallpaperGalleryRoot, resolveGalleryPath,
   // folder customization
   readFolderCustomization, writeFolderCustomization, restoreFolderCustomization, listSpecialFolders,
   // start menu
@@ -682,6 +682,36 @@ const WALLPAPER_DIR_KEY = 'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\E
 const WALLPAPER_EXT = /\.(jpe?g|png|bmp|webp|gif|tiff?|avif|webm|mp4)$/i;
 const ANIMATED_EXT = /\.(webm|mp4)$/i;
 
+function wallpaperGalleryRoot() {
+  return path.resolve(os.homedir(), 'Pictures', 'Wallpaper');
+}
+
+function inside(root, candidate) {
+  const relative = path.relative(root, candidate);
+  return relative === '' || (relative !== '..' && !relative.startsWith('..' + path.sep) && !path.isAbsolute(relative));
+}
+
+/**
+ * Resolve a gallery path without allowing the renderer to turn the gallery
+ * buttons into an arbitrary directory reader or Explorer launcher. Existing
+ * paths are canonicalised too, so a junction/symlink cannot escape the root.
+ */
+function resolveGalleryPath(candidate) {
+  if (candidate !== undefined && candidate !== null && typeof candidate !== 'string') {
+    return { ok: false, error: 'wallpaper gallery path must be a string' };
+  }
+  const root = wallpaperGalleryRoot();
+  const target = path.resolve(candidate || root);
+  if (!inside(root, target)) return { ok: false, error: 'wallpaper gallery path must stay inside Pictures\\Wallpaper' };
+
+  let realRoot = root;
+  let realTarget = target;
+  try { realRoot = fs.realpathSync(root); } catch (_) { /* default gallery may not exist yet */ }
+  try { realTarget = fs.realpathSync(target); } catch (_) { /* list reports a missing path */ }
+  if (!inside(realRoot, realTarget)) return { ok: false, error: 'wallpaper gallery path resolves outside Pictures\\Wallpaper' };
+  return { ok: true, root: realRoot, path: realTarget };
+}
+
 /**
  * List wallpaper files from a directory (default: user's Pictures\Wallpaper).
  * Returns { ok, files: [{ name, path, isAnimated, size }] }.
@@ -689,9 +719,9 @@ const ANIMATED_EXT = /\.(webm|mp4)$/i;
  * gallery list and the main process validates the selection on apply.
  */
 async function listWallpapers(dirPath) {
-  const homeDir = os.homedir();
-  const defaultDir = path.join(homeDir, 'Pictures', 'Wallpaper');
-  const target = dirPath || defaultDir;
+  const resolved = resolveGalleryPath(dirPath);
+  if (!resolved.ok) return resolved;
+  const target = resolved.path;
 
   async function scanDir(dir) {
     return new Promise((resolve) => {
@@ -748,20 +778,32 @@ async function listWallpapers(dirPath) {
  * Works for images via nativeImage; for animated files returns a placeholder.
  */
 function wallpaperGalleryPreview(filePath) {
-  if (ANIMATED_EXT.test(filePath)) {
+  const resolved = resolveGalleryPath(filePath);
+  if (!resolved.ok) return resolved;
+  if (ANIMATED_EXT.test(resolved.path)) {
+    try {
+      if (!fs.statSync(resolved.path).isFile()) return { ok: false, error: 'not a regular file' };
+    } catch (_) { return { ok: false, error: 'not found: ' + resolved.path }; }
     // Cannot render video thumbnails in Electron; return a placeholder indicator
-    return { ok: true, isAnimated: true, name: path.basename(filePath), size: 0 };
+    return { ok: true, isAnimated: true, name: path.basename(resolved.path), size: 0 };
   }
-  return wallpaperPreview(filePath, 128);
+  return wallpaperPreview(resolved.path, 128);
 }
 
 /**
  * Open a directory in Windows Explorer.
  */
 function openInExplorer(dirPath) {
+  const resolved = resolveGalleryPath(dirPath);
+  if (!resolved.ok) return Promise.resolve(resolved);
+  try {
+    if (!fs.statSync(resolved.path).isDirectory()) return Promise.resolve({ ok: false, error: 'not a directory' });
+  } catch (_) {
+    return Promise.resolve({ ok: false, error: 'gallery directory not found' });
+  }
   return new Promise((resolve) => {
     const exe = IS_WINDOWS ? 'explorer.exe' : '/mnt/c/Windows/explorer.exe';
-    execFile(exe, [dirPath], { windowsHide: true, timeout: 5000 }, (err) => {
+    execFile(exe, [resolved.path], { windowsHide: true, timeout: 5000 }, (err) => {
       resolve({ ok: !err, error: err ? err.message : null });
     });
   });

@@ -218,6 +218,7 @@ reaches them through `window.sysglance.shell.*`.
 | `shell:accent:auto` | — | writes AccentColor/ColorizationColor/AutoColorization/ColorPrevalence |
 | `shell:wallpaper:apply` | absolute path | `{ ok, registryApplied, systemParametersInfo, helperOutput }` |
 | `shell:wallpaper:pick` | — | `{ ok, path, base }` — native file dialog |
+| `shell:wallpaper:list` / `galleryPreview` / `openFolder` | gallery path | constrained to `Pictures\\Wallpaper` and descendants; existing paths are canonicalised |
 | `shell:widget:info` | — | `{ name, repo, ownsVibrancy }` |
 | `shell:widget:open` | — | opens the OpenClaw Widget repository |
 
@@ -252,7 +253,7 @@ node -e "require('./src/shell/taskbar.js')"      # OK
 
 # full harness: live state, byte math, reversible registry write, accent math
 node scripts/verify-shell.js                     # 28 passed, 0 failed
-node scripts/verify-shell-extended.js            # 34 passed, 0 failed
+node scripts/verify-shell-extended.js            # 43 passed, 0 failed
 ```
 
 Held-out cross-check: under WSL, Electron runs headlessly against Xvfb, so

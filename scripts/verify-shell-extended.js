@@ -33,6 +33,8 @@ function section(t) { console.log('\n' + t); }
   check('listWallpapers is a function', typeof taskbar.listWallpapers === 'function');
   check('wallpaperGalleryPreview is a function', typeof taskbar.wallpaperGalleryPreview === 'function');
   check('openInExplorer is a function', typeof taskbar.openInExplorer === 'function');
+  check('wallpaperGalleryRoot is a function', typeof taskbar.wallpaperGalleryRoot === 'function');
+  check('resolveGalleryPath is a function', typeof taskbar.resolveGalleryPath === 'function');
   check('readFolderCustomization is a function', typeof taskbar.readFolderCustomization === 'function');
   check('writeFolderCustomization is a function', typeof taskbar.writeFolderCustomization === 'function');
   check('restoreFolderCustomization is a function', typeof taskbar.restoreFolderCustomization === 'function');
@@ -101,10 +103,21 @@ function section(t) { console.log('\n' + t); }
 
   // ── 7. Wallpaper gallery (offline validation) ────────
   section('7. Wallpaper gallery (offline)');
-  // listWallpapers on a non-existent dir should not crash
-  const noGallery = await taskbar.listWallpapers('/nonexistent/path/that/does/not/exist');
-  check('listWallpapers on bad path returns ok with empty files', noGallery.ok === true || noGallery.ok === false,
-    noGallery.ok ? 'files: ' + (noGallery.files ? noGallery.files.length : '?') : 'error: ' + noGallery.error);
+  const galleryRoot = taskbar.wallpaperGalleryRoot();
+  const insideGallery = taskbar.resolveGalleryPath(path.join(galleryRoot, 'subfolder'));
+  const outsideGallery = taskbar.resolveGalleryPath(os.homedir());
+  check('gallery root is inside the user Pictures folder', galleryRoot === path.resolve(os.homedir(), 'Pictures', 'Wallpaper'), galleryRoot);
+  check('gallery accepts a descendant path', insideGallery.ok === true, insideGallery.error || 'accepted');
+  check('gallery refuses an outside directory', outsideGallery.ok === false, outsideGallery.error || 'unexpectedly accepted');
+  check('gallery refuses traversal outside its root', taskbar.resolveGalleryPath(path.join(galleryRoot, '..', '..')).ok === false);
+  const noGallery = await taskbar.listWallpapers(path.join(galleryRoot, 'missing-subfolder'));
+  check('missing gallery descendant does not escape the allow-list', noGallery.ok === false, noGallery.error || 'unexpectedly accepted');
+  const outsideList = await taskbar.listWallpapers(os.homedir());
+  check('listWallpapers refuses arbitrary home-directory reads', outsideList.ok === false, outsideList.error || 'unexpectedly accepted');
+  const outsidePreview = taskbar.wallpaperGalleryPreview(path.join(os.homedir(), 'not-a-gallery.png'));
+  check('gallery preview refuses paths outside the gallery', outsidePreview.ok === false, outsidePreview.error || 'unexpectedly accepted');
+  const outsideExplorer = await taskbar.openInExplorer(os.homedir());
+  check('Explorer launcher refuses paths outside the gallery', outsideExplorer.ok === false, outsideExplorer.error || 'unexpectedly accepted');
 
   // ── 8. Live Start menu state (Windows only) ─────────
   if (taskbar.supported()) {

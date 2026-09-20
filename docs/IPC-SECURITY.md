@@ -69,6 +69,7 @@ be called with anything. Each handler re-checks its input:
 | `open-folder` | must be a string, **absolute**, and an existing **directory** |
 | `shell:wallpaper:apply` | must be an absolute path that exists |
 | `shell:accent:fromWallpaper` | path must exist before it is decoded |
+| `shell:wallpaper:list` / `galleryPreview` / `openFolder` | paths are constrained to `Pictures\\Wallpaper` and its descendants; existing paths are canonicalised before reading, decoding or launching Explorer |
 | `shell:taskbar:setPosition` | `'left'\|'top'\|'right'\|'bottom'` or an integer 0–3 |
 | `shell:widget:open` | no argument; opens a hard-coded URL |
 | `control:open` | action must be one of the main-process allow-list; sleep/restart show a confirmation dialog |
