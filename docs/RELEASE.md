@@ -8,4 +8,8 @@
 6. Sign production artifacts, generate hashes and review the dependency audit.
 7. Do not enable auto-update until the manifest transport, signature verification and user control are implemented and tested.
 
+The hardware and clean-install evidence ledger is maintained in
+`docs/COMPATIBILITY_MATRIX.md`; do not replace its `NOT VERIFIED` rows with
+assumptions based on the local developer workstation.
+
 The current checkout is not a release candidate: production signing/secure update and the Windows compatibility matrix are NOT VERIFIED. The local packaging path is verified through `dist-verify`, but install/uninstall residue still needs a clean-machine test.
