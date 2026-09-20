@@ -118,6 +118,7 @@ contextBridge.exposeInMainWorld('sysglance', {
     inspect: (force) => ipcRenderer.invoke('diagnostics:inspect', force === true),
     copy: () => ipcRenderer.invoke('diagnostics:copy'),
     export: () => ipcRenderer.invoke('diagnostics:export'),
+    bundle: () => ipcRenderer.invoke('diagnostics:bundle'),
     openLogs: () => ipcRenderer.invoke('diagnostics:openLogs')
   },
 

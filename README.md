@@ -116,11 +116,11 @@ network, display, apps and Task Manager surfaces or lock the PC. It is
 intentionally not a general launcher.
 
 The settings panel also provides a sanitized system summary for clipboard copy,
-JSON export and an explicit Open logs action. It excludes document contents,
-serials and network addresses, redacts the saved wallpaper path and includes
-only a bounded recent-log tail. Direct shell changes have a bounded local undo
-journal; profile shell application is a separate confirmed transaction with
-the same rollback journal.
+JSON export, a ZIP support bundle and an explicit Open logs action. It excludes
+document contents, serials and network addresses, redacts saved paths and
+includes only a bounded recent-log tail. Direct shell changes have a bounded
+local undo journal; profile shell application is a separate confirmed
+transaction with the same rollback journal.
 
 ### Performance, measured
 The hot path uses **Node's own `os` module in process** — no `wmic`, no

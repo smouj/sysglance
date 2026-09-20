@@ -20,6 +20,7 @@ the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Added an explicit Open logs action and included a bounded recent-log tail in exported diagnostics.
 - Added a confirmed, rollback-capable profile shell transaction for taskbar, theme, accent and wallpaper; direct folder undo now restores exact `desktop.ini` bytes.
 - Added on-demand network identity (IPv4, gateway, DNS and link speed) and bounded home-folder size analysis; expensive network routing queries stay out of the regular slow loop.
+- Added a local ZIP support bundle containing sanitized diagnostics and redacted bounded logs.
 
 - **System Status** with objective health rows, bounded local history for key metrics and CPU/RAM sparklines.
 - **Local Alert Engine** with threshold, duration, cooldown and recovery state transitions.

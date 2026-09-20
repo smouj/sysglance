@@ -30,6 +30,7 @@ const { AlertEngine } = require('./alerts');
 const { evaluateHealth } = require('./health');
 const shellIpc = require('./shell/ipc');
 const { ShellJournal } = require('./shell/journal');
+const diagnostics = require('./diagnostics');
 
 const SELF_TEST = process.argv.includes('--self-test');
 // --screenshot[=dir] boots the real app, captures the panel (sidebar, settings,
@@ -879,6 +880,20 @@ ipcMain.handle('diagnostics:export', async () => {
     });
     if (target.canceled || !target.filePath) return { ok: false, canceled: true };
     fs.writeFileSync(path.resolve(target.filePath), JSON.stringify(await diagnosticsSnapshot(), null, 2) + '\n', 'utf8');
+    return { ok: true, filePath: path.resolve(target.filePath) };
+  } catch (err) { return { ok: false, error: err.message }; }
+});
+ipcMain.handle('diagnostics:bundle', async () => {
+  try {
+    const target = await dialog.showSaveDialog(mainWindow, {
+      title: 'Export SysGlance support bundle', defaultPath: 'SysGlance-support-bundle.zip',
+      filters: [{ name: 'SysGlance support bundle', extensions: ['zip'] }],
+      properties: ['createDirectory', 'showOverwriteConfirmation']
+    });
+    if (target.canceled || !target.filePath) return { ok: false, canceled: true };
+    const snapshot = await diagnosticsSnapshot();
+    const replacements = [os.homedir(), app.getPath('userData'), process.env.USERPROFILE, process.env.APPDATA, process.env.LOCALAPPDATA];
+    fs.writeFileSync(path.resolve(target.filePath), diagnostics.createSupportBundle(snapshot, snapshot.recentLogs, replacements));
     return { ok: true, filePath: path.resolve(target.filePath) };
   } catch (err) { return { ok: false, error: err.message }; }
 });

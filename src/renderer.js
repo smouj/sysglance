@@ -49,7 +49,7 @@
     profileApply: $('profile-apply'), profileApplyShell: $('profile-apply-shell'), profileDelete: $('profile-delete'), profileDuplicate: $('profile-duplicate'),
     profileExport: $('profile-export'), profileImport: $('profile-import'), profileUndo: $('profile-undo'), profileStatus: $('profile-status'),
     inspectorSummary: $('inspector-summary'), inspectorRefresh: $('inspector-refresh'),
-    diagnosticsCopy: $('diagnostics-copy'), diagnosticsExport: $('diagnostics-export'), diagnosticsOpenLogs: $('diagnostics-open-logs'), diagnosticsStatus: $('diagnostics-status'),
+    diagnosticsCopy: $('diagnostics-copy'), diagnosticsExport: $('diagnostics-export'), diagnosticsBundle: $('diagnostics-bundle'), diagnosticsOpenLogs: $('diagnostics-open-logs'), diagnosticsStatus: $('diagnostics-status'),
     commandPalette: $('command-palette'), palettePrefix: $('palette-prefix'), paletteInput: $('palette-input'), paletteList: $('palette-list'), paletteClose: $('palette-close'),
     appInfo: $('app-info'), metricInfo: $('metric-info')
   };
@@ -351,6 +351,12 @@
       if (!res || !res.ok) { if (!res || !res.canceled) diagnosticsStatus((res && res.error) || 'Could not export diagnostics', true); }
       else diagnosticsStatus('Diagnostics exported.');
     }).catch(function (err) { diagnosticsStatus(err.message || 'Could not export diagnostics', true); });
+  });
+  if (dom.diagnosticsBundle && api.diagnostics.bundle) dom.diagnosticsBundle.addEventListener('click', function () {
+    api.diagnostics.bundle().then(function (res) {
+      if (!res || !res.ok) { if (!res || !res.canceled) diagnosticsStatus((res && res.error) || 'Could not export support bundle', true); }
+      else diagnosticsStatus('Support bundle exported.');
+    }).catch(function (err) { diagnosticsStatus(err.message || 'Could not export support bundle', true); });
   });
   if (dom.diagnosticsOpenLogs) dom.diagnosticsOpenLogs.addEventListener('click', function () {
     if (!api.diagnostics.openLogs) return;

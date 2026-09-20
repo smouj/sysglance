@@ -41,5 +41,7 @@ main process before opening a location or showing the destructive confirmation.
 Display selection is validated and resolved against Electron's live display
 topology; disconnects fall back to the primary display and reflow the overlay.
 The diagnostics export is intentionally a sanitized snapshot and the hardware
-inspector is fetched on demand. A full support bundle and transactional shell
-rollback for profile application still require their own schemas and tests.
+inspector is fetched on demand. The support-bundle writer packages the
+sanitized snapshot and bounded redacted logs in a dependency-free ZIP. External
+support-workflow retention/review and profile folder-icon snapshots remain
+future work.

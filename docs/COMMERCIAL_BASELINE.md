@@ -41,7 +41,7 @@ This is an evidence-based baseline. A feature is listed as implemented only when
 ## Incomplete or not yet evidenced
 
 - Profiles now support local save/apply/duplicate/rename/delete/import/export, retain configurable hotkeys, and expose a separate confirmed shell-apply transaction with rollback. Folder-icon customizations are still outside the profile schema.
-- The inspector, sanitized export, local Open logs action, live adapter details and on-demand folder analysis are implemented; a full support bundle is not.
+- The inspector, sanitized export, ZIP support bundle, local Open logs action, live adapter details and on-demand folder analysis are implemented; bundle review remains limited to the local redaction gate.
 - Disk-I/O/temperature fields remain provider-dependent and may be unavailable; the UI preserves null rather than fabricating values.
 - Direct shell changes and profile shell application use the bounded undo journal; folder customization rollback now restores exact `desktop.ini` bytes, while profile folder icons are not yet included.
 - Windows 10/11, DPI matrix, sleep/resume, Explorer restart, GPU reset and monitor disconnect/reconnect remain NOT VERIFIED on a hardware test matrix; the runtime now has display topology and hot-plug handling.
@@ -59,5 +59,5 @@ This is an evidence-based baseline. A feature is listed as implemented only when
 
 1. Verify the Windows 10/11, DPI, sleep/resume, Explorer restart, GPU reset and monitor hot-plug matrix.
 2. Add profile folder-icon snapshots and complete their transactional restoration.
-3. Add a full support bundle and support-bundle retention/redaction review.
+3. Review support-bundle retention/redaction with external support workflows.
 4. Close code-signing and secure-update gaps before release-candidate distribution.

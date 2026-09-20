@@ -21,7 +21,7 @@ const renderer = fs.readFileSync(path.join(root, 'src', 'renderer.js'), 'utf8');
 const metricsSource = fs.readFileSync(path.join(root, 'src', 'metrics.js'), 'utf8');
 
 check('profile apply has an explicit undo path', main.includes("ipcMain.handle('profiles:undo'") && main.includes('profileUndo = null'));
-check('diagnostics copy/export/open-logs are explicit IPC handlers', main.includes("ipcMain.handle('diagnostics:copy'") && main.includes("ipcMain.handle('diagnostics:export'") && main.includes("ipcMain.handle('diagnostics:openLogs'") && preload.includes('openLogs'));
+check('diagnostics copy/export/bundle/open-logs are explicit IPC handlers', main.includes("ipcMain.handle('diagnostics:copy'") && main.includes("ipcMain.handle('diagnostics:export'") && main.includes("ipcMain.handle('diagnostics:bundle'") && main.includes("ipcMain.handle('diagnostics:openLogs'") && preload.includes('bundle:'));
 check('diagnostics redact the saved wallpaper path', main.includes("copy.shell.wallpaperPath = copy.shell.wallpaperPath ? '[redacted]' : null"));
 check('diagnostics bridge is narrow', preload.includes('diagnostics: {') && !preload.includes('diagnostics: (channel'));
 check('clipboard actions reject control characters and length abuse', main.includes("ipcMain.handle('copy-text'") && main.includes('invalid clipboard text'));
